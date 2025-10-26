@@ -1,0 +1,385 @@
+
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2025 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Floating Point Converter - FP64, FP32, FP16, BF16, TF32, FP8 Converter</title>
+    <meta name="description" content="Floating point converter for FP64, FP32, FP16, BF16, TF32, and FP8 formats. Convert between IEEE 754 formats, visualize binary representations, and calculate precision loss. Interactive tool for ML engineers and developers.">
+    <meta name="keywords" content="floating point converter, FP64 converter, FP32 converter, FP16 converter, BF16 converter, FP8 converter, FP32 to FP16, FP32 to BF16, FP16 to BF16, FP32 to FP8, IEEE 754 converter">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="canonical" href="https://sw23.github.io/fp-conv/">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Floating Point Converter">
+    <meta property="og:description" content="Interactive floating point number converter supporting standard and custom formats. Visualize binary representations and converter between formats.">
+    <meta property="og:url" content="https://sw23.github.io/fp-conv/">
+    <meta property="og:site_name" content="Floating Point Converter">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Floating Point Converter - FP32, FP16, BF16, TF32, FP8">
+    <meta name="twitter:description" content="Free interactive converter for FP32, FP16, BF16, TF32, and FP8 floating-point formats. Visualize binary representations and calculate precision loss.">
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Floating Point Number Converter",
+      "description": "Interactive tool for exploring and converting between different floating-point number formats including IEEE 754, FP16, BF16, TF32, and custom formats",
+      "url": "https://sw23.github.io/fp-conv/",
+      "applicationCategory": "UtilityApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript. Works with any modern web browser.",
+      "author": {
+        "@type": "Person",
+        "name": "Spencer Williams"
+      },
+      "datePublished": "2025-01-01",
+      "inLanguage": "en-US",
+      "keywords": "floating point, FP32, FP16, BF16, TF32, FP8, IEEE 754, binary converter, machine learning, precision converter",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "featureList": [
+        "Convert between FP32, FP16, BF16, TF32, FP8 formats",
+        "Visualize binary representation of floating-point numbers",
+        "Calculate precision loss between formats",
+        "Support for custom floating-point formats",
+        "Interactive bit-level manipulation",
+        "Real-time conversion and calculation"
+      ]
+    }
+    </script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Floating Point Number Converter</h1>
+            <p class="subtitle">Convert between FP32, FP16, BF16, TF32, FP8 and custom formats</p>
+            <p class="help-link"><a href="#about">Need help? Learn how to use this tool →</a></p>
+        </header>
+
+        <div class="main-content">
+            <!-- Input Format -->
+            <section class="format-config" aria-labelledby="input-format-heading">
+                <h2 id="input-format-heading">Input Format</h2>
+
+                <div class="preset-section">
+                    <div class="preset-buttons">
+                        <button class="preset-btn input-preset" data-format="fp32">FP32 (IEEE 754)</button>
+                        <button class="preset-btn input-preset" data-format="fp16">FP16</button>
+                        <button class="preset-btn input-preset" data-format="bf16">BF16</button>
+                        <button class="preset-btn input-preset" data-format="tf32">TF32</button>
+                        <button class="preset-btn input-preset" data-format="fp64">FP64</button>
+                        <button class="preset-btn input-preset" data-format="fp8_e4m3">FP8 E4M3</button>
+                        <button class="preset-btn input-preset" data-format="fp8_e5m2">FP8 E5M2</button>
+                        <button class="preset-btn input-preset" data-format="fp8_e8m0">FP8 E8M0</button>
+                    </div>
+                </div>
+
+                <div class="custom-format">
+                    <div class="format-inputs">
+                        <div class="input-group">
+                            <label for="input-sign-bits">Sign Bit:</label>
+                            <input type="checkbox" id="input-sign-bits" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="input-exponent-bits">Exponent Bits:</label>
+                            <input type="number" id="input-exponent-bits" autocomplete="off" min="0" max="15" value="8">
+                        </div>
+                        <div class="input-group">
+                            <label for="input-mantissa-bits">Mantissa Bits:</label>
+                            <input type="number" id="input-mantissa-bits" autocomplete="off" min="0" max="112" value="23">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-label">Total Bits:</span>
+                            <div class="total-bits-display" id="input-total-bits">32</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Input Value -->
+            <section class="value-section" aria-labelledby="input-value-heading">
+                <h2 id="input-value-heading">Input Value</h2>
+
+                <div class="preset-section">
+                    <span class="section-label">Value Presets:</span>
+                    <div class="preset-buttons">
+                        <button class="value-preset-btn" data-value="zero">Zero</button>
+                        <button class="value-preset-btn" data-value="one">One</button>
+                        <button class="value-preset-btn" data-value="max-norm">Max Normal</button>
+                        <button class="value-preset-btn" data-value="min-norm">Min Normal</button>
+                        <button class="value-preset-btn" data-value="max-subnorm">Max Subnormal</button>
+                        <button class="value-preset-btn" data-value="min-subnorm">Min Subnormal</button>
+                        <button class="value-preset-btn" data-value="infinity">+Infinity</button>
+                        <button class="value-preset-btn" data-value="neg-infinity">-Infinity</button>
+                        <button class="value-preset-btn" data-value="nan">NaN</button>
+                        <button class="value-preset-btn" data-value="all-ones">All Ones</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="input-decimal-input">Decimal Value:</label>
+                    <input type="text" id="input-decimal-input" autocomplete="off" value="3.14159" placeholder="Enter decimal number">
+                </div>
+
+                <div class="rep-group">
+                    <span class="rep-label">Binary:</span>
+                    <div class="binary-display" role="group" aria-label="Binary representation">
+                        <div class="bit-section-container sign-section" role="group" aria-label="Sign bit">
+                            <div class="bit-labels" id="input-binary-sign-labels"></div>
+                            <div class="bit-checkboxes" id="input-binary-sign-checks"></div>
+                            <div class="bit-positions" id="input-binary-sign-positions"></div>
+                        </div>
+                        <div class="bit-section-container exponent-section" role="group" aria-label="Exponent bits">
+                            <div class="bit-labels" id="input-binary-exponent-labels"></div>
+                            <div class="bit-checkboxes" id="input-binary-exponent-checks"></div>
+                            <div class="bit-positions" id="input-binary-exponent-positions"></div>
+                        </div>
+                        <div class="bit-section-container mantissa-section" role="group" aria-label="Mantissa bits">
+                            <div class="bit-labels" id="input-binary-mantissa-labels"></div>
+                            <div class="bit-checkboxes" id="input-binary-mantissa-checks"></div>
+                            <div class="bit-positions" id="input-binary-mantissa-positions"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rep-group">
+                    <label for="input-hex-input">Hexadecimal:</label>
+                    <input type="text" id="input-hex-input" autocomplete="off" class="hex-input" value="0x00000000" placeholder="0x00000000">
+                </div>
+
+                <div class="components">
+                    <span class="components-label">Components:</span>
+                    <div class="component-grid">
+                        <div class="component">
+                            <span class="component-label">Sign:</span>
+                            <span id="input-comp-sign">0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Exponent (biased):</span>
+                            <span id="input-comp-exp-biased">0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Exponent (actual):</span>
+                            <span id="input-comp-exp-actual">0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Type:</span>
+                            <span id="input-comp-type">Normal</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Mantissa (decimal):</span>
+                            <span id="input-comp-mantissa-dec">1.0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Actual Value:</span>
+                            <span id="input-comp-value">0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Output Format -->
+            <section class="format-config" aria-labelledby="output-format-heading">
+                <h2 id="output-format-heading">Output Format</h2>
+
+                <div class="preset-section">
+                    <div class="preset-buttons">
+                        <button class="preset-btn output-preset" data-format="fp32">FP32 (IEEE 754)</button>
+                        <button class="preset-btn output-preset" data-format="fp16">FP16</button>
+                        <button class="preset-btn output-preset" data-format="bf16">BF16</button>
+                        <button class="preset-btn output-preset" data-format="tf32">TF32</button>
+                        <button class="preset-btn output-preset" data-format="fp64">FP64</button>
+                        <button class="preset-btn output-preset" data-format="fp8_e4m3">FP8 E4M3</button>
+                        <button class="preset-btn output-preset" data-format="fp8_e5m2">FP8 E5M2</button>
+                        <button class="preset-btn output-preset" data-format="fp8_e8m0">FP8 E8M0</button>
+                    </div>
+                </div>
+
+                <div class="custom-format">
+                    <div class="format-inputs">
+                        <div class="input-group">
+                            <label for="output-sign-bits">Sign Bit:</label>
+                            <input type="checkbox" id="output-sign-bits" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="output-exponent-bits">Exponent Bits:</label>
+                            <input type="number" id="output-exponent-bits" autocomplete="off" min="0" max="15" value="5">
+                        </div>
+                        <div class="input-group">
+                            <label for="output-mantissa-bits">Mantissa Bits:</label>
+                            <input type="number" id="output-mantissa-bits" autocomplete="off" min="0" max="112" value="10">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-label">Total Bits:</span>
+                            <div class="total-bits-display" id="output-total-bits">16</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Output Value -->
+            <section class="value-section output-section" aria-labelledby="output-value-heading">
+                <h2 id="output-value-heading">Output Value</h2>
+
+                <div class="input-group">
+                    <span class="output-label">Decimal Value:</span>
+                    <div class="output-display" id="output-decimal">0</div>
+                </div>
+
+                <div class="rep-group">
+                    <span class="rep-label">Binary:</span>
+                    <div class="binary-display output-binary" role="group" aria-label="Output binary representation">
+                        <div class="bit-section-container sign-section" role="group" aria-label="Output sign bit">
+                            <div class="bit-labels" id="output-binary-sign-labels"></div>
+                            <div class="bit-values" id="output-binary-sign-values"></div>
+                            <div class="bit-positions" id="output-binary-sign-positions"></div>
+                        </div>
+                        <div class="bit-section-container exponent-section" role="group" aria-label="Output exponent bits">
+                            <div class="bit-labels" id="output-binary-exponent-labels"></div>
+                            <div class="bit-values" id="output-binary-exponent-values"></div>
+                            <div class="bit-positions" id="output-binary-exponent-positions"></div>
+                        </div>
+                        <div class="bit-section-container mantissa-section" role="group" aria-label="Output mantissa bits">
+                            <div class="bit-labels" id="output-binary-mantissa-labels"></div>
+                            <div class="bit-values" id="output-binary-mantissa-values"></div>
+                            <div class="bit-positions" id="output-binary-mantissa-positions"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rep-group">
+                    <span class="rep-label">Hexadecimal:</span>
+                    <div class="output-display" id="output-hex">0x0000</div>
+                </div>
+
+                <div class="components">
+                    <span class="components-label">Components:</span>
+                    <div class="component-grid">
+                        <div class="component">
+                            <span class="component-label">Sign:</span>
+                            <span id="output-comp-sign">0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Exponent (biased):</span>
+                            <span id="output-comp-exp-biased">0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Exponent (actual):</span>
+                            <span id="output-comp-exp-actual">0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Type:</span>
+                            <span id="output-comp-type">Normal</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Mantissa (decimal):</span>
+                            <span id="output-comp-mantissa-dec">1.0</span>
+                        </div>
+                        <div class="component">
+                            <span class="component-label">Actual Value:</span>
+                            <span id="output-comp-value">0</span>
+                        </div>
+                        <div class="component precision-loss">
+                            <span class="component-label">Precision Loss:</span>
+                            <span id="output-precision-loss">0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section id="about" class="intro-section">
+            <h2>About This Tool</h2>
+            <p>
+                This interactive converter helps you visualize how floating-point numbers are represented at the binary level.
+                This converter follows the <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank" rel="noopener">IEEE 754</a>
+                floating-point standard and supports standard formats (FP64, FP32, FP16) as well as specialized formats used in
+                machine learning and AI (BF16, TF32, FP8 E4M3, FP8 E5M2). Custom formats can be used as well by specifying the number
+                of sign, exponent, and mantissa bits.
+            </p>
+
+            <h3>How to Use</h3>
+            <div class="instructions-grid">
+                <div class="instruction">
+                    <strong>1. Choose Your Input Format</strong>
+                    <p>Select from standard formats (FP32, FP16, BF16, etc.) or customize the number of sign, exponent, and mantissa bits.</p>
+                </div>
+                <div class="instruction">
+                    <strong>2. Enter a Value</strong>
+                    <p>Type any decimal number, or use the value presets to explore special cases like infinity, NaN, or the smallest/largest representable numbers. You can also edit the binary or hexadecimal representation directly.</p>
+                </div>
+                <div class="instruction">
+                    <strong>3. Select Output Format</strong>
+                    <p>Choose a different format to see how your number would be represented. The tool automatically shows precision loss when converting between formats.</p>
+                </div>
+                <div class="instruction">
+                    <strong>4. Explore Components</strong>
+                    <p>View the breakdown of sign bit, exponent, and mantissa. Interactive binary checkboxes let you flip individual bits to see how they affect the final value.</p>
+                </div>
+            </div>
+
+            <h3>Common Use Cases</h3>
+            <div class="bullets">
+                <ul>
+                    <li><strong>ML Engineers:</strong> Understand how BF16 and FP16 affect model precision compared to FP32</li>
+                    <li><strong>Students:</strong> Learn how the IEEE 754 standard works by visualizing the binary representation</li>
+                    <li><strong>Developers:</strong> Debug floating-point precision issues by examining exact bit patterns</li>
+                    <li><strong>Hardware Engineers:</strong> Design and validate custom floating-point formats for specialized applications</li>
+                </ul>
+            </div>
+
+            <h3>Supported Formats</h3>
+            <div class="bullets">
+                <ul>
+                    <li>
+                        <strong>Standard IEEE 754:</strong>
+                        <a href="https://en.wikipedia.org/wiki/Single-precision_floating-point_format" target="_blank" rel="noopener">FP32 (Single Precision)</a>,
+                        <a href="https://en.wikipedia.org/wiki/Half-precision_floating-point_format" target="_blank" rel="noopener">FP16 (Half Precision)</a>,
+                        <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format" target="_blank" rel="noopener">FP64 (Double Precision)</a>
+                    </li>
+                    <li>
+                        <strong>Machine Learning Formats:</strong>
+                        <a href="https://en.wikipedia.org/wiki/Bfloat16_floating-point_format" target="_blank" rel="noopener">BF16 (Brain Float 16)</a>,
+                        <a href="https://en.wikipedia.org/wiki/TensorFloat-32" target="_blank" rel="noopener">TF32 (TensorFloat-32)</a>,
+                        <a href="https://en.wikipedia.org/wiki/Minifloat" target="_blank" rel="noopener">FP8 E4M3</a>,
+                        <a href="https://en.wikipedia.org/wiki/Minifloat" target="_blank" rel="noopener">FP8 E5M2</a>
+                    </li>
+                    <li>
+                        <strong>Custom Formats:</strong>
+                        Create any format with 0-15 exponent bits and 0-112 mantissa bits (including fixed-point formats)
+                    </li>
+                    <li>
+                        <strong>Microscaling Formats:</strong>
+                                                Small formats like FP6 and FP4 are supported, though some 
+                                                <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP MX Specification</a>
+                                                encodings that drop NaN/Infinity are not modeled.
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <footer>
+            <p>© 2025 Spencer Williams | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
