@@ -21,4 +21,4 @@ Interactive tool for converting and visualizing floating-point numbers across st
 
 ## License
 
-MIT © 2025 Spencer Williams. See [LICENSE](LICENSE).
+Apache-2.0 © 2025 Spencer Williams. See [LICENSE](LICENSE).
