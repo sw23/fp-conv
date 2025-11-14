@@ -1,0 +1,621 @@
+{
+  "fp32_encode": [
+    {
+      "input": 0.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 0,
+        "mantissa": 0,
+        "binary": "00000000000000000000000000000000",
+        "hex": "0x00000000",
+        "isZero": true,
+        "isSubnormal": false,
+        "isNormal": false,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": -0.0,
+      "expected": {
+        "sign": 1,
+        "exponent": 0,
+        "mantissa": 0,
+        "binary": "10000000000000000000000000000000",
+        "hex": "0x80000000",
+        "isZero": true,
+        "isSubnormal": false,
+        "isNormal": false,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 1.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 127,
+        "mantissa": 0,
+        "binary": "00111111100000000000000000000000",
+        "hex": "0x3F800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": -1.0,
+      "expected": {
+        "sign": 1,
+        "exponent": 127,
+        "mantissa": 0,
+        "binary": "10111111100000000000000000000000",
+        "hex": "0xBF800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 2.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 128,
+        "mantissa": 0,
+        "binary": "01000000000000000000000000000000",
+        "hex": "0x40000000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 0.5,
+      "expected": {
+        "sign": 0,
+        "exponent": 126,
+        "mantissa": 0,
+        "binary": "00111111000000000000000000000000",
+        "hex": "0x3F000000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 0.25,
+      "expected": {
+        "sign": 0,
+        "exponent": 125,
+        "mantissa": 0,
+        "binary": "00111110100000000000000000000000",
+        "hex": "0x3E800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": -0.5,
+      "expected": {
+        "sign": 1,
+        "exponent": 126,
+        "mantissa": 0,
+        "binary": "10111111000000000000000000000000",
+        "hex": "0xBF000000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": "Infinity",
+      "expected": {
+        "sign": 0,
+        "exponent": 255,
+        "mantissa": 0,
+        "binary": "01111111100000000000000000000000",
+        "hex": "0x7F800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": false,
+        "isInfinite": true,
+        "isNaN": false
+      }
+    },
+    {
+      "input": "-Infinity",
+      "expected": {
+        "sign": 1,
+        "exponent": 255,
+        "mantissa": 0,
+        "binary": "11111111100000000000000000000000",
+        "hex": "0xFF800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": false,
+        "isInfinite": true,
+        "isNaN": false
+      }
+    },
+    {
+      "input": "NaN",
+      "expected": {
+        "sign": 0,
+        "exponent": 255,
+        "mantissa": 4194304,
+        "binary": "01111111110000000000000000000000",
+        "hex": "0x7FC00000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": false,
+        "isInfinite": false,
+        "isNaN": true
+      }
+    },
+    {
+      "input": 1024,
+      "expected": {
+        "sign": 0,
+        "exponent": 137,
+        "mantissa": 0,
+        "binary": "01000100100000000000000000000000",
+        "hex": "0x44800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 0.0009765625,
+      "expected": {
+        "sign": 0,
+        "exponent": 117,
+        "mantissa": 0,
+        "binary": "00111010100000000000000000000000",
+        "hex": "0x3A800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 1048576,
+      "expected": {
+        "sign": 0,
+        "exponent": 147,
+        "mantissa": 0,
+        "binary": "01001001100000000000000000000000",
+        "hex": "0x49800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 9.5367431640625e-07,
+      "expected": {
+        "sign": 0,
+        "exponent": 107,
+        "mantissa": 0,
+        "binary": "00110101100000000000000000000000",
+        "hex": "0x35800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 1.1754943508222875e-38,
+      "expected": {
+        "sign": 0,
+        "exponent": 1,
+        "mantissa": 0,
+        "binary": "00000000100000000000000000000000",
+        "hex": "0x00800000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 3.4028234663852886e+38,
+      "expected": {
+        "sign": 0,
+        "exponent": 254,
+        "mantissa": 8388607,
+        "binary": "01111111011111111111111111111111",
+        "hex": "0x7F7FFFFF",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 1.401298464324817e-45,
+      "expected": {
+        "sign": 0,
+        "exponent": 0,
+        "mantissa": 1,
+        "binary": "00000000000000000000000000000001",
+        "hex": "0x00000001",
+        "isZero": false,
+        "isSubnormal": true,
+        "isNormal": false,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 7.174648137343064e-43,
+      "expected": {
+        "sign": 0,
+        "exponent": 0,
+        "mantissa": 512,
+        "binary": "00000000000000000000001000000000",
+        "hex": "0x00000200",
+        "isZero": false,
+        "isSubnormal": true,
+        "isNormal": false,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 2.2420775429197073e-44,
+      "expected": {
+        "sign": 0,
+        "exponent": 0,
+        "mantissa": 16,
+        "binary": "00000000000000000000000000010000",
+        "hex": "0x00000010",
+        "isZero": false,
+        "isSubnormal": true,
+        "isNormal": false,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 3.14159265359,
+      "expected": {
+        "sign": 0,
+        "exponent": 128,
+        "mantissa": 4788187,
+        "binary": "01000000010010010000111111011011",
+        "hex": "0x40490FDB",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 2.71828182846,
+      "expected": {
+        "sign": 0,
+        "exponent": 128,
+        "mantissa": 3012692,
+        "binary": "01000000001011011111100001010100",
+        "hex": "0x402DF854",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 100.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 133,
+        "mantissa": 4718592,
+        "binary": "01000010110010000000000000000000",
+        "hex": "0x42C80000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 1000.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 136,
+        "mantissa": 7995392,
+        "binary": "01000100011110100000000000000000",
+        "hex": "0x447A0000",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 0.1,
+      "expected": {
+        "sign": 0,
+        "exponent": 123,
+        "mantissa": 5033165,
+        "binary": "00111101110011001100110011001101",
+        "hex": "0x3DCCCCCD",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    },
+    {
+      "input": 0.01,
+      "expected": {
+        "sign": 0,
+        "exponent": 120,
+        "mantissa": 2348810,
+        "binary": "00111100001000111101011100001010",
+        "hex": "0x3C23D70A",
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": true,
+        "isInfinite": false,
+        "isNaN": false
+      }
+    }
+  ],
+  "fp32_decode": [
+    {
+      "sign": 0,
+      "exponent": 0,
+      "mantissa": 0,
+      "expected": 0.0,
+      "description": "positive zero"
+    },
+    {
+      "sign": 1,
+      "exponent": 0,
+      "mantissa": 0,
+      "expected": -0.0,
+      "description": "negative zero"
+    },
+    {
+      "sign": 0,
+      "exponent": 127,
+      "mantissa": 0,
+      "expected": 1.0,
+      "description": "1.0"
+    },
+    {
+      "sign": 1,
+      "exponent": 127,
+      "mantissa": 0,
+      "expected": -1.0,
+      "description": "-1.0"
+    },
+    {
+      "sign": 0,
+      "exponent": 128,
+      "mantissa": 0,
+      "expected": 2.0,
+      "description": "2.0"
+    },
+    {
+      "sign": 0,
+      "exponent": 126,
+      "mantissa": 0,
+      "expected": 0.5,
+      "description": "0.5"
+    },
+    {
+      "sign": 0,
+      "exponent": 255,
+      "mantissa": 0,
+      "expected": "Infinity",
+      "description": "positive infinity"
+    },
+    {
+      "sign": 1,
+      "exponent": 255,
+      "mantissa": 0,
+      "expected": "-Infinity",
+      "description": "negative infinity"
+    },
+    {
+      "sign": 0,
+      "exponent": 255,
+      "mantissa": 1,
+      "expected": "NaN",
+      "description": "NaN"
+    },
+    {
+      "sign": 0,
+      "exponent": 1,
+      "mantissa": 0,
+      "expected": 1.1754943508222875e-38,
+      "description": "smallest normal"
+    },
+    {
+      "sign": 0,
+      "exponent": 0,
+      "mantissa": 1,
+      "expected": 1.401298464324817e-45,
+      "description": "smallest subnormal"
+    },
+    {
+      "sign": 0,
+      "exponent": 254,
+      "mantissa": 8388607,
+      "expected": 3.4028234663852886e+38,
+      "description": "largest normal"
+    },
+    {
+      "sign": 0,
+      "exponent": 0,
+      "mantissa": 8388607,
+      "expected": 1.1754942106924411e-38,
+      "description": "largest subnormal"
+    },
+    {
+      "sign": 0,
+      "exponent": 127,
+      "mantissa": 4194304,
+      "expected": 1.5,
+      "description": "1.5"
+    },
+    {
+      "sign": 0,
+      "exponent": 128,
+      "mantissa": 4788187,
+      "expected": 3.1415927410125732,
+      "description": "pi"
+    }
+  ],
+  "fp16_encode": [
+    {
+      "input": 0.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 0,
+        "mantissa": 0,
+        "isZero": true,
+        "isNaN": false,
+        "isSubnormal": false,
+        "isNormal": false,
+        "isInfinite": false
+      }
+    },
+    {
+      "input": 1.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 15,
+        "mantissa": 0,
+        "isNormal": true,
+        "isNaN": false,
+        "isZero": false,
+        "isSubnormal": false,
+        "isInfinite": false
+      }
+    },
+    {
+      "input": -1.0,
+      "expected": {
+        "sign": 1,
+        "exponent": 15,
+        "mantissa": 0,
+        "isNormal": true,
+        "isNaN": false,
+        "isZero": false,
+        "isSubnormal": false,
+        "isInfinite": false
+      }
+    },
+    {
+      "input": 2.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 16,
+        "mantissa": 0,
+        "isNormal": true,
+        "isNaN": false,
+        "isZero": false,
+        "isSubnormal": false,
+        "isInfinite": false
+      }
+    },
+    {
+      "input": 0.5,
+      "expected": {
+        "sign": 0,
+        "exponent": 14,
+        "mantissa": 0,
+        "isNormal": true,
+        "isNaN": false,
+        "isZero": false,
+        "isSubnormal": false,
+        "isInfinite": false
+      }
+    },
+    {
+      "input": 65504.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 30,
+        "mantissa": 1023,
+        "isNormal": true,
+        "isNaN": false,
+        "isZero": false,
+        "isSubnormal": false,
+        "isInfinite": false
+      }
+    },
+    {
+      "input": 100000.0,
+      "expected": {
+        "sign": 0,
+        "exponent": 31,
+        "mantissa": 0,
+        "isInfinite": true,
+        "isNaN": false,
+        "isZero": false,
+        "isSubnormal": false,
+        "isNormal": false
+      }
+    },
+    {
+      "input": 9.5367431640625e-07,
+      "expected": {
+        "sign": 0,
+        "exponent": 0,
+        "mantissa": 16,
+        "isSubnormal": true,
+        "isNaN": false,
+        "isZero": false,
+        "isNormal": false,
+        "isInfinite": false
+      }
+    },
+    {
+      "input": 1.52587890625e-05,
+      "expected": {
+        "sign": 0,
+        "exponent": 0,
+        "mantissa": 256,
+        "isSubnormal": true,
+        "isNaN": false,
+        "isZero": false,
+        "isNormal": false,
+        "isInfinite": false
+      }
+    }
+  ],
+  "conversions": []
+}
