@@ -49,11 +49,15 @@ function setupEventListeners() {
     document.getElementById('input-sign-bits').addEventListener('change', updateFormat);
     document.getElementById('input-exponent-bits').addEventListener('input', updateFormat);
     document.getElementById('input-mantissa-bits').addEventListener('input', updateFormat);
+    document.getElementById('input-has-infinity').addEventListener('change', updateFormat);
+    document.getElementById('input-has-nan').addEventListener('change', updateFormat);
 
     // Output format inputs
     document.getElementById('output-sign-bits').addEventListener('change', updateOutputFormat);
     document.getElementById('output-exponent-bits').addEventListener('input', updateOutputFormat);
     document.getElementById('output-mantissa-bits').addEventListener('input', updateOutputFormat);
+    document.getElementById('output-has-infinity').addEventListener('change', updateOutputFormat);
+    document.getElementById('output-has-nan').addEventListener('change', updateOutputFormat);
 
     // Value input
     document.getElementById('input-decimal-input').addEventListener('input', (e) => {
@@ -72,6 +76,8 @@ function loadInputPreset(formatKey) {
     document.getElementById('input-sign-bits').checked = format.sign === 1;
     document.getElementById('input-exponent-bits').value = format.exponent;
     document.getElementById('input-mantissa-bits').value = format.mantissa;
+    document.getElementById('input-has-infinity').checked = format.hasInfinity !== false;
+    document.getElementById('input-has-nan').checked = format.hasNaN !== false;
 
     // Update active button
     document.querySelectorAll('.input-preset').forEach(btn => {
@@ -89,6 +95,8 @@ function loadOutputPreset(formatKey) {
     document.getElementById('output-sign-bits').checked = format.sign === 1;
     document.getElementById('output-exponent-bits').value = format.exponent;
     document.getElementById('output-mantissa-bits').value = format.mantissa;
+    document.getElementById('output-has-infinity').checked = format.hasInfinity !== false;
+    document.getElementById('output-has-nan').checked = format.hasNaN !== false;
 
     // Update active button
     document.querySelectorAll('.output-preset').forEach(btn => {
@@ -105,8 +113,24 @@ function updateFormat() {
     const exponentBits = exponentBitsInput === '' ? 8 : parseInt(exponentBitsInput);
     const mantissaBitsInput = document.getElementById('input-mantissa-bits').value;
     const mantissaBits = mantissaBitsInput === '' ? 23 : parseInt(mantissaBitsInput);
+    const hasInfinity = document.getElementById('input-has-infinity').checked;
+    const hasNaN = document.getElementById('input-has-nan').checked;
 
-    currentFormat = new FloatingPoint(signBits, exponentBits, mantissaBits);
+    // Find matching format to get bias
+    let formatOptions = {
+        hasInfinity: hasInfinity,
+        hasNaN: hasNaN
+    };
+    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+        f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
+    );
+    
+    if (matchingFormat) {
+        const [key, format] = matchingFormat;
+        if (format.bias !== undefined) formatOptions.bias = format.bias;
+    }
+
+    currentFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
 
     // Update total bits display
     document.getElementById('input-total-bits').textContent = currentFormat.totalBits;
@@ -119,7 +143,25 @@ function updateFormat() {
         document.querySelectorAll('.input-preset').forEach(btn => btn.classList.remove('active'));
     }
 
+    updateValuePresetButtons();
     updateValue();
+}
+
+function updateValuePresetButtons() {
+    // Enable/disable value preset buttons based on format capabilities
+    const infinityBtn = document.querySelector('.value-preset-btn[data-value="infinity"]');
+    const negInfinityBtn = document.querySelector('.value-preset-btn[data-value="neg-infinity"]');
+    const nanBtn = document.querySelector('.value-preset-btn[data-value="nan"]');
+
+    if (infinityBtn) {
+        infinityBtn.disabled = !currentFormat.hasInfinity;
+    }
+    if (negInfinityBtn) {
+        negInfinityBtn.disabled = !currentFormat.hasInfinity;
+    }
+    if (nanBtn) {
+        nanBtn.disabled = !currentFormat.hasNaN;
+    }
 }
 
 function updateOutputFormat() {
@@ -128,8 +170,24 @@ function updateOutputFormat() {
     const exponentBits = exponentBitsInput === '' ? 5 : parseInt(exponentBitsInput);
     const mantissaBitsInput = document.getElementById('output-mantissa-bits').value;
     const mantissaBits = mantissaBitsInput === '' ? 10 : parseInt(mantissaBitsInput);
+    const hasInfinity = document.getElementById('output-has-infinity').checked;
+    const hasNaN = document.getElementById('output-has-nan').checked;
 
-    outputFormat = new FloatingPoint(signBits, exponentBits, mantissaBits);
+    // Find matching format to get bias
+    let formatOptions = {
+        hasInfinity: hasInfinity,
+        hasNaN: hasNaN
+    };
+    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+        f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
+    );
+    
+    if (matchingFormat) {
+        const [key, format] = matchingFormat;
+        if (format.bias !== undefined) formatOptions.bias = format.bias;
+    }
+
+    outputFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
 
     // Update total bits display
     document.getElementById('output-total-bits').textContent = outputFormat.totalBits;

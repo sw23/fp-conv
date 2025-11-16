@@ -33,7 +33,6 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: var(--background);
     color: var(--text-primary);
-    line-height: 1.6;
     padding: 20px;
 }
 
@@ -200,7 +199,29 @@ section h3 {
     font-weight: 600;
     color: var(--text-secondary);
     font-size: 0.9rem;
+    margin-top: 10px;
     margin-bottom: 10px;
+}
+
+.preset-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 10px;
+    margin-bottom: 8px;
+}
+
+.format-groups-container {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.format-group {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
 }
 
 .preset-buttons {
@@ -216,7 +237,7 @@ section h3 {
     color: var(--text-primary);
     border-radius: 8px;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
     transition: all 0.2s;
 }
@@ -252,6 +273,20 @@ section h3 {
     color: white;
 }
 
+.value-preset-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+}
+
+.value-preset-btn:disabled:hover {
+    border-color: var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+}
+
 .format-inputs {
     display: flex;
     flex-wrap: wrap;
@@ -282,7 +317,7 @@ section h3 {
     padding: 10px;
     border: 2px solid var(--border);
     border-radius: 8px;
-    font-size: 1rem;
+    font-size: 0.9rem;
     transition: border-color 0.2s;
 }
 
@@ -297,6 +332,8 @@ section h3 {
     width: 20px;
     height: 20px;
     cursor: pointer;
+    align-self: center;
+    margin: auto;
 }
 
 .total-bits-display {
@@ -314,7 +351,7 @@ section h3 {
 .value-input input[type="text"] {
     width: 100%;
     font-family: 'Courier New', monospace;
-    font-size: 1.2rem;
+    font-size: 0.9rem;
 }
 
 /* Representation Display */
@@ -469,7 +506,7 @@ section h3 {
 .hex-input {
     width: 100%;
     font-family: 'Courier New', monospace;
-    font-size: 1.3rem;
+    font-size: 0.9rem;
     padding: 15px;
     background: var(--background);
     border: 2px solid var(--border);
@@ -530,7 +567,7 @@ section h3 {
 .output-display {
     width: 100%;
     font-family: 'Courier New', monospace;
-    font-size: 1.3rem;
+    font-size: 0.9rem;
     padding: 15px;
     background: var(--surface);
     border: 2px solid var(--border);
@@ -592,12 +629,26 @@ footer {
         grid-template-columns: 1fr;
     }
 
-    .preset-buttons {
+    .format-groups-container {
         flex-direction: column;
+        gap: 0;
     }
 
-    .preset-btn {
+    .format-group {
         width: 100%;
+    }
+
+    .preset-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .preset-btn,
+    .value-preset-btn {
+        width: 100%;
+        padding: 10px 8px;
+        font-size: 0.9rem;
     }
 
     .format-inputs {
