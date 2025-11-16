@@ -385,12 +385,12 @@ function updateFormat() {
         hasInfinity: hasInfinity,
         hasNaN: hasNaN
     };
-    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+    const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
         f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
     );
     
     if (matchingFormat) {
-        const [key, format] = matchingFormat;
+        const [_key, format] = matchingFormat;
         if (format.bias !== undefined) formatOptions.bias = format.bias;
     }
 
@@ -422,12 +422,12 @@ function updateOutputFormat() {
         hasInfinity: hasInfinity,
         hasNaN: hasNaN
     };
-    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+    const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
         f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
     );
     
     if (matchingFormat) {
-        const [key, format] = matchingFormat;
+        const [_key, format] = matchingFormat;
         if (format.bias !== undefined) formatOptions.bias = format.bias;
     }
 
@@ -537,7 +537,7 @@ function createBinaryCheckboxes(section, binaryString) {
 
 function handleBinaryCheckboxChange(e) {
     const section = e.target.dataset.section;
-    const index = parseInt(e.target.dataset.index);
+    const _index = parseInt(e.target.dataset.index);
 
     // Get all checkboxes for this section
     const checkboxes = document.querySelectorAll(`[data-section="${section}"]`);

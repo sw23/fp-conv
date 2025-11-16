@@ -1,5 +1,5 @@
 // Import the FloatingPoint class from the pure math module
-const { FloatingPoint, FORMATS } = require('../lib/floating-point.js');
+const { FloatingPoint } = require('../lib/floating-point.js');
 
 describe('Cross-format Conversions', () => {
   describe('Normal to Normal conversions', () => {
