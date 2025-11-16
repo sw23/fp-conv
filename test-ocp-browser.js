@@ -1,6 +1,7 @@
 // Quick test script to verify OCP formats work in the browser
 // This can be pasted into the browser console when index.html is open
 
+/* global FloatingPoint, FORMATS */
 console.log('Testing OCP Format Implementation...\n');
 
 // Test FP4 E2M1

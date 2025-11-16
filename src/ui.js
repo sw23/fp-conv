@@ -4,6 +4,7 @@
  * https://github.com/sw23/fp-conv/blob/main/LICENSE
  ****************************************************************/
 
+/* global FloatingPoint, FORMATS */
 // UI code - requires FloatingPoint and FORMATS from floating-point.js
 
 // Application State
@@ -121,12 +122,12 @@ function updateFormat() {
         hasInfinity: hasInfinity,
         hasNaN: hasNaN
     };
-    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+    const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
         f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
     );
     
     if (matchingFormat) {
-        const [key, format] = matchingFormat;
+        const [_key, format] = matchingFormat;
         if (format.bias !== undefined) formatOptions.bias = format.bias;
     }
 
@@ -178,12 +179,12 @@ function updateOutputFormat() {
         hasInfinity: hasInfinity,
         hasNaN: hasNaN
     };
-    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+    const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
         f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
     );
     
     if (matchingFormat) {
-        const [key, format] = matchingFormat;
+        const [_key, format] = matchingFormat;
         if (format.bias !== undefined) formatOptions.bias = format.bias;
     }
 
@@ -280,7 +281,7 @@ function createBinaryCheckboxes(section, binaryString) {
         checkbox.id = `input-binary-${section}-bit-${i}`;
         checkbox.checked = binaryString[i] === '1';
         checkbox.dataset.section = section;
-        checkbox.dataset.index = i;
+        checkbox.dataset.index = String(i);
         checkbox.autocomplete = 'off';
         checkbox.addEventListener('change', handleBinaryCheckboxChange);
         checksContainer.appendChild(checkbox);
@@ -295,7 +296,7 @@ function createBinaryCheckboxes(section, binaryString) {
 
 function handleBinaryCheckboxChange(e) {
     const section = e.target.dataset.section;
-    const index = parseInt(e.target.dataset.index);
+    const _index = parseInt(e.target.dataset.index);
 
     // Get all checkboxes for this section
     const checkboxes = document.querySelectorAll(`[data-section="${section}"]`);
