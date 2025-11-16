@@ -13,18 +13,33 @@ const FORMATS = {
     fp64: { sign: 1, exponent: 11, mantissa: 52, name: 'FP64 (IEEE 754 Double)' },
     fp8_e4m3: { sign: 1, exponent: 4, mantissa: 3, name: 'FP8 E4M3' },
     fp8_e5m2: { sign: 1, exponent: 5, mantissa: 2, name: 'FP8 E5M2' },
-    fp8_e8m0: { sign: 0, exponent: 8, mantissa: 0, name: 'FP8 E8M0' }
+    fp8_e8m0: { sign: 0, exponent: 8, mantissa: 0, name: 'FP8 E8M0' },
+    // OCP (Open Compute Project) Formats
+    fp4_e2m1: { sign: 1, exponent: 2, mantissa: 1, bias: 1, hasInfinity: false, hasNaN: false, name: 'FP4 E2M1 (OCP)' },
+    fp6_e2m3: { sign: 1, exponent: 2, mantissa: 3, bias: 1, hasInfinity: false, hasNaN: false, name: 'FP6 E2M3 (OCP)' },
+    fp6_e3m2: { sign: 1, exponent: 3, mantissa: 2, bias: 3, hasInfinity: false, hasNaN: false, name: 'FP6 E3M2 (OCP)' },
+    fp8_e4m3_ocp: { sign: 1, exponent: 4, mantissa: 3, bias: 7, hasInfinity: false, hasNaN: true, name: 'FP8 E4M3 (OCP)' },
+    fp8_e5m2_ocp: { sign: 1, exponent: 5, mantissa: 2, bias: 15, hasInfinity: true, hasNaN: true, name: 'FP8 E5M2 (OCP)' }
 };
 
 // FloatingPoint class for custom format handling
 class FloatingPoint {
-    constructor(signBits, exponentBits, mantissaBits) {
+    constructor(signBits, exponentBits, mantissaBits, options = {}) {
         this.signBits = signBits;
         this.exponentBits = exponentBits;
         this.mantissaBits = mantissaBits;
         this.totalBits = signBits + exponentBits + mantissaBits;
-        this.bias = exponentBits > 0 ? (1 << (exponentBits - 1)) - 1 : 0;
+        
+        // Support custom bias (for OCP formats) or use standard formula
+        this.bias = options.bias !== undefined 
+            ? options.bias 
+            : (exponentBits > 0 ? (1 << (exponentBits - 1)) - 1 : 0);
+        
         this.maxExponent = exponentBits > 0 ? (1 << exponentBits) - 1 : 0;
+        
+        // Special value support flags (default true for backward compatibility)
+        this.hasInfinity = options.hasInfinity !== false;
+        this.hasNaN = options.hasNaN !== false;
     }
 
     // Encode a decimal number to this floating-point format
@@ -52,11 +67,21 @@ class FloatingPoint {
         }
 
         if (isNaN(value)) {
-            return this.getNaN();
+            if (this.hasNaN) {
+                return this.getNaN();
+            } else {
+                // Formats without NaN return zero
+                return this.getZero(false);
+            }
         }
 
         if (!isFinite(value)) {
-            return this.getInfinity(value < 0);
+            if (this.hasInfinity) {
+                return this.getInfinity(value < 0);
+            } else {
+                // Formats without Infinity saturate to max normal
+                return this.getMaxNormal(value < 0);
+            }
         }
 
         if (value === 0) {
@@ -81,8 +106,13 @@ class FloatingPoint {
             mantissa = value / Math.pow(2, 1 - this.bias);
             biasedExponent = 0;
         } else if (biasedExponent >= this.maxExponent) {
-            // Overflow to infinity
-            return this.getInfinity(sign === 1);
+            // Overflow: return infinity or saturate to max normal
+            if (this.hasInfinity) {
+                return this.getInfinity(sign === 1);
+            } else {
+                // Saturate to maximum normal value
+                return this.getMaxNormal(sign === 1);
+            }
         }
 
         // Convert mantissa to integer representation
@@ -90,15 +120,19 @@ class FloatingPoint {
             Math.round(mantissa * (1 << this.mantissaBits)) :
             0;
 
+        // Determine classification based on format capabilities
+        const atMaxExponent = biasedExponent === this.maxExponent;
+        const isSpecialExponent = atMaxExponent && (this.hasInfinity || this.hasNaN);
+        
         return {
             sign,
             exponent: biasedExponent,
             mantissa: mantissaInt,
-            isNormal: biasedExponent > 0 && biasedExponent < this.maxExponent,
+            isNormal: biasedExponent > 0 && !isSpecialExponent,
             isSubnormal: biasedExponent === 0 && mantissaInt !== 0,
             isZero: biasedExponent === 0 && mantissaInt === 0,
-            isInfinite: biasedExponent === this.maxExponent && mantissaInt === 0,
-            isNaN: biasedExponent === this.maxExponent && mantissaInt !== 0
+            isInfinite: this.hasInfinity && atMaxExponent && mantissaInt === 0,
+            isNaN: this.hasNaN && atMaxExponent && mantissaInt !== 0
         };
     }
 
@@ -112,13 +146,20 @@ class FloatingPoint {
             return sign ? -value : value;
         }
 
-        // Special cases
+        // Special cases - only if format supports them
         if (exponent === this.maxExponent) {
-            if (mantissa === 0) {
-                return sign ? -Infinity : Infinity;
-            } else {
+            // Check for NaN
+            if (this.hasNaN && mantissa !== 0) {
                 return NaN;
             }
+            
+            // Check for Infinity
+            if (this.hasInfinity && mantissa === 0) {
+                return sign ? -Infinity : Infinity;
+            }
+            
+            // If format doesn't support special values at maxExponent,
+            // fall through to decode as normal number
         }
 
         if (exponent === 0) {
@@ -131,13 +172,18 @@ class FloatingPoint {
             return sign ? -value : value;
         }
 
-        // Normal number
-        const mantissaValue = this.mantissaBits > 0 ?
-            1.0 + mantissa / (1 << this.mantissaBits) :
-            1.0;
-        const actualExponent = exponent - this.bias;
-        const value = mantissaValue * Math.pow(2, actualExponent);
-        return sign ? -value : value;
+        // Normal number (including maxExponent if no special values)
+        if (exponent > 0) {
+            const mantissaValue = this.mantissaBits > 0 ?
+                1.0 + mantissa / (1 << this.mantissaBits) :
+                1.0;
+            const actualExponent = exponent - this.bias;
+            const value = mantissaValue * Math.pow(2, actualExponent);
+            return sign ? -value : value;
+        }
+        
+        // Should not reach here (covered by zero and subnormal cases above)
+        return sign ? -0 : 0;
     }
 
     getZero(negative = false) {
@@ -153,7 +199,23 @@ class FloatingPoint {
         };
     }
 
+    getMaxNormal(negative = false) {
+        return {
+            sign: negative ? 1 : 0,
+            exponent: this.maxExponent,
+            mantissa: (1 << this.mantissaBits) - 1,
+            isNormal: true,
+            isSubnormal: false,
+            isZero: false,
+            isInfinite: false,
+            isNaN: false
+        };
+    }
+
     getInfinity(negative = false) {
+        if (!this.hasInfinity) {
+            throw new Error('Format does not support Infinity');
+        }
         return {
             sign: negative ? 1 : 0,
             exponent: this.maxExponent,
@@ -167,6 +229,9 @@ class FloatingPoint {
     }
 
     getNaN() {
+        if (!this.hasNaN) {
+            throw new Error('Format does not support NaN');
+        }
         return {
             sign: 0,
             exponent: this.maxExponent,
@@ -242,11 +307,15 @@ function setupEventListeners() {
     document.getElementById('input-sign-bits').addEventListener('change', updateFormat);
     document.getElementById('input-exponent-bits').addEventListener('input', updateFormat);
     document.getElementById('input-mantissa-bits').addEventListener('input', updateFormat);
+    document.getElementById('input-has-infinity').addEventListener('change', updateFormat);
+    document.getElementById('input-has-nan').addEventListener('change', updateFormat);
 
     // Output format inputs
     document.getElementById('output-sign-bits').addEventListener('change', updateOutputFormat);
     document.getElementById('output-exponent-bits').addEventListener('input', updateOutputFormat);
     document.getElementById('output-mantissa-bits').addEventListener('input', updateOutputFormat);
+    document.getElementById('output-has-infinity').addEventListener('change', updateOutputFormat);
+    document.getElementById('output-has-nan').addEventListener('change', updateOutputFormat);
 
     // Value input
     document.getElementById('input-decimal-input').addEventListener('input', (e) => {
@@ -265,6 +334,11 @@ function loadInputPreset(formatKey) {
     document.getElementById('input-sign-bits').checked = format.sign === 1;
     document.getElementById('input-exponent-bits').value = format.exponent;
     document.getElementById('input-mantissa-bits').value = format.mantissa;
+    document.getElementById('input-has-infinity').checked = format.hasInfinity !== false;
+    document.getElementById('input-has-nan').checked = format.hasNaN !== false;
+
+    // Store format options for later use
+    currentFormat._formatKey = formatKey;
 
     // Update active button
     document.querySelectorAll('.input-preset').forEach(btn => {
@@ -282,6 +356,11 @@ function loadOutputPreset(formatKey) {
     document.getElementById('output-sign-bits').checked = format.sign === 1;
     document.getElementById('output-exponent-bits').value = format.exponent;
     document.getElementById('output-mantissa-bits').value = format.mantissa;
+    document.getElementById('output-has-infinity').checked = format.hasInfinity !== false;
+    document.getElementById('output-has-nan').checked = format.hasNaN !== false;
+
+    // Store format options for later use
+    outputFormat._formatKey = formatKey;
 
     // Update active button
     document.querySelectorAll('.output-preset').forEach(btn => {
@@ -298,16 +377,30 @@ function updateFormat() {
     const exponentBits = exponentBitsInput === '' ? 8 : parseInt(exponentBitsInput);
     const mantissaBitsInput = document.getElementById('input-mantissa-bits').value;
     const mantissaBits = mantissaBitsInput === '' ? 23 : parseInt(mantissaBitsInput);
+    const hasInfinity = document.getElementById('input-has-infinity').checked;
+    const hasNaN = document.getElementById('input-has-nan').checked;
 
-    currentFormat = new FloatingPoint(signBits, exponentBits, mantissaBits);
+    // Find matching format to get options
+    let formatOptions = {
+        hasInfinity: hasInfinity,
+        hasNaN: hasNaN
+    };
+    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+        f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
+    );
+    
+    if (matchingFormat) {
+        const [key, format] = matchingFormat;
+        if (format.bias !== undefined) formatOptions.bias = format.bias;
+    }
+
+    currentFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
 
     // Update total bits display
     document.getElementById('input-total-bits').textContent = currentFormat.totalBits;
 
     // Clear active preset if custom
-    const isPreset = Object.values(FORMATS).some(f =>
-        f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
-    );
+    const isPreset = matchingFormat !== undefined;
     if (!isPreset) {
         document.querySelectorAll('.input-preset').forEach(btn => btn.classList.remove('active'));
     }
@@ -321,16 +414,30 @@ function updateOutputFormat() {
     const exponentBits = exponentBitsInput === '' ? 5 : parseInt(exponentBitsInput);
     const mantissaBitsInput = document.getElementById('output-mantissa-bits').value;
     const mantissaBits = mantissaBitsInput === '' ? 10 : parseInt(mantissaBitsInput);
+    const hasInfinity = document.getElementById('output-has-infinity').checked;
+    const hasNaN = document.getElementById('output-has-nan').checked;
 
-    outputFormat = new FloatingPoint(signBits, exponentBits, mantissaBits);
+    // Find matching format to get options
+    let formatOptions = {
+        hasInfinity: hasInfinity,
+        hasNaN: hasNaN
+    };
+    const matchingFormat = Object.entries(FORMATS).find(([key, f]) =>
+        f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
+    );
+    
+    if (matchingFormat) {
+        const [key, format] = matchingFormat;
+        if (format.bias !== undefined) formatOptions.bias = format.bias;
+    }
+
+    outputFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
 
     // Update total bits display
     document.getElementById('output-total-bits').textContent = outputFormat.totalBits;
 
     // Clear active preset if custom
-    const isPreset = Object.values(FORMATS).some(f =>
-        f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
-    );
+    const isPreset = matchingFormat !== undefined;
     if (!isPreset) {
         document.querySelectorAll('.output-preset').forEach(btn => btn.classList.remove('active'));
     }
@@ -530,10 +637,14 @@ function determineFloatType(format, sign, exponent, mantissa) {
     }
 
     if (exponent === format.maxExponent) {
-        if (mantissa === 0) {
+        // Check format capabilities for special values
+        if (format.hasInfinity && mantissa === 0) {
             return sign ? '-Infinity' : '+Infinity';
-        } else {
+        } else if (format.hasNaN && mantissa !== 0) {
             return 'NaN';
+        } else {
+            // Format doesn't support special values at maxExponent
+            return 'Normal (Max)';
         }
     } else if (exponent === 0) {
         if (mantissa === 0) {
@@ -550,9 +661,19 @@ function calculateMantissaDecimal(format, exponent, mantissa) {
     if (format.mantissaBits === 0) {
         return exponent === 0 ? 0 : 1.0;
     }
-    return exponent === 0 ?
-        mantissa / (1 << format.mantissaBits) :
-        1.0 + mantissa / (1 << format.mantissaBits);
+    
+    // For subnormal numbers (exponent = 0)
+    if (exponent === 0) {
+        return mantissa / (1 << format.mantissaBits);
+    }
+    
+    // For maxExponent with special values, don't show mantissa calculation
+    if (exponent === format.maxExponent && (format.hasInfinity || format.hasNaN)) {
+        return mantissa / (1 << format.mantissaBits);
+    }
+    
+    // Normal numbers (including maxExponent without special values)
+    return 1.0 + mantissa / (1 << format.mantissaBits);
 }
 
 function formatExponentActual(format, exponent) {
@@ -562,7 +683,12 @@ function formatExponentActual(format, exponent) {
     if (exponent === 0) {
         return `1 - ${format.bias} = ${1 - format.bias}`;
     } else if (exponent === format.maxExponent) {
-        return 'Special';
+        // Check if this is actually special or just max normal
+        if (format.hasInfinity || format.hasNaN) {
+            return 'Special';
+        } else {
+            return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
+        }
     } else {
         return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
     }

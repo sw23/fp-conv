@@ -70,7 +70,7 @@
     <div class="container">
         <header>
             <h1>Floating Point Number Converter</h1>
-            <p class="subtitle">Convert between FP32, FP16, BF16, TF32, FP8 and custom formats</p>
+            <p class="subtitle">Convert between FP32, FP16, BF16, TF32, FP8, OCP FP8/FP6/FP4 and custom formats</p>
             <p class="help-link"><a href="#about">Need help? Learn how to use this tool →</a></p>
         </header>
 
@@ -80,15 +80,30 @@
                 <h2 id="input-format-heading">Input Format</h2>
 
                 <div class="preset-section">
+                    <div class="format-groups-container">
+                        <div class="format-group">
+                            <div class="preset-label">IEEE 754 Formats:</div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn input-preset" data-format="fp64">FP64</button>
+                                <button class="preset-btn input-preset" data-format="fp32">FP32</button>
+                                <button class="preset-btn input-preset" data-format="fp16">FP16</button>
+                            </div>
+                        </div>
+                        <div class="format-group">
+                            <div class="preset-label">ML Formats:</div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn input-preset" data-format="bf16">BF16</button>
+                                <button class="preset-btn input-preset" data-format="tf32">TF32</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="preset-label">OCP Formats:</div>
                     <div class="preset-buttons">
-                        <button class="preset-btn input-preset" data-format="fp32">FP32 (IEEE 754)</button>
-                        <button class="preset-btn input-preset" data-format="fp16">FP16</button>
-                        <button class="preset-btn input-preset" data-format="bf16">BF16</button>
-                        <button class="preset-btn input-preset" data-format="tf32">TF32</button>
-                        <button class="preset-btn input-preset" data-format="fp64">FP64</button>
-                        <button class="preset-btn input-preset" data-format="fp8_e4m3">FP8 E4M3</button>
-                        <button class="preset-btn input-preset" data-format="fp8_e5m2">FP8 E5M2</button>
-                        <button class="preset-btn input-preset" data-format="fp8_e8m0">FP8 E8M0</button>
+                        <button class="preset-btn input-preset" data-format="fp8_e5m2_ocp">FP8 E5M2</button>
+                        <button class="preset-btn input-preset" data-format="fp8_e4m3_ocp">FP8 E4M3</button>
+                        <button class="preset-btn input-preset" data-format="fp6_e3m2">FP6 E3M2</button>
+                        <button class="preset-btn input-preset" data-format="fp6_e2m3">FP6 E2M3</button>
+                        <button class="preset-btn input-preset" data-format="fp4_e2m1">FP4 E2M1</button>
                     </div>
                 </div>
 
@@ -105,6 +120,14 @@
                         <div class="input-group">
                             <label for="input-mantissa-bits">Mantissa Bits:</label>
                             <input type="number" id="input-mantissa-bits" autocomplete="off" min="0" max="112" value="23">
+                        </div>
+                        <div class="input-group">
+                            <label for="input-has-infinity">Has Infinity:</label>
+                            <input type="checkbox" id="input-has-infinity" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="input-has-nan">Has NaN:</label>
+                            <input type="checkbox" id="input-has-nan" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
                             <span class="input-label">Total Bits:</span>
@@ -201,15 +224,30 @@
                 <h2 id="output-format-heading">Output Format</h2>
 
                 <div class="preset-section">
+                    <div class="format-groups-container">
+                        <div class="format-group">
+                            <div class="preset-label">IEEE 754 Formats:</div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn output-preset" data-format="fp64">FP64</button>
+                                <button class="preset-btn output-preset" data-format="fp32">FP32</button>
+                                <button class="preset-btn output-preset" data-format="fp16">FP16</button>
+                            </div>
+                        </div>
+                        <div class="format-group">
+                            <div class="preset-label">ML Formats:</div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn output-preset" data-format="bf16">BF16</button>
+                                <button class="preset-btn output-preset" data-format="tf32">TF32</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="preset-label">OCP Formats:</div>
                     <div class="preset-buttons">
-                        <button class="preset-btn output-preset" data-format="fp32">FP32 (IEEE 754)</button>
-                        <button class="preset-btn output-preset" data-format="fp16">FP16</button>
-                        <button class="preset-btn output-preset" data-format="bf16">BF16</button>
-                        <button class="preset-btn output-preset" data-format="tf32">TF32</button>
-                        <button class="preset-btn output-preset" data-format="fp64">FP64</button>
-                        <button class="preset-btn output-preset" data-format="fp8_e4m3">FP8 E4M3</button>
-                        <button class="preset-btn output-preset" data-format="fp8_e5m2">FP8 E5M2</button>
-                        <button class="preset-btn output-preset" data-format="fp8_e8m0">FP8 E8M0</button>
+                        <button class="preset-btn output-preset" data-format="fp8_e5m2_ocp">FP8 E5M2</button>
+                        <button class="preset-btn output-preset" data-format="fp8_e4m3_ocp">FP8 E4M3</button>
+                        <button class="preset-btn output-preset" data-format="fp6_e3m2">FP6 E3M2</button>
+                        <button class="preset-btn output-preset" data-format="fp6_e2m3">FP6 E2M3</button>
+                        <button class="preset-btn output-preset" data-format="fp4_e2m1">FP4 E2M1</button>
                     </div>
                 </div>
 
@@ -226,6 +264,14 @@
                         <div class="input-group">
                             <label for="output-mantissa-bits">Mantissa Bits:</label>
                             <input type="number" id="output-mantissa-bits" autocomplete="off" min="0" max="112" value="10">
+                        </div>
+                        <div class="input-group">
+                            <label for="output-has-infinity">Has Infinity:</label>
+                            <input type="checkbox" id="output-has-infinity" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="output-has-nan">Has NaN:</label>
+                            <input type="checkbox" id="output-has-nan" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
                             <span class="input-label">Total Bits:</span>
@@ -351,26 +397,24 @@
                 <ul>
                     <li>
                         <strong>Standard IEEE 754:</strong>
+                        <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format" target="_blank" rel="noopener">FP64 (Double Precision)</a>,
                         <a href="https://en.wikipedia.org/wiki/Single-precision_floating-point_format" target="_blank" rel="noopener">FP32 (Single Precision)</a>,
-                        <a href="https://en.wikipedia.org/wiki/Half-precision_floating-point_format" target="_blank" rel="noopener">FP16 (Half Precision)</a>,
-                        <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format" target="_blank" rel="noopener">FP64 (Double Precision)</a>
+                        <a href="https://en.wikipedia.org/wiki/Half-precision_floating-point_format" target="_blank" rel="noopener">FP16 (Half Precision)</a>
                     </li>
                     <li>
                         <strong>Machine Learning Formats:</strong>
-                        <a href="https://en.wikipedia.org/wiki/Bfloat16_floating-point_format" target="_blank" rel="noopener">BF16 (Brain Float 16)</a>,
                         <a href="https://en.wikipedia.org/wiki/TensorFloat-32" target="_blank" rel="noopener">TF32 (TensorFloat-32)</a>,
-                        <a href="https://en.wikipedia.org/wiki/Minifloat" target="_blank" rel="noopener">FP8 E4M3</a>,
-                        <a href="https://en.wikipedia.org/wiki/Minifloat" target="_blank" rel="noopener">FP8 E5M2</a>
+                        <a href="https://en.wikipedia.org/wiki/Bfloat16_floating-point_format" target="_blank" rel="noopener">BF16 (Brain Float 16)</a>
+                    </li>
+                    <li>
+                        <strong>OCP Microscaling Formats:</strong>
+                        <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">FP8 (E4M3/E5M2)</a>,
+                        <a href="https://github.com/opencomputeproject/FP8/blob/main/OCP%208-bit%20Floating%20Point%20Specification%20(OFP8)%20Revision%201.0%202023-06-20.pdf" target="_blank" rel="noopener">FP6 (E2M3/E3M2)</a>,
+                        <a href="https://github.com/opencomputeproject/FP8/blob/main/OCP%208-bit%20Floating%20Point%20Specification%20(OFP8)%20Revision%201.0%202023-06-20.pdf" target="_blank" rel="noopener">FP4 (E2M1)</a>
                     </li>
                     <li>
                         <strong>Custom Formats:</strong>
                         Create any format with 0-15 exponent bits and 0-112 mantissa bits (including fixed-point formats)
-                    </li>
-                    <li>
-                        <strong>Microscaling Formats:</strong>
-                                                Small formats like FP6 and FP4 are supported, though some 
-                                                <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP MX Specification</a>
-                                                encodings that drop NaN/Infinity are not modeled.
                     </li>
                 </ul>
             </div>
