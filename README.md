@@ -13,6 +13,7 @@ Interactive tool for converting and visualizing floating-point numbers across st
 - **Precision analysis:** Calculate absolute and relative error between formats
 - **Special values:** Explore zero, infinity, NaN, subnormals, and boundary cases
 - **Fixed-point mode:** Set exponent bits to 0 for fractional representations
+- **Mobile-friendly:** Works on screens of all sizes
 
 ## Supported Formats
 
