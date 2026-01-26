@@ -514,4 +514,126 @@ describe('Cross-format Conversions', () => {
       expect(fp32Encoded.isInfinite).toBe(bf16Encoded.isInfinite);
     });
   });
+
+  describe('Precision loss calculations', () => {
+    test('identical value round-trips have zero precision loss', () => {
+      const fp16 = new FloatingPoint(1, 5, 10);
+      
+      // 1.5 is exactly representable
+      const encoded = fp16.encode(1.5);
+      const decoded = fp16.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+      
+      expect(decoded).toBe(1.5);
+      expect(Math.abs(1.5 - decoded)).toBe(0);
+    });
+
+    test('FP32 to FP16 precision loss is quantifiable', () => {
+      const fp32 = new FloatingPoint(1, 8, 23);
+      const fp16 = new FloatingPoint(1, 5, 10);
+      
+      // Use a value that has precision loss
+      const value = 3.14159265358979;
+      
+      const fp32Encoded = fp32.encode(value);
+      const fp32Value = fp32.decode(fp32Encoded.sign, fp32Encoded.exponent, fp32Encoded.mantissa);
+      
+      const fp16Encoded = fp16.encode(fp32Value);
+      const fp16Value = fp16.decode(fp16Encoded.sign, fp16Encoded.exponent, fp16Encoded.mantissa);
+      
+      const loss = Math.abs(fp32Value - fp16Value);
+      const relativeLoss = loss / Math.abs(fp32Value);
+      
+      expect(loss).toBeGreaterThan(0);
+      expect(relativeLoss).toBeLessThan(0.001); // Less than 0.1% relative loss
+    });
+
+    test('NaN has no meaningful precision loss', () => {
+      const fp16 = new FloatingPoint(1, 5, 10);
+      const bf16 = new FloatingPoint(1, 8, 7);
+      
+      const fp16Encoded = fp16.encode(NaN);
+      const fp16Value = fp16.decode(fp16Encoded.sign, fp16Encoded.exponent, fp16Encoded.mantissa);
+      
+      const bf16Encoded = bf16.encode(fp16Value);
+      const bf16Value = bf16.decode(bf16Encoded.sign, bf16Encoded.exponent, bf16Encoded.mantissa);
+      
+      // Both should be NaN
+      expect(Number.isNaN(fp16Value)).toBe(true);
+      expect(Number.isNaN(bf16Value)).toBe(true);
+      
+      // Loss calculation with NaN
+      const loss = Math.abs(fp16Value - bf16Value);
+      expect(Number.isNaN(loss)).toBe(true);
+    });
+
+    test('Infinity converts exactly between formats', () => {
+      const fp32 = new FloatingPoint(1, 8, 23);
+      const fp16 = new FloatingPoint(1, 5, 10);
+      
+      const fp32Encoded = fp32.encode(Infinity);
+      const fp32Value = fp32.decode(fp32Encoded.sign, fp32Encoded.exponent, fp32Encoded.mantissa);
+      
+      const fp16Encoded = fp16.encode(fp32Value);
+      const fp16Value = fp16.decode(fp16Encoded.sign, fp16Encoded.exponent, fp16Encoded.mantissa);
+      
+      expect(fp32Value).toBe(Infinity);
+      expect(fp16Value).toBe(Infinity);
+      expect(fp16Encoded.isInfinite).toBe(true);
+    });
+
+    test('negative Infinity converts exactly between formats', () => {
+      const fp32 = new FloatingPoint(1, 8, 23);
+      const fp16 = new FloatingPoint(1, 5, 10);
+      
+      const fp32Encoded = fp32.encode(-Infinity);
+      const fp32Value = fp32.decode(fp32Encoded.sign, fp32Encoded.exponent, fp32Encoded.mantissa);
+      
+      const fp16Encoded = fp16.encode(fp32Value);
+      const fp16Value = fp16.decode(fp16Encoded.sign, fp16Encoded.exponent, fp16Encoded.mantissa);
+      
+      expect(fp16Value).toBe(-Infinity);
+    });
+  });
+
+  describe('All-ones bit pattern', () => {
+    test('FP16 all-ones pattern decodes to NaN', () => {
+      const fp16 = new FloatingPoint(1, 5, 10);
+      
+      // All ones: sign=1, exp=31, mantissa=1023
+      const value = fp16.decode(1, 31, (1 << 10) - 1);
+      expect(Number.isNaN(value)).toBe(true);
+    });
+
+    test('FP32 all-ones pattern decodes to NaN', () => {
+      const fp32 = new FloatingPoint(1, 8, 23);
+      
+      // All ones: sign=1, exp=255, mantissa=all-ones
+      const value = fp32.decode(1, 255, (1 << 23) - 1);
+      expect(Number.isNaN(value)).toBe(true);
+    });
+
+    test('OCP FP4 E2M1 all-ones pattern decodes to -6.0 (max negative)', () => {
+      const fp4 = new FloatingPoint(1, 2, 1, { bias: 1, hasInfinity: false, hasNaN: false });
+      
+      // All ones: sign=1, exp=3, mantissa=1
+      const value = fp4.decode(1, 3, 1);
+      expect(value).toBe(-6.0);
+    });
+
+    test('format without sign bit all-ones pattern', () => {
+      const fp = new FloatingPoint(0, 4, 3);
+      
+      // No sign bit, so all-ones is exp=15, mantissa=7
+      const value = fp.decode(0, 15, 7);
+      expect(Number.isNaN(value)).toBe(true); // exp=maxExp with mantissa!=0 is NaN
+    });
+
+    test('OCP FP8 E4M3 all-ones pattern is NaN', () => {
+      const fp8 = new FloatingPoint(1, 4, 3, { bias: 7, hasInfinity: false, hasNaN: true });
+      
+      // All ones: sign=1, exp=15, mantissa=7
+      const value = fp8.decode(1, 15, 7);
+      expect(Number.isNaN(value)).toBe(true);
+    });
+  });
 });

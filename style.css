@@ -33,7 +33,7 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background: var(--background);
     color: var(--text-primary);
-    padding: 20px;
+    padding: 5px 20px;
 }
 
 .container {
@@ -43,23 +43,24 @@ body {
 
 header {
     text-align: center;
-    padding: 30px 0;
+    padding-bottom: 10px;
 }
 
 header h1 {
     font-size: 2.5rem;
     color: var(--primary-color);
+    margin-top: 10px;
     margin-bottom: 10px;
 }
 
 .subtitle {
     color: var(--text-secondary);
     font-size: 1.1rem;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
 }
 
 .help-link {
-    margin-top: 10px;
+    margin-top: 5px;
 }
 
 .help-link a {
@@ -76,9 +77,18 @@ header h1 {
 }
 
 .main-content {
-    display: flex;
-    flex-direction: column;
-    gap: 30px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    grid-auto-flow: column;
+    gap: 8px;
+}
+
+@media (max-width: 1120px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        grid-auto-flow: row;
+    }
 }
 
 section {
@@ -89,102 +99,64 @@ section {
 }
 
 section h2 {
-    color: var(--primary-color);
-    margin-bottom: 20px;
-    font-size: 1.5rem;
-    border-bottom: 2px solid var(--border);
-    padding-bottom: 10px;
+    color: var(--text-primary);
+    font-size: 1.5em;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
 }
 
 section h3 {
     color: var(--text-primary);
-    margin-bottom: 15px;
-    font-size: 1.2rem;
+    margin-bottom: 12px;
+    font-size: 1.25em;
+    font-weight: 600;
 }
 
 /* Introduction Section */
-.intro-section {
-    background: linear-gradient(135deg, var(--surface) 0%, #f1f5f9 100%);
-    margin-top: 30px;
+.about-section {
+    margin-top: 10px;
 }
 
-.intro-section p {
-    line-height: 1.8;
-    color: var(--text-primary);
-    margin-bottom: 20px;
-}
-
-.instructions-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin: 20px 0 30px 0;
-}
-
-.instruction {
-    padding: 15px;
-    background: var(--surface);
-    border-radius: 8px;
-    border-left: 4px solid var(--primary-color);
-    box-shadow: var(--shadow);
-}
-
-.instruction strong {
-    display: block;
-    color: var(--primary-color);
-    margin-bottom: 8px;
-    font-size: 1rem;
-}
-
-.instruction p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--text-secondary);
+.about-section p {
     line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.about-section a {
+    color: var(--primary-color);
+}
+
+.about-section a:hover {
+    text-decoration: underline;
 }
 
 .bullets {
-    margin-top: 20px;
-    margin-bottom: 30px;
-    padding: 20px;
-    background: var(--surface);
-    border-radius: 8px;
+    margin: 0 0 16px 0;
 }
 
 .bullets ul {
-    list-style: none;
-    padding: 0;
+    padding-left: 24px;
+    margin: 0;
+    list-style-type: disc;
+}
+
+.bullets ol {
+    padding-left: 24px;
     margin: 0;
 }
 
 .bullets li {
-    padding: 10px 0 10px 30px;
-    position: relative;
-    color: var(--text-primary);
+    padding: 0px;
     line-height: 1.6;
-}
-
-.bullets li::before {
-    content: "→";
-    position: absolute;
-    left: 0;
-    color: var(--primary-color);
-    font-weight: bold;
-    font-size: 1.2rem;
-}
-
-.bullets strong {
-    color: var(--primary-color);
 }
 
 .bullets a {
     color: var(--primary-color);
-    text-decoration: none;
-    transition: color 0.2s;
 }
 
 .bullets a:hover {
-    color: var(--secondary-color);
     text-decoration: underline;
 }
 
@@ -214,7 +186,7 @@ section h3 {
 
 .format-groups-container {
     display: flex;
-    gap: 30px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
@@ -227,11 +199,11 @@ section h3 {
 .preset-buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 4px;
 }
 
 .preset-btn {
-    padding: 10px 20px;
+    padding: 10px;
     border: 2px solid var(--border);
     background: var(--surface);
     color: var(--text-primary);
@@ -255,25 +227,7 @@ section h3 {
     box-shadow: var(--shadow-lg);
 }
 
-.value-preset-btn {
-    padding: 8px 16px;
-    border: 2px solid var(--border);
-    background: var(--surface);
-    color: var(--text-primary);
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
-.value-preset-btn:hover {
-    border-color: var(--secondary-color);
-    background: var(--secondary-color);
-    color: white;
-}
-
-.value-preset-btn:disabled {
+.preset-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
     border-color: var(--border);
@@ -281,17 +235,37 @@ section h3 {
     color: var(--text-secondary);
 }
 
-.value-preset-btn:disabled:hover {
+.preset-btn:disabled:hover {
     border-color: var(--border);
     background: var(--surface);
     color: var(--text-secondary);
 }
 
+/* Output value presets - read-only indicators */
+.output-value-preset {
+    cursor: default;
+    opacity: 1;
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-secondary);
+}
+
+.output-value-preset:hover {
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+.output-value-preset.active {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: white;
+}
+
 .format-inputs {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    align-items: flex-start;
+    gap: 4px;
+    align-items: stretch;
 }
 
 .input-group {
@@ -299,6 +273,7 @@ section h3 {
     flex-direction: column;
     gap: 5px;
     min-width: fit-content;
+    justify-content: space-between;
 }
 
 .input-group label,
@@ -314,10 +289,12 @@ section h3 {
 .input-group input[type="number"],
 .input-group input[type="text"],
 .input-group select {
-    padding: 10px;
+    padding: 10px 4px;
     border: 2px solid var(--border);
     border-radius: 8px;
     font-size: 0.9rem;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
     transition: border-color 0.2s;
 }
 
@@ -337,21 +314,13 @@ section h3 {
 }
 
 .total-bits-display {
-    padding: 10px;
+    padding: 10px 4px;
     background: var(--background);
     border: 2px solid var(--border);
     border-radius: 8px;
     font-weight: 600;
     color: var(--primary-color);
     text-align: center;
-    min-width: 50px;
-}
-
-/* Value Input */
-.value-input input[type="text"] {
-    width: 100%;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
 }
 
 /* Representation Display */
@@ -371,11 +340,11 @@ section h3 {
 
 .binary-display {
     font-family: 'Courier New', monospace;
-    padding: 15px;
+    padding: 0px;
     background: var(--background);
     border-radius: 8px;
     display: flex;
-    gap: 6px;
+    gap: 2px;
     flex-wrap: wrap;
 }
 
@@ -411,13 +380,13 @@ section h3 {
 
 .bit-labels {
     display: flex;
-    gap: 2px;
+    gap: 0px;
     flex-wrap: wrap;
 }
 
 .bit-label {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -437,20 +406,20 @@ section h3 {
     color: var(--mantissa-color);
 }
 
-.bit-checkboxes {
+.bits {
     display: flex;
-    gap: 2px;
+    gap: 0px;
     flex-wrap: wrap;
 }
 
 .bit-positions {
     display: flex;
-    gap: 2px;
+    gap: 0px;
     flex-wrap: wrap;
 }
 
 .bit-position {
-    width: 24px;
+    width: 20px;
     height: 16px;
     display: flex;
     align-items: center;
@@ -460,24 +429,36 @@ section h3 {
     font-family: monospace;
 }
 
-.bit-checkbox {
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    appearance: none;
+.bit {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: var(--surface);
     border: 2px solid var(--border);
     border-radius: 4px;
-    background: var(--surface);
+    color: var(--text-secondary);
     transition: all 0.2s;
+}
+
+.bit.checked,
+input.bit:checked {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+/* Interactive bit (checkbox input) */
+input.bit {
+    cursor: pointer;
+    appearance: none;
     position: relative;
 }
 
-.bit-checkbox:checked {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-.bit-checkbox:checked::after {
+input.bit:checked::after {
     content: '1';
     position: absolute;
     top: 50%;
@@ -488,7 +469,7 @@ section h3 {
     font-size: 0.9rem;
 }
 
-.bit-checkbox:not(:checked)::after {
+input.bit:not(:checked)::after {
     content: '0';
     position: absolute;
     top: 50%;
@@ -498,28 +479,9 @@ section h3 {
     font-size: 0.9rem;
 }
 
-.bit-checkbox:hover {
+input.bit:hover {
     border-color: var(--primary-color);
     transform: scale(1.1);
-}
-
-.hex-input {
-    width: 100%;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    padding: 15px;
-    background: var(--background);
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    font-weight: 600;
-    color: var(--primary-color);
-    transition: border-color 0.2s;
-}
-
-.hex-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    background: var(--surface);
 }
 
 .components {
@@ -563,36 +525,24 @@ section h3 {
     font-weight: 600;
 }
 
-/* Output Section */
+/* Value Display Boxes */
+.input-display,
 .output-display {
     width: 100%;
     font-family: 'Courier New', monospace;
     font-size: 0.9rem;
-    padding: 15px;
+    padding: 10px 4px;
     background: var(--surface);
     border: 2px solid var(--border);
     border-radius: 8px;
     font-weight: 600;
     color: var(--text-primary);
+    box-sizing: border-box;
 }
 
-.bit-values {
-    display: flex;
-    gap: 2px;
-    flex-wrap: wrap;
-}
-
-.bit-value {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-    font-weight: 600;
-    background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: 4px;
+.input-display:focus {
+    outline: none;
+    border-color: var(--primary-color);
 }
 
 .output-binary .bit-section-container {
@@ -625,10 +575,6 @@ footer {
         font-size: 2rem;
     }
 
-    .instructions-grid {
-        grid-template-columns: 1fr;
-    }
-
     .format-groups-container {
         flex-direction: column;
         gap: 0;
@@ -641,11 +587,10 @@ footer {
     .preset-buttons {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        gap: 4px;
     }
 
-    .preset-btn,
-    .value-preset-btn {
+    .preset-btn {
         width: 100%;
         padding: 10px 8px;
         font-size: 0.9rem;
@@ -653,7 +598,7 @@ footer {
 
     .format-inputs {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         align-items: stretch;
     }
 
