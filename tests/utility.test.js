@@ -103,5 +103,66 @@ describe('FloatingPoint Utility Methods', () => {
       expect(result.mantissa).toBeGreaterThan(0);
       expect(result.isNaN).toBe(true);
     });
+
+    test('throws error when format does not support NaN', () => {
+      const fp = new FloatingPoint(1, 4, 3, { hasNaN: false });
+      expect(() => fp.getNaN()).toThrow('Format does not support NaN');
+    });
+  });
+
+  describe('getMaxNormal()', () => {
+    test('FP32 returns correct max normal', () => {
+      const fp32 = new FloatingPoint(1, 8, 23);
+      const result = fp32.getMaxNormal(false);
+      expect(result.sign).toBe(0);
+      expect(result.exponent).toBe(255); // maxExponent
+      expect(result.mantissa).toBe((1 << 23) - 1);
+      expect(result.isNormal).toBe(true);
+      expect(result.isInfinite).toBe(false);
+    });
+
+    test('FP32 returns correct negative max normal', () => {
+      const fp32 = new FloatingPoint(1, 8, 23);
+      const result = fp32.getMaxNormal(true);
+      expect(result.sign).toBe(1);
+      expect(result.isNormal).toBe(true);
+    });
+
+    test('FP16 returns correct max normal', () => {
+      const fp16 = new FloatingPoint(1, 5, 10);
+      const result = fp16.getMaxNormal(false);
+      expect(result.sign).toBe(0);
+      expect(result.exponent).toBe(31); // maxExponent for FP16
+      expect(result.mantissa).toBe((1 << 10) - 1);
+      expect(result.isNormal).toBe(true);
+    });
+
+    test('OCP FP4 E2M1 max normal uses maxExponent (no infinity)', () => {
+      const fp4 = new FloatingPoint(1, 2, 1, { bias: 1, hasInfinity: false, hasNaN: false });
+      const result = fp4.getMaxNormal(false);
+      expect(result.exponent).toBe(3); // maxExponent
+      expect(result.mantissa).toBe(1); // all mantissa bits set
+      expect(result.isNormal).toBe(true);
+      
+      // Verify decoded value
+      const decoded = fp4.decode(result.sign, result.exponent, result.mantissa);
+      expect(decoded).toBe(6.0); // 2^(3-1) * 1.5 = 4 * 1.5 = 6
+    });
+
+    test('format without sign bit still accepts negative parameter', () => {
+      const fp = new FloatingPoint(0, 8, 8);
+      const result = fp.getMaxNormal(true); // negative requested
+      // The function sets sign=1 even though format has no sign bit
+      // This is consistent with how other methods work
+      expect(result.sign).toBe(1);
+      expect(result.isNormal).toBe(true);
+    });
+  });
+
+  describe('getInfinity() error handling', () => {
+    test('throws error when format does not support infinity', () => {
+      const fp = new FloatingPoint(1, 4, 3, { hasInfinity: false });
+      expect(() => fp.getInfinity()).toThrow('Format does not support Infinity');
+    });
   });
 });

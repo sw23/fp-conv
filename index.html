@@ -23,7 +23,7 @@
     <link rel="shortcut icon" href="favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="FP Conv" />
-    <link rel="manifest" href="site.webmanifest" />
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22FP%20Conv%22%2C%22short_name%22%3A%22FP%20Conv%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22web-app-manifest-192x192.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22maskable%22%7D%2C%7B%22src%22%3A%22web-app-manifest-512x512.png%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22maskable%22%7D%5D%2C%22theme_color%22%3A%22%23ffffff%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22display%22%3A%22standalone%22%7D" />
 
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website">
@@ -121,19 +121,19 @@
                 <div class="custom-format">
                     <div class="format-inputs">
                         <div class="input-group">
-                            <label for="input-sign-bits">Sign Bit:</label>
+                            <label for="input-sign-bits">Sign:</label>
                             <input type="checkbox" id="input-sign-bits" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
-                            <label for="input-exponent-bits">Exponent Bits:</label>
+                            <label for="input-exponent-bits">Exponent:</label>
                             <input type="number" id="input-exponent-bits" autocomplete="off" min="0" max="15" value="8">
                         </div>
                         <div class="input-group">
-                            <label for="input-mantissa-bits">Mantissa Bits:</label>
+                            <label for="input-mantissa-bits">Mantissa:</label>
                             <input type="number" id="input-mantissa-bits" autocomplete="off" min="0" max="112" value="23">
                         </div>
                         <div class="input-group">
-                            <label for="input-has-infinity">Has Infinity:</label>
+                            <label for="input-has-infinity">Has Inf:</label>
                             <input type="checkbox" id="input-has-infinity" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
@@ -141,7 +141,7 @@
                             <input type="checkbox" id="input-has-nan" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
-                            <span class="input-label">Total Bits:</span>
+                            <span class="input-label">Total:</span>
                             <div class="total-bits-display" id="input-total-bits">32</div>
                         </div>
                     </div>
@@ -155,22 +155,22 @@
                 <div class="preset-section">
                     <span class="section-label">Value Presets:</span>
                     <div class="preset-buttons">
-                        <button class="value-preset-btn" data-value="zero">Zero</button>
-                        <button class="value-preset-btn" data-value="one">One</button>
-                        <button class="value-preset-btn" data-value="max-norm">Max Normal</button>
-                        <button class="value-preset-btn" data-value="min-norm">Min Normal</button>
-                        <button class="value-preset-btn" data-value="max-subnorm">Max Subnormal</button>
-                        <button class="value-preset-btn" data-value="min-subnorm">Min Subnormal</button>
-                        <button class="value-preset-btn" data-value="infinity">+Infinity</button>
-                        <button class="value-preset-btn" data-value="neg-infinity">-Infinity</button>
-                        <button class="value-preset-btn" data-value="nan">NaN</button>
-                        <button class="value-preset-btn" data-value="all-ones">All Ones</button>
+                        <button class="preset-btn" data-value="zero">0</button>
+                        <button class="preset-btn" data-value="one">1</button>
+                        <button class="preset-btn" data-value="max-norm">Max Norm</button>
+                        <button class="preset-btn" data-value="min-norm">Min Norm</button>
+                        <button class="preset-btn" data-value="max-subnorm">Max Sub</button>
+                        <button class="preset-btn" data-value="min-subnorm">Min Sub</button>
+                        <button class="preset-btn" data-value="infinity">+Inf</button>
+                        <button class="preset-btn" data-value="neg-infinity">-Inf</button>
+                        <button class="preset-btn" data-value="nan">NaN</button>
+                        <button class="preset-btn" data-value="all-ones">1s</button>
                     </div>
                 </div>
 
                 <div class="input-group">
                     <label for="input-decimal-input">Decimal Value:</label>
-                    <input type="text" id="input-decimal-input" autocomplete="off" value="3.14159" placeholder="Enter decimal number">
+                    <input type="text" id="input-decimal-input" class="input-display" autocomplete="off" placeholder="Enter decimal number">
                 </div>
 
                 <div class="rep-group">
@@ -178,17 +178,17 @@
                     <div class="binary-display" role="group" aria-label="Binary representation">
                         <div class="bit-section-container sign-section" role="group" aria-label="Sign bit">
                             <div class="bit-labels" id="input-binary-sign-labels"></div>
-                            <div class="bit-checkboxes" id="input-binary-sign-checks"></div>
+                            <div class="bits" id="input-binary-sign-checks"></div>
                             <div class="bit-positions" id="input-binary-sign-positions"></div>
                         </div>
                         <div class="bit-section-container exponent-section" role="group" aria-label="Exponent bits">
                             <div class="bit-labels" id="input-binary-exponent-labels"></div>
-                            <div class="bit-checkboxes" id="input-binary-exponent-checks"></div>
+                            <div class="bits" id="input-binary-exponent-checks"></div>
                             <div class="bit-positions" id="input-binary-exponent-positions"></div>
                         </div>
                         <div class="bit-section-container mantissa-section" role="group" aria-label="Mantissa bits">
                             <div class="bit-labels" id="input-binary-mantissa-labels"></div>
-                            <div class="bit-checkboxes" id="input-binary-mantissa-checks"></div>
+                            <div class="bits" id="input-binary-mantissa-checks"></div>
                             <div class="bit-positions" id="input-binary-mantissa-positions"></div>
                         </div>
                     </div>
@@ -196,7 +196,7 @@
 
                 <div class="rep-group">
                     <label for="input-hex-input">Hexadecimal:</label>
-                    <input type="text" id="input-hex-input" autocomplete="off" class="hex-input" value="0x00000000" placeholder="0x00000000">
+                    <input type="text" id="input-hex-input" class="input-display" autocomplete="off" value="0x00000000" placeholder="0x00000000">
                 </div>
 
                 <div class="components">
@@ -265,19 +265,19 @@
                 <div class="custom-format">
                     <div class="format-inputs">
                         <div class="input-group">
-                            <label for="output-sign-bits">Sign Bit:</label>
+                            <label for="output-sign-bits">Sign:</label>
                             <input type="checkbox" id="output-sign-bits" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
-                            <label for="output-exponent-bits">Exponent Bits:</label>
+                            <label for="output-exponent-bits">Exponent:</label>
                             <input type="number" id="output-exponent-bits" autocomplete="off" min="0" max="15" value="5">
                         </div>
                         <div class="input-group">
-                            <label for="output-mantissa-bits">Mantissa Bits:</label>
+                            <label for="output-mantissa-bits">Mantissa:</label>
                             <input type="number" id="output-mantissa-bits" autocomplete="off" min="0" max="112" value="10">
                         </div>
                         <div class="input-group">
-                            <label for="output-has-infinity">Has Infinity:</label>
+                            <label for="output-has-infinity">Has Inf:</label>
                             <input type="checkbox" id="output-has-infinity" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
@@ -285,7 +285,7 @@
                             <input type="checkbox" id="output-has-nan" autocomplete="off" checked>
                         </div>
                         <div class="input-group">
-                            <span class="input-label">Total Bits:</span>
+                            <span class="input-label">Total:</span>
                             <div class="total-bits-display" id="output-total-bits">16</div>
                         </div>
                     </div>
@@ -295,6 +295,22 @@
             <!-- Output Value -->
             <section class="value-section output-section" aria-labelledby="output-value-heading">
                 <h2 id="output-value-heading">Output Value</h2>
+
+                <div class="preset-section">
+                    <span class="section-label">Value Presets:</span>
+                    <div class="preset-buttons">
+                        <button class="preset-btn output-value-preset" data-value="zero" disabled>0</button>
+                        <button class="preset-btn output-value-preset" data-value="one" disabled>1</button>
+                        <button class="preset-btn output-value-preset" data-value="max-norm" disabled>Max Norm</button>
+                        <button class="preset-btn output-value-preset" data-value="min-norm" disabled>Min Norm</button>
+                        <button class="preset-btn output-value-preset" data-value="max-subnorm" disabled>Max Sub</button>
+                        <button class="preset-btn output-value-preset" data-value="min-subnorm" disabled>Min Sub</button>
+                        <button class="preset-btn output-value-preset" data-value="infinity" disabled>+Inf</button>
+                        <button class="preset-btn output-value-preset" data-value="neg-infinity" disabled>-Inf</button>
+                        <button class="preset-btn output-value-preset" data-value="nan" disabled>NaN</button>
+                        <button class="preset-btn output-value-preset" data-value="all-ones" disabled>1s</button>
+                    </div>
+                </div>
 
                 <div class="input-group">
                     <span class="output-label">Decimal Value:</span>
@@ -306,17 +322,17 @@
                     <div class="binary-display output-binary" role="group" aria-label="Output binary representation">
                         <div class="bit-section-container sign-section" role="group" aria-label="Output sign bit">
                             <div class="bit-labels" id="output-binary-sign-labels"></div>
-                            <div class="bit-values" id="output-binary-sign-values"></div>
+                            <div class="bits" id="output-binary-sign-values"></div>
                             <div class="bit-positions" id="output-binary-sign-positions"></div>
                         </div>
                         <div class="bit-section-container exponent-section" role="group" aria-label="Output exponent bits">
                             <div class="bit-labels" id="output-binary-exponent-labels"></div>
-                            <div class="bit-values" id="output-binary-exponent-values"></div>
+                            <div class="bits" id="output-binary-exponent-values"></div>
                             <div class="bit-positions" id="output-binary-exponent-positions"></div>
                         </div>
                         <div class="bit-section-container mantissa-section" role="group" aria-label="Output mantissa bits">
                             <div class="bit-labels" id="output-binary-mantissa-labels"></div>
-                            <div class="bit-values" id="output-binary-mantissa-values"></div>
+                            <div class="bits" id="output-binary-mantissa-values"></div>
                             <div class="bit-positions" id="output-binary-mantissa-positions"></div>
                         </div>
                     </div>
@@ -363,7 +379,7 @@
             </section>
         </div>
 
-        <section id="about" class="intro-section">
+        <section id="about" class="about-section">
             <h2>About This Tool</h2>
             <p>
                 This interactive converter helps you visualize how floating-point numbers are represented at the binary level.
@@ -374,24 +390,26 @@
             </p>
 
             <h3>How to Use</h3>
-            <div class="instructions-grid">
-                <div class="instruction">
-                    <strong>1. Choose Your Input Format</strong>
-                    <p>Select from standard formats (FP32, FP16, BF16, etc.) or customize the number of sign, exponent, and mantissa bits.</p>
-                </div>
-                <div class="instruction">
-                    <strong>2. Enter a Value</strong>
-                    <p>Type any decimal number, or use the value presets to explore special cases like infinity, NaN, or the smallest/largest representable numbers. You can also edit the binary or hexadecimal representation directly.</p>
-                </div>
-                <div class="instruction">
-                    <strong>3. Select Output Format</strong>
-                    <p>Choose a different format to see how your number would be represented. The tool automatically shows precision loss when converting between formats.</p>
-                </div>
-                <div class="instruction">
-                    <strong>4. Explore Components</strong>
-                    <p>View the breakdown of sign bit, exponent, and mantissa. Interactive binary checkboxes let you flip individual bits to see how they affect the final value.</p>
-                </div>
-            </div>
+            <div class="bullets">
+            <ol>
+                <li>
+                    <strong>Choose Your Input Format</strong>
+                    Select from standard formats (FP32, FP16, BF16, etc.) or customize the number of sign, exponent, and mantissa bits.
+                </li>
+                <li>
+                    <strong>Enter a Value</strong>
+                    Type any decimal number, or use the value presets to explore special cases like infinity, NaN, or the smallest/largest representable numbers. You can also edit the binary or hexadecimal representation directly.
+                </li>
+                <li>
+                    <strong>Select Output Format</strong>
+                    Choose a different format to see how your number would be represented. The tool automatically shows precision loss when converting between formats.
+                </li>
+                <li>
+                    <strong>Explore Components</strong>
+                    View the breakdown of sign bit, exponent, and mantissa. Interactive binary checkboxes let you flip individual bits to see how they affect the final value.
+                </li>
+            </ol>
+        </div>
 
             <h3>Common Use Cases</h3>
             <div class="bullets">

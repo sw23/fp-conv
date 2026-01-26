@@ -10,11 +10,14 @@
 // Application State
 let currentFormat = new FloatingPoint(1, 8, 23);
 let outputFormat = new FloatingPoint(1, 5, 10); // FP16 by default
-let currentValue = 3.14159;
+let currentValue = 3.140625;
 let currentEncoded = null;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
+    // Set initial value in input field
+    document.getElementById('input-decimal-input').value = currentValue;
+    
     updateFormat();
     updateOutputFormat();
     updateValue();
@@ -39,7 +42,7 @@ function setupEventListeners() {
     });
 
     // Value preset buttons
-    document.querySelectorAll('.value-preset-btn').forEach(btn => {
+    document.querySelectorAll('.preset-btn[data-value]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const valueKey = e.target.dataset.value;
             loadValuePreset(valueKey);
@@ -150,9 +153,9 @@ function updateFormat() {
 
 function updateValuePresetButtons() {
     // Enable/disable value preset buttons based on format capabilities
-    const infinityBtn = document.querySelector('.value-preset-btn[data-value="infinity"]');
-    const negInfinityBtn = document.querySelector('.value-preset-btn[data-value="neg-infinity"]');
-    const nanBtn = document.querySelector('.value-preset-btn[data-value="nan"]');
+    const infinityBtn = document.querySelector('.preset-btn[data-value="infinity"]');
+    const negInfinityBtn = document.querySelector('.preset-btn[data-value="neg-infinity"]');
+    const nanBtn = document.querySelector('.preset-btn[data-value="nan"]');
 
     if (infinityBtn) {
         infinityBtn.disabled = !currentFormat.hasInfinity;
@@ -208,6 +211,7 @@ function updateValue() {
     currentEncoded = currentFormat.encode(currentValue);
     updateRepresentation();
     updateOutput();
+    updateActiveValuePreset();
 }
 
 function updateRepresentation() {
@@ -277,7 +281,7 @@ function createBinaryCheckboxes(section, binaryString) {
         // Create checkbox
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.className = 'bit-checkbox';
+        checkbox.className = 'bit';
         checkbox.id = `input-binary-${section}-bit-${i}`;
         checkbox.checked = binaryString[i] === '1';
         checkbox.dataset.section = section;
@@ -338,6 +342,7 @@ function handleBinaryCheckboxChange(e) {
 
     updateComponents();
     updateOutput();
+    updateActiveValuePreset();
 }
 
 function handleHexInput(e) {
@@ -455,6 +460,25 @@ function updateComponents() {
 }
 
 function loadValuePreset(valueKey) {
+    // Special handling for all-ones - set bits directly
+    if (valueKey === 'all-ones') {
+        currentEncoded = {
+            sign: currentFormat.signBits ? 1 : 0,
+            exponent: currentFormat.maxExponent,
+            mantissa: (1 << currentFormat.mantissaBits) - 1
+        };
+        currentValue = currentFormat.decode(
+            currentEncoded.sign,
+            currentEncoded.exponent,
+            currentEncoded.mantissa
+        );
+        document.getElementById('input-decimal-input').value = currentValue;
+        updateRepresentation();
+        updateOutput();
+        updateActiveValuePreset();
+        return;
+    }
+
     switch (valueKey) {
         case 'zero':
             currentValue = 0;
@@ -495,23 +519,124 @@ function loadValuePreset(valueKey) {
         case 'nan':
             currentValue = NaN;
             break;
-        case 'all-ones':
-            // All bits set to 1
-            currentValue = currentFormat.decode(
-                currentFormat.signBits ? 1 : 0,
-                currentFormat.maxExponent,
-                (1 << currentFormat.mantissaBits) - 1
-            );
-            break;
     }
 
     document.getElementById('input-decimal-input').value = currentValue;
     updateValue();
 }
 
+function getPresetValue(valueKey, format) {
+    switch (valueKey) {
+        case 'zero':
+            return 0;
+        case 'one':
+            return 1;
+        case 'max-norm':
+            return format.decode(
+                0,
+                format.maxExponent - 1,
+                (1 << format.mantissaBits) - 1
+            );
+        case 'min-norm':
+            return format.decode(0, 1, 0);
+        case 'max-subnorm':
+            return format.decode(
+                0,
+                0,
+                (1 << format.mantissaBits) - 1
+            );
+        case 'min-subnorm':
+            return format.decode(0, 0, 1);
+        case 'infinity':
+            return Infinity;
+        case 'neg-infinity':
+            return -Infinity;
+        case 'nan':
+            return NaN;
+        default:
+            return null;
+    }
+}
+
+function valuesMatch(a, b, format) {
+    // Handle NaN comparison
+    if (Number.isNaN(a) && Number.isNaN(b)) return true;
+    if (Number.isNaN(a) || Number.isNaN(b)) return false;
+    // Compare the encoded representations to handle floating-point precision
+    const encodedA = format.encode(a);
+    const encodedB = format.encode(b);
+    return encodedA.sign === encodedB.sign &&
+           encodedA.exponent === encodedB.exponent &&
+           encodedA.mantissa === encodedB.mantissa;
+}
+
+function isAllOnesMatch(encoded, format) {
+    // Check if encoded value has all bits set to 1
+    const expectedSign = format.signBits ? 1 : 0;
+    const expectedExponent = format.maxExponent;
+    const expectedMantissa = (1 << format.mantissaBits) - 1;
+    
+    return encoded.sign === expectedSign &&
+           encoded.exponent === expectedExponent &&
+           encoded.mantissa === expectedMantissa;
+}
+
+function updateActiveValuePreset() {
+    document.querySelectorAll('.preset-btn[data-value]:not(.output-value-preset)').forEach(btn => {
+        const valueKey = btn.dataset.value;
+        
+        // Special handling for all-ones - compare encoded bits directly
+        if (valueKey === 'all-ones') {
+            if (isAllOnesMatch(currentEncoded, currentFormat)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+            return;
+        }
+        
+        const presetValue = getPresetValue(valueKey, currentFormat);
+        if (presetValue !== null && valuesMatch(currentValue, presetValue, currentFormat)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+function updateActiveOutputValuePreset(outputEncoded, outputValue) {
+    document.querySelectorAll('.output-value-preset').forEach(btn => {
+        const valueKey = btn.dataset.value;
+        
+        // Special handling for all-ones
+        if (valueKey === 'all-ones') {
+            if (isAllOnesMatch(outputEncoded, outputFormat)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+            return;
+        }
+        
+        const presetValue = getPresetValue(valueKey, outputFormat);
+        if (presetValue !== null && valuesMatch(outputValue, presetValue, outputFormat)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
 function updateOutput() {
-    // Encode current value in output format
-    const outputEncoded = outputFormat.encode(currentValue);
+    // First decode the actual value from the input format
+    const inputValue = currentFormat.decode(
+        currentEncoded.sign,
+        currentEncoded.exponent,
+        currentEncoded.mantissa
+    );
+    
+    // Encode the input format's actual value into the output format
+    const outputEncoded = outputFormat.encode(inputValue);
     const outputValue = outputFormat.decode(
         outputEncoded.sign,
         outputEncoded.exponent,
@@ -540,11 +665,6 @@ function updateOutput() {
     updateComponentsDisplay(outputFormat, outputEncoded, 'output');
 
     // Calculate precision loss - compare actual decoded values from both formats
-    const inputValue = currentFormat.decode(
-        currentEncoded.sign,
-        currentEncoded.exponent,
-        currentEncoded.mantissa
-    );
     const loss = Math.abs(inputValue - outputValue);
     const relativeLoss = inputValue !== 0 ? (loss / Math.abs(inputValue) * 100).toFixed(6) : '0';
 
@@ -557,6 +677,9 @@ function updateOutput() {
         document.getElementById('output-precision-loss').textContent =
             `${loss.toExponential(6)} (${relativeLoss}%)`;
     }
+
+    // Update output value preset highlighting
+    updateActiveOutputValuePreset(outputEncoded, outputValue);
 }
 
 function createOutputBinaryDisplay(section, binaryString) {
@@ -593,7 +716,7 @@ function createOutputBinaryDisplay(section, binaryString) {
 
         // Create value display
         const value = document.createElement('div');
-        value.className = 'bit-value';
+        value.className = binaryString[i] === '1' ? 'bit checked' : 'bit';
         value.textContent = binaryString[i];
         valuesContainer.appendChild(value);
 
@@ -605,6 +728,6 @@ function createOutputBinaryDisplay(section, binaryString) {
     }
 }
 
-// Initialize with FP32 input and FP16 output presets
-loadInputPreset('fp32');
-loadOutputPreset('fp16');
+// Initialize with FP16 input and BF16 output presets
+loadInputPreset('fp16');
+loadOutputPreset('bf16');
