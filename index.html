@@ -9,8 +9,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Floating Point Converter - FP64, FP32, FP16, BF16, TF32, FP8 Converter</title>
-    <meta name="description" content="Floating point converter for FP64, FP32, FP16, BF16, TF32, and FP8 formats. Convert between IEEE 754 formats, visualize binary representations, and calculate precision loss. Interactive tool for ML engineers and developers.">
+    <title>Floating Point Conversion Calculator</title>
+    <meta name="description" content="Floating point conversion calculator between floating point, integer, and custom formats. Interactive tool for ML engineers and developers.">
     <meta name="keywords" content="floating point converter, FP64 converter, FP32 converter, FP16 converter, BF16 converter, FP8 converter, FP32 to FP16, FP32 to BF16, FP16 to BF16, FP32 to FP8, IEEE 754 converter">
     <meta name="author" content="Spencer Williams">
     <meta name="robots" content="index, follow">
@@ -27,15 +27,15 @@
 
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Floating Point Number Converter">
-    <meta property="og:description" content="Interactive floating point number converter supporting standard and custom formats. Visualize binary representations and converter between formats.">
+    <meta property="og:title" content="Floating Point Conversion Calculator">
+    <meta property="og:description" content="Interactive floating point conversion calculator supporting floating point, integer, and custom formats. Visualize binary representations and convert between formats.">
     <meta property="og:url" content="https://sw23.github.io/fp-conv/">
-    <meta property="og:site_name" content="Floating Point Converter">
+    <meta property="og:site_name" content="Floating Point Conversion Calculator">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Floating Point Number Converter">
-    <meta name="twitter:description" content="Interactive floating point number converter supporting standard and custom formats. Visualize binary representations and converter between formats.">
+    <meta name="twitter:title" content="Floating Point Conversion Calculator">
+    <meta name="twitter:description" content="Interactive floating point conversion calculator supporting floating point, integer, and custom formats. Visualize binary representations and convert between formats.">
 
     <!-- Google Site Verification -->
     <meta name="google-site-verification" content="UpW0PLNzy5sWz7vqDnOYekVF9vfhzbZZ67WOrId5ZXY" />
@@ -45,8 +45,8 @@
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "Floating Point Number Converter",
-      "description": "Interactive floating point number converter supporting standard and custom formats. Visualize binary representations and converter between formats.",
+      "name": "Floating Point Conversion Calculator",
+      "description": "Interactive floating point conversion calculator supporting floating point, integer, and custom formats. Visualize binary representations and convert between formats.",
       "url": "https://sw23.github.io/fp-conv/",
       "applicationCategory": "UtilityApplication",
       "operatingSystem": "Any",
@@ -57,7 +57,7 @@
       },
       "datePublished": "2025-01-01",
       "inLanguage": "en-US",
-      "keywords": "floating point converter, FP64 converter, FP32 converter, FP16 converter, BF16 converter, FP8 converter, FP32 to FP16, FP32 to BF16, FP16 to BF16, FP32 to FP8, IEEE 754 converter",
+      "keywords": "floating point conversion calculator, FP64 converter, FP32 converter, FP16 converter, BF16 converter, FP8 converter, FP32 to FP16, FP32 to BF16, FP16 to BF16, FP32 to FP8, IEEE 754 converter",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -80,8 +80,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>Floating Point Number Converter</h1>
-            <p class="subtitle">Convert between FP32, FP16, BF16, TF32, FP8, OCP FP8/FP6/FP4 and custom formats</p>
+            <h1>Floating Point Conversion Calculator</h1>
+            <p class="subtitle">Convert between floating point, integer, and custom formats</p>
             <p class="help-link"><a href="#about">Need help? Learn how to use this tool →</a></p>
         </header>
 
@@ -115,6 +115,17 @@
                         <button class="preset-btn input-preset" data-format="fp6_e3m2">FP6 E3M2</button>
                         <button class="preset-btn input-preset" data-format="fp6_e2m3">FP6 E2M3</button>
                         <button class="preset-btn input-preset" data-format="fp4_e2m1">FP4 E2M1</button>
+                    </div>
+                    <div class="preset-label">Integer Formats:</div>
+                    <div class="preset-buttons">
+                        <button class="preset-btn input-preset" data-format="int32">INT32</button>
+                        <button class="preset-btn input-preset" data-format="uint32">UINT32</button>
+                        <button class="preset-btn input-preset" data-format="int16">INT16</button>
+                        <button class="preset-btn input-preset" data-format="uint16">UINT16</button>
+                        <button class="preset-btn input-preset" data-format="int8">INT8</button>
+                        <button class="preset-btn input-preset" data-format="uint8">UINT8</button>
+                        <button class="preset-btn input-preset" data-format="int4">INT4</button>
+                        <button class="preset-btn input-preset" data-format="uint4">UINT4</button>
                     </div>
                 </div>
 
@@ -260,6 +271,17 @@
                         <button class="preset-btn output-preset" data-format="fp6_e2m3">FP6 E2M3</button>
                         <button class="preset-btn output-preset" data-format="fp4_e2m1">FP4 E2M1</button>
                     </div>
+                    <div class="preset-label">Integer Formats:</div>
+                    <div class="preset-buttons">
+                        <button class="preset-btn output-preset" data-format="int32">INT32</button>
+                        <button class="preset-btn output-preset" data-format="uint32">UINT32</button>
+                        <button class="preset-btn output-preset" data-format="int16">INT16</button>
+                        <button class="preset-btn output-preset" data-format="uint16">UINT16</button>
+                        <button class="preset-btn output-preset" data-format="int8">INT8</button>
+                        <button class="preset-btn output-preset" data-format="uint8">UINT8</button>
+                        <button class="preset-btn output-preset" data-format="int4">INT4</button>
+                        <button class="preset-btn output-preset" data-format="uint4">UINT4</button>
+                    </div>
                 </div>
 
                 <div class="custom-format">
@@ -382,11 +404,12 @@
         <section id="about" class="about-section">
             <h2>About This Tool</h2>
             <p>
-                This interactive converter helps you visualize how floating-point numbers are represented at the binary level.
+                This interactive converter helps you visualize how floating-point and integer numbers are represented at the binary level.
                 This converter follows the <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank" rel="noopener">IEEE 754</a>
                 floating-point standard and supports standard formats (FP64, FP32, FP16) as well as specialized formats used in
-                machine learning and AI (BF16, TF32, FP8 E4M3, FP8 E5M2). Custom formats can be used as well by specifying the number
-                of sign, exponent, and mantissa bits. This tool is mobile-friendly and supports screens of all sizes.
+                machine learning and AI (BF16, TF32, FP8 E4M3, FP8 E5M2). Integer formats commonly used in ML quantization are also
+                supported (INT32, INT16, INT8, INT4, and their unsigned variants). Custom formats can be used as well by specifying
+                the number of sign, exponent, and mantissa bits. This tool is mobile-friendly and supports screens of all sizes.
             </p>
 
             <h3>How to Use</h3>
@@ -414,10 +437,10 @@
             <h3>Common Use Cases</h3>
             <div class="bullets">
                 <ul>
-                    <li><strong>ML Engineers:</strong> Understand how BF16 and FP16 affect model precision compared to FP32</li>
-                    <li><strong>Students:</strong> Learn how the IEEE 754 standard works by visualizing the binary representation</li>
+                    <li><strong>ML Engineers:</strong> Understand how BF16, FP16, and integer quantization (INT8, INT4) affect model precision</li>
+                    <li><strong>Students:</strong> Learn how the IEEE 754 standard and two's complement integers work by visualizing binary representations</li>
                     <li><strong>Developers:</strong> Debug floating-point precision issues by examining exact bit patterns</li>
-                    <li><strong>Hardware Engineers:</strong> Design and validate custom floating-point formats for specialized applications</li>
+                    <li><strong>Hardware Engineers:</strong> Design and validate custom floating-point and integer formats for specialized applications</li>
                 </ul>
             </div>
 
@@ -440,6 +463,10 @@
                         <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">FP8 (E4M3/E5M2)</a>,
                         <a href="https://github.com/opencomputeproject/FP8/blob/main/OCP%208-bit%20Floating%20Point%20Specification%20(OFP8)%20Revision%201.0%202023-06-20.pdf" target="_blank" rel="noopener">FP6 (E2M3/E3M2)</a>,
                         <a href="https://github.com/opencomputeproject/FP8/blob/main/OCP%208-bit%20Floating%20Point%20Specification%20(OFP8)%20Revision%201.0%202023-06-20.pdf" target="_blank" rel="noopener">FP4 (E2M1)</a>
+                    </li>
+                    <li>
+                        <strong>Integer Formats:</strong>
+                        <a href="https://en.wikipedia.org/wiki/Integer_(computer_science)" target="_blank" rel="noopener">INT32, UINT32, INT16, UINT16, INT8, UINT8, INT4, UINT4</a> (<a href="https://en.wikipedia.org/wiki/Two%27s_complement" target="_blank" rel="noopener">two's complement</a> signed, unsigned)
                     </li>
                     <li>
                         <strong>Custom Formats:</strong>
