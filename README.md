@@ -7,6 +7,7 @@ Interactive tool for converting and visualizing floating-point numbers across st
 ## Features
 
 - **Format presets:** FP64, FP32, FP16, BF16, TF32, OCP FP4/FP6/FP8
+- **Integer formats:** INT32, UINT32, INT16, UINT16, INT8, UINT8, INT4, UINT4
 - **OCP format support:** Full support for Open Compute Project microscaling formats
 - **Custom formats:** Define any bit layout (0-15 exponent bits, 0-112 mantissa bits)
 - **Interactive editing:** Toggle individual bits and see decimal/hex updates
@@ -19,6 +20,7 @@ Interactive tool for converting and visualizing floating-point numbers across st
 
 - **IEEE 754:** FP64, FP32, FP16
 - **ML/AI:** TF32, BF16
+- **Integer:** INT32, UINT32, INT16, UINT16, INT8, UINT8, INT4, UINT4
 - **OCP Microscaling:** FP8 E4M3/E5M2, FP6 E2M3/E3M2, FP4 E2M1
 - **Custom:** Any user-defined bit allocation
 
