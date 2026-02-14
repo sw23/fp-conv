@@ -15,6 +15,7 @@ Interactive tool for converting and visualizing floating-point numbers across st
 - **Special values:** Explore zero, infinity, NaN, subnormals, and boundary cases
 - **Fixed-point mode:** Set exponent bits to 0 for fractional representations
 - **Mobile-friendly:** Works on screens of all sizes
+- **WebMCP API:** AI agents can perform conversions programmatically via [WebMCP](docs/webmcp.md)
 
 ## Supported Formats
 
