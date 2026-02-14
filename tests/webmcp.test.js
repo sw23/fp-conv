@@ -796,13 +796,14 @@ describe('registerWebMCP', () => {
         expect(registerWebMCP()).toBe(false);
     });
 
-    test('registers tools when navigator.modelContext is available', () => {
+    test('registers tools when window.navigator.modelContext is available', () => {
         const providedContext = {};
         // Mock browser environment
-        global.window = {};
-        global.navigator = {
-            modelContext: {
-                provideContext: (ctx) => { providedContext.ctx = ctx; },
+        global.window = {
+            navigator: {
+                modelContext: {
+                    provideContext: (ctx) => { providedContext.ctx = ctx; },
+                },
             },
         };
 
@@ -813,17 +814,14 @@ describe('registerWebMCP', () => {
 
         // Clean up
         delete global.window;
-        delete global.navigator;
     });
 
-    test('returns false when navigator.modelContext is absent', () => {
-        global.window = {};
-        global.navigator = {};
+    test('returns false when window.navigator.modelContext is absent', () => {
+        global.window = { navigator: {} };
 
         expect(registerWebMCP()).toBe(false);
 
         delete global.window;
-        delete global.navigator;
     });
 });
 

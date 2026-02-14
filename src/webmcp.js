@@ -545,13 +545,13 @@ function buildToolDescriptors() {
  */
 function registerWebMCP() {
     if (typeof window === 'undefined' ||
-        typeof navigator === 'undefined' ||
-        !navigator.modelContext) {
+        !window.navigator ||
+        !window.navigator.modelContext) {
         return false;
     }
 
     const tools = buildToolDescriptors();
-    navigator.modelContext.provideContext({ tools });
+    window.navigator.modelContext.provideContext({ tools });
     return true;
 }
 
