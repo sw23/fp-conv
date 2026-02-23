@@ -32,7 +32,7 @@
   "homepage": "https://sw23.github.io/fp-conv/",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.0.0",
+    "eslint": "^10.0.1",
     "globals": "^17.3.0",
     "jest": "^30.2.0"
   }
