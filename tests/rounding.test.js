@@ -186,6 +186,17 @@ describe('Rounding Modes', () => {
             const decoded = fp8.decode(encoded.sign, encoded.exponent, encoded.mantissa);
             expect(decoded).toBe(1.875);
         });
+
+        test('mantissa overflow at max exponent clamps to max normal in no-infinity format', () => {
+            // FP8 E4M3: hasInfinity=false, maxExponent=15, bias=7, mantissaBits=3
+            // Value 496 = 2^8 * 1.9375: biasedExponent=15, mantissa=0.9375
+            // mantissaInt = round(0.9375 * 8) = round(7.5) → tiesToEven rounds to 8 → overflow
+            // biasedExponent becomes 16 > maxExponent → clamps to maxNormal (256)
+            const fp8e4m3 = new FloatingPoint(1, 4, 3, { hasInfinity: false });
+            const encoded = fp8e4m3.encode(496, { roundingMode: 'tiesToEven' });
+            const decoded = fp8e4m3.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+            expect(decoded).toBe(256);
+        });
     });
 
     describe('Subnormal rounding', () => {
