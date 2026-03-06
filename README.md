@@ -13,6 +13,7 @@ Interactive tool for converting and visualizing floating-point numbers across st
 - **Interactive editing:** Toggle individual bits and see decimal/hex updates
 - **Precision analysis:** Calculate absolute and relative error between formats
 - **Special values:** Explore zero, infinity, NaN, subnormals, and boundary cases
+- **Rounding modes:** Implements IEEE 754 rounding modes (ties to even, ties away from zero, toward zero, toward +inf, and toward −inf)
 - **Fixed-point mode:** Set exponent bits to 0 for fractional representations
 - **Mobile-friendly:** Works on screens of all sizes
 - **WebMCP API:** AI agents can perform conversions programmatically via [WebMCP](docs/webmcp.md)

@@ -519,13 +519,13 @@ describe('OCP FP8 E4M3 Format', () => {
     expect(value).toBe(256);
   });
 
-  test('encoding Infinity saturates to max normal (not 15,0)', () => {
+  test('encoding Infinity saturates to max normal (maxExponent, 0)', () => {
     const result = fp8.encode(Infinity);
     expect(result.isInfinite).toBe(false);
     expect(result.isNormal).toBe(true);
-    // Should saturate to all mantissa bits set
+    // Max normal for hasNaN + !hasInfinity: (maxExponent, 0) since non-zero mantissa = NaN
     expect(result.exponent).toBe(15);
-    expect(result.mantissa).toBe(7); // All bits set
+    expect(result.mantissa).toBe(0);
   });
 
   test('getInfinity throws error', () => {
@@ -551,8 +551,9 @@ describe('OCP FP8 E4M3 Format', () => {
 
   test('overflow saturates correctly', () => {
     const result = fp8.encode(1000);
+    // Saturates to max normal: (maxExponent, 0) = (15, 0) = 256
     expect(result.exponent).toBe(15);
-    expect(result.mantissa).toBe(7);
+    expect(result.mantissa).toBe(0);
     expect(result.isNormal).toBe(true);
   });
 });

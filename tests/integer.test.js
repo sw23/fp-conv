@@ -144,10 +144,16 @@ describe('Integer Class', () => {
             expect(encoded.intValue).toBe(2);
         });
 
-        test('rounds -1.5 to -1 (Math.round behavior)', () => {
+        test('rounds -1.5 to -2 (tiesToEven: rounds to even)', () => {
             const int8 = new Integer(8, true);
             const encoded = int8.encode(-1.5);
-            expect(encoded.intValue).toBe(-1);
+            expect(encoded.intValue).toBe(-2);
+        });
+
+        test('rounds -1.5 to -2 with tiesToAway mode (away from zero)', () => {
+            const int8 = new Integer(8, true);
+            const encoded = int8.encode(-1.5, { roundingMode: 'tiesToAway' });
+            expect(encoded.intValue).toBe(-2);
         });
 
         test('rounds -1.6 to -2', () => {

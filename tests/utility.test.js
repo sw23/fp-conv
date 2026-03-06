@@ -115,7 +115,7 @@ describe('FloatingPoint Utility Methods', () => {
       const fp32 = new FloatingPoint(1, 8, 23);
       const result = fp32.getMaxNormal(false);
       expect(result.sign).toBe(0);
-      expect(result.exponent).toBe(255); // maxExponent
+      expect(result.exponent).toBe(254); // maxExponent - 1 (maxExponent reserved for inf/NaN)
       expect(result.mantissa).toBe((1 << 23) - 1);
       expect(result.isNormal).toBe(true);
       expect(result.isInfinite).toBe(false);
@@ -132,7 +132,7 @@ describe('FloatingPoint Utility Methods', () => {
       const fp16 = new FloatingPoint(1, 5, 10);
       const result = fp16.getMaxNormal(false);
       expect(result.sign).toBe(0);
-      expect(result.exponent).toBe(31); // maxExponent for FP16
+      expect(result.exponent).toBe(30); // maxExponent - 1 for FP16 (maxExponent reserved for inf/NaN)
       expect(result.mantissa).toBe((1 << 10) - 1);
       expect(result.isNormal).toBe(true);
     });

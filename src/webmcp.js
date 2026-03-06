@@ -4,16 +4,17 @@
  * https://github.com/sw23/fp-conv/blob/main/LICENSE
  ****************************************************************/
 
-/* global FloatingPoint, Integer, FORMATS */
-// WebMCP integration - requires FloatingPoint, Integer, and FORMATS from floating-point.js
+/* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES */
+// WebMCP integration - requires FloatingPoint, Integer, FORMATS, and ROUNDING_MODES from floating-point.js
 
 // In Node.js (testing), import from the library; in browser, rely on globals.
-let _FloatingPoint, _Integer, _FORMATS;
+let _FloatingPoint, _Integer, _FORMATS, _ROUNDING_MODES;
 if (typeof require !== 'undefined') {
     const lib = require('../lib/floating-point.js');
     _FloatingPoint = lib.FloatingPoint;
     _Integer = lib.Integer;
     _FORMATS = lib.FORMATS;
+    _ROUNDING_MODES = lib.ROUNDING_MODES;
 } else {
     /* istanbul ignore next */
     _FloatingPoint = FloatingPoint;
@@ -21,6 +22,8 @@ if (typeof require !== 'undefined') {
     _Integer = Integer;
     /* istanbul ignore next */
     _FORMATS = FORMATS;
+    /* istanbul ignore next */
+    _ROUNDING_MODES = ROUNDING_MODES;
 }
 
 /**
@@ -243,7 +246,7 @@ function listFormats() {
 /**
  * encode_number – Encode a decimal/keyword value into a format.
  */
-function encodeNumber({ value, format: formatSpec }) {
+function encodeNumber({ value, format: formatSpec, roundingMode }) {
     if (value === undefined || value === null) {
         throw new Error('Parameter "value" is required.');
     }
@@ -253,7 +256,8 @@ function encodeNumber({ value, format: formatSpec }) {
 
     const format = resolveFormat(formatSpec);
     const numericValue = parseValueInput(value);
-    const encoded = format.encode(numericValue);
+    const encodeOptions = roundingMode ? { roundingMode } : {};
+    const encoded = format.encode(numericValue, encodeOptions);
     const stats = buildStats(format, encoded);
 
     return { content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }] };
@@ -319,7 +323,7 @@ function extractComponents(binary, format) {
 /**
  * convert_format – Convert a value between two formats.
  */
-function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec }) {
+function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec, roundingMode }) {
     if (value === undefined || value === null) {
         throw new Error('Parameter "value" is required.');
     }
@@ -333,13 +337,14 @@ function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec
     const inFmt = resolveFormat(inputSpec);
     const outFmt = resolveFormat(outputSpec);
     const numericValue = parseValueInput(value);
+    const encodeOptions = roundingMode ? { roundingMode } : {};
 
     // Encode in input format, decode to get actual representable value
-    const inputEncoded = inFmt.encode(numericValue);
+    const inputEncoded = inFmt.encode(numericValue, encodeOptions);
     const inputActual = inFmt.decode(inputEncoded.sign, inputEncoded.exponent, inputEncoded.mantissa);
 
     // Re-encode in output format
-    const outputEncoded = outFmt.encode(inputActual);
+    const outputEncoded = outFmt.encode(inputActual, encodeOptions);
     const outputActual = outFmt.decode(outputEncoded.sign, outputEncoded.exponent, outputEncoded.mantissa);
 
     const inputStats = buildStats(inFmt, inputEncoded);
@@ -462,6 +467,13 @@ function buildToolDescriptors() {
                             'For floating-point: { signBits, exponentBits, mantissaBits, bias?, hasInfinity?, hasNaN? }. ' +
                             'For integer: { bits, signed }.',
                     },
+                    roundingMode: {
+                        type: 'string',
+                        description:
+                            'Rounding mode for encoding. Options: "tiesToEven" (default, IEEE 754), ' +
+                            '"tiesToAway", "towardZero", "towardPositive", "towardNegative".',
+                        enum: ['tiesToEven', 'tiesToAway', 'towardZero', 'towardPositive', 'towardNegative'],
+                    },
                 },
                 required: ['value', 'format'],
             },
@@ -513,6 +525,13 @@ function buildToolDescriptors() {
                         type: ['string', 'object'],
                         description:
                             'Target format preset key or custom format object.',
+                    },
+                    roundingMode: {
+                        type: 'string',
+                        description:
+                            'Rounding mode for encoding. Options: "tiesToEven" (default, IEEE 754), ' +
+                            '"tiesToAway", "towardZero", "towardPositive", "towardNegative".',
+                        enum: ['tiesToEven', 'tiesToAway', 'towardZero', 'towardPositive', 'towardNegative'],
                     },
                 },
                 required: ['value', 'inputFormat', 'outputFormat'],

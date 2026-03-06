@@ -240,6 +240,17 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="input-group rounding-mode-group">
+                    <label for="rounding-mode">Rounding Mode:</label>
+                    <select id="rounding-mode" autocomplete="off">
+                        <option value="tiesToEven" selected>Round to Nearest, Ties to Even (IEEE 754 default)</option>
+                        <option value="tiesToAway">Round to Nearest, Ties Away from Zero</option>
+                        <option value="towardZero">Round toward Zero (Truncation)</option>
+                        <option value="towardPositive">Round toward +Infinity (Ceiling)</option>
+                        <option value="towardNegative">Round toward -Infinity (Floor)</option>
+                    </select>
+                </div>
             </section>
 
             <!-- Output Format -->
@@ -411,6 +422,11 @@
                 machine learning and AI (BF16, TF32, FP8 E4M3, FP8 E5M2). Integer formats commonly used in ML quantization are also
                 supported (INT32, INT16, INT8, INT4, and their unsigned variants). Custom formats can be used as well by specifying
                 the number of sign, exponent, and mantissa bits. This tool is mobile-friendly and supports screens of all sizes.
+            </p>
+            <p>
+                When converting between formats, you can choose from the five IEEE 754 rounding modes: round to nearest (ties to even),
+                round to nearest (ties away from zero), round toward zero (truncation), round toward +infinity (ceiling), and
+                round toward &minus;infinity (floor). The default is ties to even, which is the standard IEEE 754 rounding mode.
             </p>
 
             <h3>How to Use</h3>
