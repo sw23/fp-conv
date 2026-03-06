@@ -4,8 +4,8 @@
  * https://github.com/sw23/fp-conv/blob/main/LICENSE
  ****************************************************************/
 
-/* global FloatingPoint, Integer, FORMATS */
-// UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
+/* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES */
+// UI code - requires FloatingPoint, Integer, FORMATS, and ROUNDING_MODES from floating-point.js
 
 // Application State
 let currentFormat = new FloatingPoint(1, 8, 23);
@@ -14,6 +14,7 @@ let currentValue = 3.140625;
 let currentEncoded = null;
 let currentInputFormatKey = null;  // Track if an integer preset is active
 let currentOutputFormatKey = null; // Track if an integer preset is active
+let currentRoundingMode = 'tiesToEven';
 
 // Helper functions to show/hide format controls for integer vs floating-point
 function updateInputFormatControlsVisibility(isInteger) {
@@ -118,6 +119,12 @@ function setupEventListeners() {
 
     // Hex input
     document.getElementById('input-hex-input').addEventListener('input', handleHexInput);
+
+    // Rounding mode
+    document.getElementById('rounding-mode').addEventListener('change', (e) => {
+        currentRoundingMode = e.target.value;
+        updateValue();
+    });
 }
 
 function loadInputPreset(formatKey) {
@@ -330,7 +337,7 @@ function updateOutputFormat() {
 }
 
 function updateValue() {
-    currentEncoded = currentFormat.encode(currentValue);
+    currentEncoded = currentFormat.encode(currentValue, { roundingMode: currentRoundingMode });
     updateRepresentation();
     updateOutput();
     updateActiveValuePreset();
@@ -878,7 +885,7 @@ function updateOutput() {
     );
     
     // Encode the input format's actual value into the output format
-    const outputEncoded = outputFormat.encode(inputValue);
+    const outputEncoded = outputFormat.encode(inputValue, { roundingMode: currentRoundingMode });
     const outputValue = outputFormat.decode(
         outputEncoded.sign,
         outputEncoded.exponent,
