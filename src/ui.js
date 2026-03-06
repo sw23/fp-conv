@@ -4,8 +4,8 @@
  * https://github.com/sw23/fp-conv/blob/main/LICENSE
  ****************************************************************/
 
-/* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES */
-// UI code - requires FloatingPoint, Integer, FORMATS, and ROUNDING_MODES from floating-point.js
+/* global FloatingPoint, Integer, FORMATS */
+// UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
 
 // Application State
 let currentFormat = new FloatingPoint(1, 8, 23);

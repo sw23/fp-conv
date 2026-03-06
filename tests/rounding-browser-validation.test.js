@@ -8,7 +8,7 @@
  * - Negative value symmetry
  */
 
-const { FloatingPoint, Integer, FORMATS, ROUNDING_MODES } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, ROUNDING_MODES } = require('../lib/floating-point.js');
 
 const fp32 = new FloatingPoint(1, 8, 23);
 const fp16 = new FloatingPoint(1, 5, 10);
