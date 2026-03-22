@@ -178,6 +178,17 @@ describe('classifyValue', () => {
         expect(classifyValue(fmt, 0, 0, 0)).toBe('+Zero');
         expect(classifyValue(fmt, 0, 0, 10)).toBe('Fixed-point');
     });
+
+    test('classifies maxExponent as Normal when no special values', () => {
+        const fmt = new FloatingPoint(1, 3, 2, { hasInfinity: false, hasNaN: false, bias: 3 });
+        // maxExponent=7, mantissa=3 — no special values, so it's Normal
+        expect(classifyValue(fmt, 0, 7, 3)).toBe('Normal');
+    });
+
+    test('classifies negative fixed-point zero', () => {
+        const fmt = new FloatingPoint(1, 0, 7);
+        expect(classifyValue(fmt, 1, 0, 0)).toBe('-Zero');
+    });
 });
 
 // ── mantissaDecimal ───────────────────────────────────────────────
@@ -447,6 +458,25 @@ describe('encodeNumber', () => {
         expect(stats.type).toBe('Normal');
     });
 
+    test('encodes with explicit rounding mode', () => {
+        const result = encodeNumber({ value: 1.5, format: 'fp16', roundingMode: 'towardZero' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats.actualValue).toBe(1.5); // 1.5 is exact in FP16
+    });
+
+    test('encodes value=0 (falsy but valid)', () => {
+        const result = encodeNumber({ value: 0, format: 'fp32' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats.actualValue).toBe(0);
+        expect(stats.type).toBe('+Zero');
+    });
+
+    test('encodes hex string value', () => {
+        const result = encodeNumber({ value: '0xFF', format: 'uint8' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats.actualValue).toBe(255);
+    });
+
     test('throws when value is missing', () => {
         expect(() => encodeNumber({ format: 'fp32' })).toThrow(/value/);
     });
@@ -517,6 +547,10 @@ describe('decodeBits', () => {
 
     test('throws on invalid bits', () => {
         expect(() => decodeBits({ bits: 'xyz', format: 'fp32' })).toThrow(/binary string/);
+    });
+
+    test('throws on invalid hex in bits', () => {
+        expect(() => decodeBits({ bits: '0xZZZZ', format: 'fp32' })).toThrow(/Invalid hex/);
     });
 
     test('throws when bits is missing', () => {
@@ -626,6 +660,40 @@ describe('convertFormat', () => {
         expect(data.output.actualValue).toBe(1.5);
     });
 
+    test('converts with explicit rounding mode', () => {
+        const result = convertFormat({
+            value: 1.3,
+            inputFormat: 'fp32',
+            outputFormat: 'fp16',
+            roundingMode: 'towardZero',
+        });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.output).toBeDefined();
+        expect(data.precisionLoss).toBeDefined();
+    });
+
+    test('converts integer to integer with overflow', () => {
+        const result = convertFormat({
+            value: 200,
+            inputFormat: 'uint8',
+            outputFormat: 'int8',
+        });
+        const data = JSON.parse(result.content[0].text);
+        // 200 saturates to 127 in int8
+        expect(data.output.actualValue).toBe(127);
+        expect(data.precisionLoss.lossless).toBe(false);
+    });
+
+    test('converts negative subnormal across formats', () => {
+        const result = convertFormat({
+            value: -0.00001,
+            inputFormat: 'fp32',
+            outputFormat: 'fp16',
+        });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.output.sign).toBe(1);
+    });
+
     test('throws when value is missing', () => {
         expect(() => convertFormat({ inputFormat: 'fp32', outputFormat: 'fp16' })).toThrow(/value/);
     });
@@ -701,6 +769,30 @@ describe('getFormatInfo', () => {
         expect(info.exponentBits).toBe(0);
         expect(info.maxValue).toBeDefined();
         expect(info.minValue).toBeDefined();
+    });
+
+    test('returns info for FP8_E8M0 (0 mantissa bits)', () => {
+        const result = getFormatInfo({ format: 'fp8_e8m0' });
+        const info = JSON.parse(result.content[0].text);
+
+        expect(info.type).toBe('floating-point');
+        expect(info.signBits).toBe(0);
+        expect(info.exponentBits).toBe(8);
+        expect(info.mantissaBits).toBe(0);
+        expect(info.maxNormal).toBeDefined();
+        expect(info.minNormal).toBeDefined();
+        // No subnormals when mantissaBits=0
+        expect(info.maxSubnormal).toBeUndefined();
+        expect(info.minSubnormal).toBeUndefined();
+    });
+
+    test('returns info for format without infinity or NaN', () => {
+        const result = getFormatInfo({ format: 'fp4_e2m1' });
+        const info = JSON.parse(result.content[0].text);
+
+        expect(info.hasInfinity).toBe(false);
+        expect(info.hasNaN).toBe(false);
+        expect(info.maxNormal).toBeDefined();
     });
 
     test('throws when format is missing', () => {

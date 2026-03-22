@@ -15,6 +15,7 @@
     <meta name="author" content="Spencer Williams">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#2563eb">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'; manifest-src data:;">
     <link rel="canonical" href="https://sw23.github.io/fp-conv/">
 
     <!-- Favicon -->
@@ -76,7 +77,7 @@
     </script>
 
     <link rel="stylesheet" href="style.css">
-    <script src="lib/floating-point.js"></script>
+    <script src="lib/floating-point.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -208,7 +209,7 @@
 
                 <div class="rep-group">
                     <label for="input-hex-input">Hexadecimal:</label>
-                    <input type="text" id="input-hex-input" class="input-display" autocomplete="off" value="0x00000000" placeholder="0x00000000">
+                    <input type="text" id="input-hex-input" class="input-display" autocomplete="off" value="0x00000000" placeholder="0x00000000" pattern="0[xX][0-9a-fA-F]+">
                 </div>
 
                 <div class="components">
@@ -498,7 +499,7 @@
         </footer>
     </div>
 
-    <script src="src/ui.js"></script>
-    <script src="src/webmcp.js"></script>
+    <script src="src/ui.js" defer></script>
+    <script src="src/webmcp.js" defer></script>
 </body>
 </html>

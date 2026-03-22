@@ -1,8 +1,5 @@
-/****************************************************************
- * Copyright 2025 Spencer Williams
- * Use of this source code is governed by an MIT license:
- * https://github.com/sw23/fp-conv/blob/main/LICENSE
- ****************************************************************/
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
 
 /* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES */
 // WebMCP integration - requires FloatingPoint, Integer, FORMATS, and ROUNDING_MODES from floating-point.js
@@ -56,8 +53,8 @@ function resolveFormat(formatSpec) {
         if (formatSpec.isInteger || (formatSpec.bits !== undefined && formatSpec.exponentBits === undefined)) {
             const bits = formatSpec.bits;
             const signed = formatSpec.signed !== undefined ? formatSpec.signed : true;
-            if (typeof bits !== 'number' || bits < 1 || bits > 64) {
-                throw new Error('Integer format "bits" must be a number between 1 and 64.');
+            if (!Number.isInteger(bits) || bits < 1 || bits > 64) {
+                throw new Error('Integer format "bits" must be an integer between 1 and 64.');
             }
             return new _Integer(bits, signed);
         }
@@ -69,6 +66,16 @@ function resolveFormat(formatSpec) {
 
         if (exponentBits === undefined || mantissaBits === undefined) {
             throw new Error('Custom floating-point format requires "exponentBits" and "mantissaBits".');
+        }
+
+        if (!Number.isInteger(signBits) || signBits < 0 || signBits > 1) {
+            throw new Error('"signBits" must be 0 or 1.');
+        }
+        if (!Number.isInteger(exponentBits) || exponentBits < 0) {
+            throw new Error('"exponentBits" must be a non-negative integer.');
+        }
+        if (!Number.isInteger(mantissaBits) || mantissaBits < 0) {
+            throw new Error('"mantissaBits" must be a non-negative integer.');
         }
 
         return new _FloatingPoint(signBits, exponentBits, mantissaBits, {
@@ -305,7 +312,7 @@ function decodeBits({ bits, format: formatSpec }) {
  */
 function extractComponents(binary, format) {
     if (format.isInteger) {
-        return { sign: 0, exponent: 0, mantissa: parseInt(binary, 2) || 0 };
+        return { sign: 0, exponent: 0, mantissa: Number(BigInt('0b' + binary)) };
     }
     let idx = 0;
     const sign = format.signBits ? parseInt(binary.substring(idx, idx + format.signBits), 2) : 0;
@@ -315,7 +322,7 @@ function extractComponents(binary, format) {
         : 0;
     idx += format.exponentBits;
     const mantissa = format.mantissaBits > 0
-        ? parseInt(binary.substring(idx, idx + format.mantissaBits), 2)
+        ? Number(BigInt('0b' + binary.substring(idx, idx + format.mantissaBits)))
         : 0;
     return { sign, exponent, mantissa };
 }

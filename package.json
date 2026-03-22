@@ -3,6 +3,17 @@
   "version": "1.0.0",
   "description": "Interactive tool for converting and visualizing floating-point numbers across standard and custom formats. Convert between FP32, FP16, BF16, TF32, FP8, etc. while inspecting binary representations and precision loss.",
   "main": "lib/floating-point.js",
+  "exports": {
+    ".": "./lib/floating-point.js"
+  },
+  "files": [
+    "lib/",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
@@ -24,7 +35,7 @@
     "ieee-754"
   ],
   "author": "Spencer Williams",
-  "license": "Apache-2.0",
+  "license": "MIT",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/sw23/fp-conv/issues"
