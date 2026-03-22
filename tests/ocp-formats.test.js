@@ -504,9 +504,16 @@ describe('OCP FP8 E4M3 Format', () => {
     expect(result.isNaN).toBe(true);
   });
 
-  test('decodes NaN', () => {
-    const value = fp8.decode(0, 15, 1);
+  test('decodes NaN (only all-ones mantissa)', () => {
+    // Only mantissa=7 (all ones) at maxExponent is NaN
+    const value = fp8.decode(0, 15, 7);
     expect(value).toBeNaN();
+
+    // Non-max mantissa at maxExponent should be normal numbers, not NaN
+    const val1 = fp8.decode(0, 15, 1);
+    expect(val1).toBe(288); // 2^8 * (1 + 1/8)
+    const val6 = fp8.decode(0, 15, 6);
+    expect(val6).toBe(448); // 2^8 * (1 + 6/8) = 256 * 1.75
   });
 
   test('maxExponent with mantissa=0 is NOT Infinity, it is max normal', () => {
@@ -519,13 +526,14 @@ describe('OCP FP8 E4M3 Format', () => {
     expect(value).toBe(256);
   });
 
-  test('encoding Infinity saturates to max normal (maxExponent, 0)', () => {
+  test('encoding Infinity saturates to max normal (maxExponent, maxMantissa-1)', () => {
     const result = fp8.encode(Infinity);
     expect(result.isInfinite).toBe(false);
     expect(result.isNormal).toBe(true);
-    // Max normal for hasNaN + !hasInfinity: (maxExponent, 0) since non-zero mantissa = NaN
+    // Max normal for hasNaN + !hasInfinity: (maxExponent, maxMantissa-1)
+    // since only all-ones mantissa at maxExponent is NaN
     expect(result.exponent).toBe(15);
-    expect(result.mantissa).toBe(0);
+    expect(result.mantissa).toBe(6);
   });
 
   test('getInfinity throws error', () => {
@@ -539,21 +547,18 @@ describe('OCP FP8 E4M3 Format', () => {
   });
 
   test('encodes max normal value (448)', () => {
-    // Max normal: E=1110 (14), M=111 (7) -> 2^(14-7) * 1.875 = 128 * 1.875 = 240
-    // Wait, if maxExponent is normal, then: E=1111 (15), M=111 (7) -> 2^(15-7) * 1.875 = 256 * 1.875 = 480
-    // But E=15,M!=0 is NaN, so max is E=15,M=111 but that would be NaN...
-    // Actually for E4M3 OCP: maxNormal should be E=14 with all mantissa bits
-    const result = fp8.encode(240);
-    expect(result.exponent).toBe(14);
-    expect(result.mantissa).toBe(7);
+    // Max normal: E=1111 (15), M=110 (6) -> 2^(15-7) * (1 + 6/8) = 256 * 1.75 = 448
+    const result = fp8.encode(448);
+    expect(result.exponent).toBe(15);
+    expect(result.mantissa).toBe(6);
     expect(result.isNormal).toBe(true);
   });
 
   test('overflow saturates correctly', () => {
     const result = fp8.encode(1000);
-    // Saturates to max normal: (maxExponent, 0) = (15, 0) = 256
+    // Saturates to max normal: (maxExponent, maxMantissa-1) = (15, 6) = 448
     expect(result.exponent).toBe(15);
-    expect(result.mantissa).toBe(0);
+    expect(result.mantissa).toBe(6);
     expect(result.isNormal).toBe(true);
   });
 });

@@ -1,8 +1,5 @@
-/****************************************************************
- * Copyright 2025 Spencer Williams
- * Use of this source code is governed by an MIT license:
- * https://github.com/sw23/fp-conv/blob/main/LICENSE
- ****************************************************************/
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
 
 /* global FloatingPoint, Integer, FORMATS */
 // UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
@@ -113,7 +110,12 @@ function setupEventListeners() {
 
     // Value input
     document.getElementById('input-decimal-input').addEventListener('input', (e) => {
-        currentValue = parseFloat(e.target.value) || 0;
+        const parsed = parseFloat(e.target.value);
+        if (Number.isNaN(parsed)) {
+            currentValue = /^\s*-?nan\s*$/i.test(e.target.value) ? NaN : 0;
+        } else {
+            currentValue = parsed;
+        }
         updateValue();
     });
 
@@ -475,8 +477,8 @@ function handleBinaryCheckboxChange(e) {
         label.textContent = binaryString[i];
     });
 
-    // Convert binary to integer
-    const value = parseInt(binaryString, 2) || 0;
+    // Convert binary to integer safely
+    const value = binaryString === '' ? 0 : Number(BigInt('0b' + binaryString));
 
     // Update the current encoded value
     if (section === 'sign') {
@@ -521,12 +523,12 @@ function handleHexInput(e) {
         return;
     }
 
-    // Convert hex to binary
-    const binary = parseInt(hexValue, 16).toString(2).padStart(currentFormat.totalBits, '0');
+    // Convert hex to binary (BigInt-safe for >53 bits)
+    const binary = BigInt('0x' + hexValue).toString(2).padStart(currentFormat.totalBits, '0');
 
     // Handle integer formats
     if (currentFormat.isInteger) {
-        const mantissa = parseInt(binary, 2);
+        const mantissa = Number(BigInt('0b' + binary));
         currentEncoded = { sign: 0, exponent: 0, mantissa };
         currentValue = currentFormat.decode(0, 0, mantissa);
         
@@ -545,9 +547,9 @@ function handleHexInput(e) {
     let bitIndex = 0;
     const sign = currentFormat.signBits ? parseInt(binary.substring(bitIndex, bitIndex + currentFormat.signBits), 2) : 0;
     bitIndex += currentFormat.signBits;
-    const exponent = parseInt(binary.substring(bitIndex, bitIndex + currentFormat.exponentBits), 2);
+    const exponent = currentFormat.exponentBits ? parseInt(binary.substring(bitIndex, bitIndex + currentFormat.exponentBits), 2) : 0;
     bitIndex += currentFormat.exponentBits;
-    const mantissa = parseInt(binary.substring(bitIndex, bitIndex + currentFormat.mantissaBits), 2);
+    const mantissa = currentFormat.mantissaBits > 0 ? Number(BigInt('0b' + binary.substring(bitIndex, bitIndex + currentFormat.mantissaBits))) : 0;
 
     // Update current encoded
     currentEncoded = { sign, exponent, mantissa };
@@ -589,20 +591,28 @@ function determineFloatType(format, sign, exponent, mantissa) {
     }
 
     if (exponent === format.maxExponent) {
-        if (mantissa === 0) {
+        if (format.hasInfinity && mantissa === 0) {
             return sign ? '-Infinity' : '+Infinity';
-        } else {
-            return 'NaN';
         }
-    } else if (exponent === 0) {
+        if (format.hasNaN) {
+            const maxMant = format.mantissaBits > 0 ? Math.pow(2, format.mantissaBits) - 1 : 0;
+            if (format.hasInfinity ? mantissa !== 0 : mantissa === maxMant) {
+                return 'NaN';
+            }
+        }
+        // Not a special value — it's a normal number at maxExponent
+        return 'Normal';
+    }
+
+    if (exponent === 0) {
         if (mantissa === 0) {
             return sign ? '-Zero' : '+Zero';
         } else {
             return 'Subnormal';
         }
-    } else {
-        return 'Normal';
     }
+
+    return 'Normal';
 }
 
 function calculateMantissaDecimal(format, exponent, mantissa) {
@@ -615,11 +625,11 @@ function calculateMantissaDecimal(format, exponent, mantissa) {
         return exponent === 0 ? 0 : 1.0;
     }
     return exponent === 0 ?
-        mantissa / (1 << format.mantissaBits) :
-        1.0 + mantissa / (1 << format.mantissaBits);
+        mantissa / Math.pow(2, format.mantissaBits) :
+        1.0 + mantissa / Math.pow(2, format.mantissaBits);
 }
 
-function formatExponentActual(format, exponent) {
+function formatExponentActual(format, exponent, mantissa) {
     // Integer formats don't have exponents
     if (format.isInteger) {
         return 'N/A';
@@ -631,7 +641,14 @@ function formatExponentActual(format, exponent) {
     if (exponent === 0) {
         return `1 - ${format.bias} = ${1 - format.bias}`;
     } else if (exponent === format.maxExponent) {
-        return 'Special';
+        // Check if this specific encoding is a special value (Infinity or NaN)
+        const isInf = format.hasInfinity && mantissa === 0;
+        const maxMant = format.mantissaBits > 0 ? Math.pow(2, format.mantissaBits) - 1 : 0;
+        const isNaN_ = format.hasNaN && (format.hasInfinity ? mantissa !== 0 : mantissa === maxMant);
+        if (isInf || isNaN_) {
+            return 'Special';
+        }
+        return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
     } else {
         return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
     }
@@ -644,7 +661,7 @@ function updateComponentsDisplay(format, encoded, idPrefix) {
         format.signBits ? sign : 'N/A';
     document.getElementById(`${idPrefix}-comp-exp-biased`).textContent = exponent;
     document.getElementById(`${idPrefix}-comp-exp-actual`).textContent =
-        formatExponentActual(format, exponent);
+        formatExponentActual(format, exponent, mantissa);
     document.getElementById(`${idPrefix}-comp-type`).textContent =
         determineFloatType(format, sign, exponent, mantissa);
     document.getElementById(`${idPrefix}-comp-mantissa-dec`).textContent =
@@ -664,14 +681,14 @@ function loadValuePreset(valueKey) {
             currentEncoded = {
                 sign: 0,
                 exponent: 0,
-                mantissa: (1 << currentFormat.bits) - 1,
+                mantissa: Math.pow(2, currentFormat.bits) - 1,
                 isInteger: true
             };
         } else {
             currentEncoded = {
                 sign: currentFormat.signBits ? 1 : 0,
                 exponent: currentFormat.maxExponent,
-                mantissa: (1 << currentFormat.mantissaBits) - 1
+                mantissa: Math.pow(2, currentFormat.mantissaBits) - 1
             };
         }
         currentValue = currentFormat.decode(
@@ -713,14 +730,11 @@ function loadValuePreset(valueKey) {
             case 'one':
                 currentValue = 1;
                 break;
-            case 'max-norm':
-                // Maximum normal number: all exponent bits 1 except max, all mantissa bits 1
-                currentValue = currentFormat.decode(
-                    0,
-                    currentFormat.maxExponent - 1,
-                    (1 << currentFormat.mantissaBits) - 1
-                );
+            case 'max-norm': {
+                const maxNormal = currentFormat.getMaxNormal(false);
+                currentValue = currentFormat.decode(maxNormal.sign, maxNormal.exponent, maxNormal.mantissa);
                 break;
+            }
             case 'min-norm':
                 // Minimum normal number: exponent = 1, mantissa = 0
                 currentValue = currentFormat.decode(0, 1, 0);
@@ -730,7 +744,7 @@ function loadValuePreset(valueKey) {
                 currentValue = currentFormat.decode(
                     0,
                     0,
-                    (1 << currentFormat.mantissaBits) - 1
+                    Math.pow(2, currentFormat.mantissaBits) - 1
                 );
                 break;
             case 'min-subnorm':
@@ -775,19 +789,17 @@ function getPresetValue(valueKey, format) {
             return 0;
         case 'one':
             return 1;
-        case 'max-norm':
-            return format.decode(
-                0,
-                format.maxExponent - 1,
-                (1 << format.mantissaBits) - 1
-            );
+        case 'max-norm': {
+            const maxNormal = format.getMaxNormal(false);
+            return format.decode(maxNormal.sign, maxNormal.exponent, maxNormal.mantissa);
+        }
         case 'min-norm':
             return format.decode(0, 1, 0);
         case 'max-subnorm':
             return format.decode(
                 0,
                 0,
-                (1 << format.mantissaBits) - 1
+                Math.pow(2, format.mantissaBits) - 1
             );
         case 'min-subnorm':
             return format.decode(0, 0, 1);
@@ -817,13 +829,13 @@ function valuesMatch(a, b, format) {
 function isAllOnesMatch(encoded, format) {
     // Check if encoded value has all bits set to 1
     if (format.isInteger) {
-        const expectedMantissa = (1 << format.bits) - 1;
+        const expectedMantissa = Math.pow(2, format.bits) - 1;
         return encoded.mantissa === expectedMantissa;
     }
     
     const expectedSign = format.signBits ? 1 : 0;
     const expectedExponent = format.maxExponent;
-    const expectedMantissa = (1 << format.mantissaBits) - 1;
+    const expectedMantissa = Math.pow(2, format.mantissaBits) - 1;
     
     return encoded.sign === expectedSign &&
            encoded.exponent === expectedExponent &&
@@ -932,7 +944,9 @@ function updateOutput() {
 
     // Calculate precision loss - compare actual decoded values from both formats
     const loss = Math.abs(inputValue - outputValue);
-    const relativeLoss = inputValue !== 0 ? (loss / Math.abs(inputValue) * 100).toFixed(6) : '0';
+    const relativeLoss = (inputValue !== 0 && isFinite(inputValue))
+        ? (loss / Math.abs(inputValue) * 100).toFixed(6)
+        : '0';
 
     // Show/hide precision loss based on whether there's actual loss
     const precisionLossElement = document.querySelector('.precision-loss');

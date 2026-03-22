@@ -287,13 +287,13 @@ describe('FP32 → FP8 E4M3 rounding', () => {
         });
     });
 
-    // FP8 E4M3 max normal = 256 (exp=15, mant=0; non-zero mantissa at maxExp is NaN)
-    describe('overflow 500 (above max=256, no infinity)', () => {
-        test('towardZero → 256 (clamped to max)', () => {
-            expect(convert(500, fp32, fp8e4m3, 'towardZero')).toBe(256);
+    // FP8 E4M3 max normal = 448 (exp=15, mant=6; only all-ones mantissa at maxExp is NaN)
+    describe('overflow 500 (above max=448, no infinity)', () => {
+        test('towardZero → 448 (clamped to max)', () => {
+            expect(convert(500, fp32, fp8e4m3, 'towardZero')).toBe(448);
         });
-        test('towardNegative → 256', () => {
-            expect(convert(500, fp32, fp8e4m3, 'towardNegative')).toBe(256);
+        test('towardNegative → 448', () => {
+            expect(convert(500, fp32, fp8e4m3, 'towardNegative')).toBe(448);
         });
     });
 });

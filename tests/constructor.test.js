@@ -24,4 +24,27 @@ describe('FloatingPoint Constructor', () => {
     expect(fixed.bias).toBe(0);
     expect(fixed.maxExponent).toBe(0);
   });
+
+  test('accepts boundary values for all parameters', () => {
+    expect(() => new FloatingPoint(0, 0, 0)).not.toThrow();
+    expect(() => new FloatingPoint(1, 15, 112)).not.toThrow();
+  });
+
+  test('rejects invalid signBits', () => {
+    expect(() => new FloatingPoint(2, 8, 23)).toThrow(RangeError);
+    expect(() => new FloatingPoint(-1, 8, 23)).toThrow(RangeError);
+    expect(() => new FloatingPoint(0.5, 8, 23)).toThrow(RangeError);
+  });
+
+  test('rejects invalid exponentBits', () => {
+    expect(() => new FloatingPoint(1, -1, 23)).toThrow(RangeError);
+    expect(() => new FloatingPoint(1, 16, 23)).toThrow(RangeError);
+    expect(() => new FloatingPoint(1, 1.5, 23)).toThrow(RangeError);
+  });
+
+  test('rejects invalid mantissaBits', () => {
+    expect(() => new FloatingPoint(1, 8, -1)).toThrow(RangeError);
+    expect(() => new FloatingPoint(1, 8, 113)).toThrow(RangeError);
+    expect(() => new FloatingPoint(1, 8, 2.5)).toThrow(RangeError);
+  });
 });

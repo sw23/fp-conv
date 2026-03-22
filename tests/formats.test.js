@@ -113,6 +113,128 @@ describe('FloatingPoint Format Tests', () => {
     });
   });
 
+  describe('FP64', () => {
+    let fp64;
+
+    beforeEach(() => {
+      fp64 = new FloatingPoint(1, 11, 52);
+    });
+
+    test('has correct properties', () => {
+      expect(fp64.totalBits).toBe(64);
+      expect(fp64.bias).toBe(1023);
+      expect(fp64.maxExponent).toBe(2047);
+    });
+
+    test('encodes and decodes 1.0', () => {
+      const encoded = fp64.encode(1.0);
+      expect(encoded.sign).toBe(0);
+      expect(encoded.exponent).toBe(1023);
+      expect(encoded.mantissa).toBe(0);
+
+      const decoded = fp64.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+      expect(decoded).toBe(1.0);
+    });
+
+    test('round-trip preserves high-precision value', () => {
+      const value = 3.141592653589793;
+      const encoded = fp64.encode(value);
+      const decoded = fp64.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+      expect(decoded).toBe(value);
+    });
+
+    test('handles special values', () => {
+      const nan = fp64.encode(NaN);
+      expect(nan.isNaN).toBe(true);
+
+      const inf = fp64.encode(Infinity);
+      expect(inf.isInfinite).toBe(true);
+    });
+  });
+
+  describe('TF32', () => {
+    let tf32;
+
+    beforeEach(() => {
+      tf32 = new FloatingPoint(1, 8, 10);
+    });
+
+    test('has correct properties', () => {
+      expect(tf32.totalBits).toBe(19);
+      expect(tf32.bias).toBe(127);
+      expect(tf32.maxExponent).toBe(255);
+    });
+
+    test('encodes and decodes 1.0', () => {
+      const encoded = tf32.encode(1.0);
+      expect(encoded.sign).toBe(0);
+      expect(encoded.exponent).toBe(127);
+      expect(encoded.mantissa).toBe(0);
+
+      const decoded = tf32.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+      expect(decoded).toBe(1.0);
+    });
+
+    test('has same exponent range as FP32 but more precision than BF16', () => {
+      // TF32 has 10 mantissa bits (like FP16) but 8 exponent bits (like FP32/BF16)
+      const encoded = tf32.encode(1.001953125); // 1 + 2^-9 (representable in 10 mantissa bits)
+      const decoded = tf32.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+      expect(decoded).toBe(1.001953125);
+    });
+  });
+
+  describe('FP8 E8M0', () => {
+    let fp8;
+
+    beforeEach(() => {
+      fp8 = new FloatingPoint(0, 8, 0);
+    });
+
+    test('has correct properties', () => {
+      expect(fp8.totalBits).toBe(8);
+      expect(fp8.signBits).toBe(0);
+      expect(fp8.exponentBits).toBe(8);
+      expect(fp8.mantissaBits).toBe(0);
+      expect(fp8.bias).toBe(127);
+    });
+
+    test('encodes and decodes 1.0', () => {
+      const encoded = fp8.encode(1.0);
+      expect(encoded.exponent).toBe(127);
+      expect(encoded.mantissa).toBe(0);
+
+      const decoded = fp8.decode(0, 127, 0);
+      expect(decoded).toBe(1.0);
+    });
+
+    test('encodes powers of two', () => {
+      const encoded2 = fp8.encode(2.0);
+      expect(fp8.decode(0, encoded2.exponent, 0)).toBe(2.0);
+
+      const encoded05 = fp8.encode(0.5);
+      expect(fp8.decode(0, encoded05.exponent, 0)).toBe(0.5);
+    });
+
+    test('decodes normal value with 0 mantissa bits', () => {
+      // Normal number: 1.0 * 2^(exp - 127)
+      const decoded = fp8.decode(0, 130, 0);
+      expect(decoded).toBe(8.0); // 2^3
+    });
+
+    test('decodes subnormal with 0 mantissa bits', () => {
+      // Subnormal with 0 mantissa bits: mantissaValue is 0
+      const decoded = fp8.decode(0, 0, 0);
+      expect(decoded).toBe(0);
+    });
+
+    test('handles max exponent without special values fallthrough', () => {
+      // FP8_E8M0 has hasInfinity=true, hasNaN=true by default
+      // maxExponent=255, mantissa=0 → Infinity
+      const decoded = fp8.decode(0, 255, 0);
+      expect(decoded).toBe(Infinity);
+    });
+  });
+
   describe('Fixed-point (exponentBits = 0)', () => {
     let fixed;
 

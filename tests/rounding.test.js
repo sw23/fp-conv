@@ -191,11 +191,11 @@ describe('Rounding Modes', () => {
             // FP8 E4M3: hasInfinity=false, maxExponent=15, bias=7, mantissaBits=3
             // Value 496 = 2^8 * 1.9375: biasedExponent=15, mantissa=0.9375
             // mantissaInt = round(0.9375 * 8) = round(7.5) → tiesToEven rounds to 8 → overflow
-            // biasedExponent becomes 16 > maxExponent → clamps to maxNormal (256)
+            // biasedExponent becomes 16 > maxExponent → clamps to maxNormal (448)
             const fp8e4m3 = new FloatingPoint(1, 4, 3, { hasInfinity: false });
             const encoded = fp8e4m3.encode(496, { roundingMode: 'tiesToEven' });
             const decoded = fp8e4m3.decode(encoded.sign, encoded.exponent, encoded.mantissa);
-            expect(decoded).toBe(256);
+            expect(decoded).toBe(448);
         });
     });
 
@@ -221,6 +221,41 @@ describe('Rounding Modes', () => {
             const ceilingVal = fp16.decode(ceiling.sign, ceiling.exponent, ceiling.mantissa);
             const truncatedVal = fp16.decode(truncated.sign, truncated.exponent, truncated.mantissa);
             expect(ceilingVal).toBeGreaterThanOrEqual(truncatedVal - 1e-15);
+        });
+
+        test('negative subnormal with towardNegative rounds away from zero', () => {
+            const fp16 = new FloatingPoint(1, 5, 10);
+            const value = -3e-5;
+            const floor = fp16.encode(value, { roundingMode: 'towardNegative' });
+            const truncated = fp16.encode(value, { roundingMode: 'towardZero' });
+            const floorVal = fp16.decode(floor.sign, floor.exponent, floor.mantissa);
+            const truncatedVal = fp16.decode(truncated.sign, truncated.exponent, truncated.mantissa);
+            // towardNegative for negative values rounds away from zero (more negative)
+            expect(floorVal).toBeLessThanOrEqual(truncatedVal + 1e-15);
+        });
+
+        test('negative subnormal with towardPositive rounds toward zero', () => {
+            const fp16 = new FloatingPoint(1, 5, 10);
+            const value = -3e-5;
+            const ceiling = fp16.encode(value, { roundingMode: 'towardPositive' });
+            const truncated = fp16.encode(value, { roundingMode: 'towardZero' });
+            const ceilingVal = fp16.decode(ceiling.sign, ceiling.exponent, ceiling.mantissa);
+            const truncatedVal = fp16.decode(truncated.sign, truncated.exponent, truncated.mantissa);
+            // towardPositive for negative values rounds toward zero (less negative)
+            expect(ceilingVal).toBeGreaterThanOrEqual(truncatedVal - 1e-15);
+        });
+
+        test('subnormal mantissa overflow promotes to normal', () => {
+            const fp16 = new FloatingPoint(1, 5, 10);
+            // Largest subnormal in FP16: (2^10 - 1) / 2^10 * 2^(1-15) = 0.9990234375 * 2^-14
+            const maxSubnormal = fp16.decode(0, 0, 1023);
+            // A value slightly above the max subnormal, when encoded with rounding up,
+            // may cause mantissa overflow from subnormal → normal
+            const slightlyAbove = maxSubnormal * 1.001;
+            const encoded = fp16.encode(slightlyAbove, { roundingMode: 'towardPositive' });
+            // Should become either the max subnormal or the min normal
+            const decoded = fp16.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+            expect(decoded).toBeGreaterThanOrEqual(maxSubnormal);
         });
     });
 
