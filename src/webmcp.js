@@ -437,7 +437,7 @@ function getFormatInfo({ format: formatSpec }) {
 // ── WebMCP registration ───────────────────────────────────────────
 
 /**
- * Build the array of tool descriptors used by provideContext.
+ * Build the array of tool descriptors used by registerTool.
  */
 function buildToolDescriptors() {
     return [
@@ -451,7 +451,7 @@ function buildToolDescriptors() {
                 properties: {},
                 required: [],
             },
-            execute: () => listFormats(),
+            execute: (_params, _agent) => listFormats(),
         },
         {
             name: 'encode_number',
@@ -484,7 +484,7 @@ function buildToolDescriptors() {
                 },
                 required: ['value', 'format'],
             },
-            execute: (params) => encodeNumber(params),
+            execute: (params, _agent) => encodeNumber(params),
         },
         {
             name: 'decode_bits',
@@ -508,7 +508,7 @@ function buildToolDescriptors() {
                 },
                 required: ['bits', 'format'],
             },
-            execute: (params) => decodeBits(params),
+            execute: (params, _agent) => decodeBits(params),
         },
         {
             name: 'convert_format',
@@ -543,7 +543,7 @@ function buildToolDescriptors() {
                 },
                 required: ['value', 'inputFormat', 'outputFormat'],
             },
-            execute: (params) => convertFormat(params),
+            execute: (params, _agent) => convertFormat(params),
         },
         {
             name: 'get_format_info',
@@ -561,24 +561,30 @@ function buildToolDescriptors() {
                 },
                 required: ['format'],
             },
-            execute: (params) => getFormatInfo(params),
+            execute: (params, _agent) => getFormatInfo(params),
         },
     ];
 }
 
 /**
  * Register tools with the WebMCP API if the browser supports it.
+ * Returns an AbortController that can be used to unregister all tools,
+ * or false if the browser does not support WebMCP.
  */
 function registerWebMCP() {
     if (typeof window === 'undefined' ||
         !window.navigator ||
-        !window.navigator.modelContext) {
+        !window.navigator.modelContext ||
+        typeof window.navigator.modelContext.registerTool !== 'function') {
         return false;
     }
 
+    const controller = new AbortController();
     const tools = buildToolDescriptors();
-    window.navigator.modelContext.provideContext({ tools });
-    return true;
+    for (const tool of tools) {
+        window.navigator.modelContext.registerTool(tool, { signal: controller.signal });
+    }
+    return controller;
 }
 
 // Auto-register when loaded in a browser

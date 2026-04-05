@@ -888,21 +888,39 @@ describe('registerWebMCP', () => {
         expect(registerWebMCP()).toBe(false);
     });
 
-    test('registers tools when window.navigator.modelContext is available', () => {
-        const providedContext = {};
-        // Mock browser environment
+    test('registers tools via registerTool when modelContext is available', () => {
+        const registeredTools = [];
+        // Mock browser environment with registerTool API
         global.window = {
             navigator: {
                 modelContext: {
-                    provideContext: (ctx) => { providedContext.ctx = ctx; },
+                    registerTool: (tool, options) => { registeredTools.push({ tool, options }); },
                 },
             },
         };
 
-        const registered = registerWebMCP();
-        expect(registered).toBe(true);
-        expect(providedContext.ctx).toHaveProperty('tools');
-        expect(providedContext.ctx.tools).toHaveLength(5);
+        const controller = registerWebMCP();
+        expect(controller).toBeInstanceOf(AbortController);
+        expect(registeredTools).toHaveLength(5);
+
+        // Each call should pass a tool object and an options object with a signal
+        for (const { tool, options } of registeredTools) {
+            expect(tool).toHaveProperty('name');
+            expect(tool).toHaveProperty('execute');
+            expect(tool).toHaveProperty('inputSchema');
+            expect(options).toHaveProperty('signal');
+            expect(options.signal).toBeInstanceOf(AbortSignal);
+        }
+
+        // Verify the expected tool names
+        const names = registeredTools.map(r => r.tool.name);
+        expect(names).toEqual(['list_formats', 'encode_number', 'decode_bits', 'convert_format', 'get_format_info']);
+
+        // All signals should be from the same controller
+        const signal = registeredTools[0].options.signal;
+        expect(signal.aborted).toBe(false);
+        controller.abort();
+        expect(signal.aborted).toBe(true);
 
         // Clean up
         delete global.window;
@@ -910,6 +928,14 @@ describe('registerWebMCP', () => {
 
     test('returns false when window.navigator.modelContext is absent', () => {
         global.window = { navigator: {} };
+
+        expect(registerWebMCP()).toBe(false);
+
+        delete global.window;
+    });
+
+    test('returns false when registerTool is not a function', () => {
+        global.window = { navigator: { modelContext: {} } };
 
         expect(registerWebMCP()).toBe(false);
 

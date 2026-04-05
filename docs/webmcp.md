@@ -1,8 +1,8 @@
 # WebMCP API
 
-This tool implements the [WebMCP API proposal](https://github.com/webmachinelearning/webmcp/blob/main/docs/proposal.md) (accessed 2026-02-14) so that AI agents (browser assistants, copilots, etc.) can perform floating-point and integer conversions without manual UI interaction.
+This tool implements the [WebMCP API proposal](https://github.com/webmachinelearning/webmcp/blob/main/docs/proposal.md) (accessed 2026-04-04) so that AI agents (browser assistants, copilots, etc.) can perform floating-point and integer conversions without manual UI interaction.
 
-When the page is loaded in a browser that supports WebMCP, five tools are automatically registered via `navigator.modelContext.provideContext()`:
+When the page is loaded in a browser that supports WebMCP, five tools are automatically registered via `navigator.modelContext.registerTool()`:
 
 ## Tools
 
