@@ -18,8 +18,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "eslint . && npm run lint:html",
+    "lint:fix": "eslint . --fix",
+    "lint:html": "htmlhint index.html 'formats/*.html'"
   },
   "repository": {
     "type": "git",
@@ -45,6 +46,9 @@
     "@eslint/js": "^10.0.1",
     "eslint": "^10.3.0",
     "globals": "^17.6.0",
-    "jest": "^30.3.0"
+    "htmlhint": "^1.9.2",
+    "jest": "^30.3.0",
+    "jest-canvas-mock": "^2.5.2",
+    "jest-environment-jsdom": "^30.4.1"
   }
 }

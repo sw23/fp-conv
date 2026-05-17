@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FP4 E2M1 (OCP) | Floating Point Format Guide</title>
+    <meta name="description" content="Learn how FP4 E2M1 works. A 4-bit floating-point format with just 16 possible values, used in OCP Microscaling for extreme ML quantization.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>FP4 E2M1 - 4-Bit Floating Point</h1>
+            <p class="subtitle">4-bit OCP floating-point format with only 16 possible values</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>FP4 E2M1 packs a floating-point number into just 4 bits. With 1 sign bit, 2 exponent bits, and just 1 mantissa bit, it can represent only 16 distinct values (8 positive, 8 negative including ±0).</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>FP4 E2M1 is defined in the <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP Microscaling Specification</a> as the smallest element format for microscaling blocks. At 4 bits per element, it achieves 8× compression compared to FP32.</p>
+            <p>With only 1 mantissa bit, each power-of-2 interval contains exactly 2 values: X.0 and X.5 (where X is the integer part with the implicit leading 1). For example, between 1 and 2, the only representable values are 1.0 and 1.5.</p>
+            <p>Like other OCP microscaling formats, FP4 E2M1 does <strong>not support infinity or NaN</strong>. All 16 bit patterns map to finite numbers. It's always used with a shared block exponent that extends its effective range.</p>
+
+            <div class="callout callout-tip">
+                <strong>Only 16 values</strong>
+                You can memorize the entire format! The 8 non-negative values are: 0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0. Negative versions mirror these. That's all there is.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Encoding Rules</h2>
+            <h3>Normal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>(exponent - 1)</sup> × (1 + mantissa / 2)</div>
+            <p>With 1 mantissa bit, there are only 2 values per power-of-2 interval: 1.0 and 1.5 (times the power of 2). The bias of 1 is calculated as 2<sup>(<em>e</em>-1)</sup> - 1, where <em>e</em> is the number of exponent bits (2).</p>
+
+            <h3>Subnormal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>0</sup> × (mantissa / 2)</div>
+            <p>The only subnormal value is 0.5 (mantissa = 1).</p>
+
+            <h3>Complete Value Table</h3>
+            <p>Here are all 16 values that FP4 E2M1 can represent:</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Value Visualizer</h2>
+            <p>Click any bit to flip it, drag the slider, or enter a decimal  or hex value. The graphs show how values are distributed across the encoding space.</p>
+            <div id="value-distribution"></div>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 1.5" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x3" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-normal">Min Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-sub">Min Sub</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Dynamic Range & Precision</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>All Representable Values</h2>
+            <p>Since there are only 16 possible bit patterns, here is the complete enumeration:</p>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where FP4 E2M1 Is Used</h2>
+            <ul>
+                <li><strong>OCP Microscaling (MXFP4):</strong> The <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP MX Spec v1.0</a> defines E2M1 as the element type in <a href="https://arxiv.org/pdf/2310.10537" target="_blank" rel="noopener">MXFP4 blocks</a> (32 elements, E8M0 shared scale), achieving 8× compression over FP32.</li>
+                <li><strong>NVIDIA Blackwell (NVFP4):</strong> Blackwell GPUs add native FP4 Tensor Core support. NVIDIA's <a href="https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html" target="_blank" rel="noopener">Transformer Engine</a> implements an NVFP4 training recipe using 16-element blocks with E4M3 scales and stochastic rounding.</li>
+                <li><strong>NVIDIA CUDA:</strong> The <a href="https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/struct____nv__fp4__e2m1.html" target="_blank" rel="noopener">CUDA Math API</a> defines <code>__nv_fp4_e2m1</code> with constructors and conversion operators. <a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/fundamental_types.html" target="_blank" rel="noopener">CUTLASS</a> provides both <code>mx_float4_t</code> (OCP, 32-element blocks) and <code>nv_float4_t</code> (NVIDIA, 16-element blocks).</li>
+                <li><strong>ML frameworks:</strong> A <a href="https://github.com/pytorch/pytorch/issues/146414" target="_blank" rel="noopener">PyTorch RFC</a> proposes <code>torch.float4_e2m1f_x2</code> (2 packed values per byte) with E8M0 block scaling. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX proto</a> defines <code>FLOAT4E2M1</code> with LSB-first packing.</li>
+                <li><strong>AMD and compiler support:</strong> <a href="https://quark.docs.amd.com/latest/pytorch/adv_mx.html" target="_blank" rel="noopener">AMD Quark</a> provides <code>OCP_MXFP4Spec</code> for MXFP4 quantization on ROCm. The <a href="https://mlir.llvm.org/docs/Dialects/AMDGPU/" target="_blank" rel="noopener">MLIR AMDGPU dialect</a> supports <code>f4E2M1FN</code> in WMMA instructions on gfx12/RDNA4.</li>
+                <li><strong>Python libraries:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library provides <code>float4_e2m1fn</code> as a NumPy custom dtype (possible values: 0, 0.5, 1, 1.5, 2, 3, 4, 6).</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'fp4_e2m1',
+            signBits: 1, exponentBits: 2, mantissaBits: 1,
+            bias: 1, hasInfinity: false, hasNaN: false,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['fp6_e2m3', 'fp6_e3m2', 'fp8_e4m3'],
+            valueDistributionId: 'value-distribution',
+            initialValue: 1.5,
+        };
+    </script>
+</body>
+</html>

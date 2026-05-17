@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TF32 (TensorFloat-32) | Floating Point Format Guide</title>
+    <meta name="description" content="Learn how TF32 TensorFloat-32 works. NVIDIA's 19-bit format combining FP32 range with FP16 precision for accelerated matrix math.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>TF32 - TensorFloat-32</h1>
+            <p class="subtitle">NVIDIA's 19-bit hybrid: FP32 range meets FP16 precision for accelerated tensor math</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <p>A TF32 number uses 19 bits divided into three fields:</p>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>TF32 combines the <strong style="color: var(--exponent-color)">8-bit exponent of FP32/BF16</strong> with the <strong style="color: var(--mantissa-color)">10-bit mantissa of FP16</strong>, giving it FP32's range with FP16's precision.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>TF32 (<a href="https://en.wikipedia.org/wiki/TensorFloat-32" target="_blank" rel="noopener">TensorFloat-32</a>) was introduced by <strong>NVIDIA with the Ampere architecture (A100 GPU)</strong> in 2020. Despite the "32" in its name, TF32 is actually a 19-bit format. The name reflects that it is used as a drop-in replacement for FP32 in tensor operations.</p>
+            <p>TF32 is unique because it's <strong>not a storage format</strong>: data is stored in FP32 memory layout, and TF32 is only used internally by Tensor Cores during matrix multiply-accumulate operations. The GPU automatically truncates FP32 inputs to TF32 precision (10 mantissa bits) before computation, then accumulates results in FP32.</p>
+            <p>This gives up to 8× speedup over FP32 matrix math on A100, with negligible accuracy loss for most deep learning workloads. On NVIDIA GPUs, TF32 is enabled by default for <code>torch.matmul</code> and <code>torch.nn.Linear</code>.</p>
+
+            <div class="callout callout-note">
+                <strong>Not a storage format</strong>
+                You'll never see TF32 tensors in memory. TF32 is a compute mode: the GPU truncates FP32 inputs on-the-fly during Tensor Core operations. Inputs and outputs remain in FP32 format.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Encoding Rules</h2>
+            <h3>Normal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>(exponent - 127)</sup> × (1 + mantissa / 2<sup>10</sup>)</div>
+            <p>TF32 follows FP32's rules with the exponent, but with only 10 mantissa bits (like FP16). The bias of 127 is calculated as 2<sup>(<em>e</em>-1)</sup> - 1, where <em>e</em> is the number of exponent bits (8), identical to FP32 and BF16.</p>
+
+            <h3>Subnormal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>-126</sup> × (0 + mantissa / 2<sup>10</sup>)</div>
+
+            <h3>Special Values</h3>
+            <ul>
+                <li><strong>Zero:</strong> Exponent = 0, Mantissa = 0.</li>
+                <li><strong>Infinity:</strong> Exponent = 255, Mantissa = 0.</li>
+                <li><strong>NaN:</strong> Exponent = 255, Mantissa ≠ 0.</li>
+            </ul>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Value Visualizer</h2>
+            <p>Click any bit to flip it, drag the slider, or enter a decimal  or hex value. The graphs show how values are distributed across the encoding space.</p>
+            <div id="value-distribution"></div>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 3.14" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x40490" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-normal">Min Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-sub">Min Sub</button>
+                    <button class="viz-preset-btn" data-preset="inf">+Inf</button>
+                    <button class="viz-preset-btn" data-preset="nan">NaN</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Dynamic Range & Precision</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Special Values & Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where TF32 Is Used</h2>
+            <ul>
+                <li><strong>NVIDIA Tensor Cores (Ampere+):</strong> The <a href="https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html" target="_blank" rel="noopener">Ampere Tuning Guide</a> defines TF32 as the default math mode for A100 and later GPUs. Tensor Cores automatically truncate FP32 inputs to 19-bit TF32, delivering <a href="https://developer.nvidia.com/blog/accelerating-ai-training-with-tf32-tensor-cores/" target="_blank" rel="noopener">up to 10× speedup</a> over V100 FP32 (20× with sparsity) while reading and writing standard FP32 tensors.</li>
+                <li><strong>PyTorch and cuBLAS:</strong> TF32 matmul is enabled by default in PyTorch 1.12+ via <code>torch.backends.cuda.matmul.allow_tf32</code>. The <a href="https://docs.nvidia.com/cuda/cublasdx/requirements_func.html" target="_blank" rel="noopener">cuBLASDx</a> framework accepts the proprietary <code>cublasdx::tfloat32_t</code> type for explicit TF32 matrix kernels.</li>
+                <li><strong>Kernel libraries:</strong> <a href="https://github.com/NVIDIA/cutlass/blob/main/include/cutlass/numeric_types.h" target="_blank" rel="noopener">CUTLASS</a> defines <code>tfloat32_t</code> as a <a href="https://github.com/NVIDIA/cutlass/blob/main/media/docs/cpp/fundamental_types.md" target="_blank" rel="noopener">fundamental numeric type</a>, and the <a href="https://mlir.llvm.org/docs/Dialects/NVVMDialect/" target="_blank" rel="noopener">MLIR NVVM dialect</a> supports TF32 MMA fragment layouts for m16n8k4 and m16n8k8 shapes.</li>
+                <li><strong>PTX ISA:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX instruction set</a> documents <code>.tf32</code> as an alternate floating-point data format with dedicated MMA instruction encodings.</li>
+            </ul>
+            <div class="callout callout-warning">
+                <strong>Not a general-purpose format</strong>
+                TF32 is only used internally by NVIDIA Tensor Cores during specific operations (matmul, convolutions). You cannot store tensors in TF32 or select it as a dtype in frameworks. If you need a 16-bit storage format with similar precision, use FP16 (same 10-bit mantissa) instead.
+            </div>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'tf32',
+            signBits: 1, exponentBits: 8, mantissaBits: 10,
+            hasInfinity: true, hasNaN: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['fp32', 'bf16', 'fp16'],
+            valueDistributionId: 'value-distribution',
+            initialValue: 3.14,
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UINT8 - 8-Bit Unsigned Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 8-bit unsigned integers work. The unsigned byte: pixel colors, raw data, and ML image preprocessing with interactive bit visualizer.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>UINT8 - 8-Bit Unsigned Integer</h1>
+            <p class="subtitle">The unsigned byte: pixel colors, raw binary data, and ML image preprocessing</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>An 8-bit unsigned integer uses all 8 bits for magnitude, giving a range of 0 to 255 (2<sup>8</sup> - 1). It is the <code>unsigned char</code> type in C/C++, <code>byte</code> in C#/Java, and <code>u8</code> in Rust.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>UINT8 is the fundamental unit of byte-addressable memory. Its 256 possible values are sufficient for color channels, character encodings, and raw binary protocols. In machine learning, UINT8 is the standard input format for image data before normalization to float.</p>
+
+            <h3>Common Uses</h3>
+            <ul>
+                <li><strong>Image pixel data:</strong> UINT8 is the standard for 8-bit-per-channel color (0–255 per channel in 24-bit RGB and 32-bit RGBA). Most image formats (JPEG, PNG) store pixel data as UINT8.</li>
+                <li><strong>Character encodings:</strong> ASCII characters, UTF-8 code units, and raw binary protocols are all byte-oriented UINT8 data.</li>
+                <li><strong>ML image preprocessing:</strong> Raw images are loaded as UINT8 tensors, then normalized to FP32 or FP16 (e.g., dividing by 255.0) before model inference.</li>
+                <li><strong>Embedded systems:</strong> 8-bit microcontrollers (AVR/Arduino, PIC) use UINT8 as their native register width.</li>
+            </ul>
+
+            <div class="callout callout-tip">
+                <strong>See also: <a href="int8.html">INT8</a></strong>
+                For the signed variant using two's complement (range -128 to 127), which is the primary format for ML inference quantization.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Key Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>Click any of the 8 bits to flip them. With only 256 possible values, you can explore the entire format.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 255" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0xFF" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where UINT8 Is Used</h2>
+            <ul>
+                <li><strong>Image and video pipelines:</strong> UINT8 is the universal pixel format. Virtually all image decoders (JPEG, PNG, WebP) output UINT8, and GPU texture sampling reads UINT8 channels natively.</li>
+                <li><strong>ML frameworks:</strong> PyTorch provides <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.uint8</code></a> for image tensor storage. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>UINT8 = 2</code> as a core data type.</li>
+                <li><strong>GPU hardware:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> documents <code>.u8x4</code> packed types for unsigned byte operations. <a href="https://docs.nvidia.com/deeplearning/cudnn/archives/cudnn-892/developer-guide/index.html" target="_blank" rel="noopener">cuDNN</a> supports UINT8 in INT8x4 packed tensor formats for inference.</li>
+                <li><strong>Embedded and byte-level data:</strong> 8-bit microcontrollers (AVR/Arduino, PIC) use UINT8 as their native data width. ASCII, UTF-8, and raw binary protocols are all UINT8-oriented.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'uint8',
+            isInteger: true, totalBits: 8, signed: false,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['uint32', 'uint16', 'uint4'],
+            initialValue: 255,
+        };
+    </script>
+</body>
+</html>

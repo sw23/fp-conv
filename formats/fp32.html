@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FP32 (Single Precision) | Floating Point Format Guide</title>
+    <meta name="description" content="Learn how FP32 single-precision floating point works. Interactive bit-level visualizer, encoding rules, dynamic range, and precision details.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>FP32 - Single Precision</h1>
+            <p class="subtitle">IEEE 754 single-precision floating point: the workhorse of general-purpose computing</p>
+        </header>
+
+        <!-- Bit Layout -->
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <p>An FP32 number uses 32 bits divided into three fields:</p>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>The <strong style="color: var(--sign-color)">sign bit</strong> determines positive (0) or negative (1).
+               The <strong style="color: var(--exponent-color)">exponent</strong> is stored with a bias of 127.
+               The <strong style="color: var(--mantissa-color)">mantissa</strong> (also called significand or fraction) stores the fractional part of the number, with an implicit leading 1 for normal numbers.</p>
+        </section>
+
+        <!-- Overview -->
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>FP32, also known as <strong><a href="https://en.wikipedia.org/wiki/Single-precision_floating-point_format" target="_blank" rel="noopener">single precision</a></strong> or <code>float</code>, is defined by the <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank" rel="noopener">IEEE 754</a> standard. It has been the default floating-point type in most programming languages and hardware for decades.</p>
+            <p>With 8 exponent bits, FP32 can represent numbers spanning roughly 80 orders of magnitude (from about 10<sup>-38</sup> to 10<sup>38</sup>). The 23 mantissa bits provide approximately 7.2 decimal digits of precision, which is sufficient for most scientific computing, graphics, and general-purpose applications.</p>
+            <p>FP32 is used everywhere: CPU arithmetic, GPU shaders, physics simulations, audio processing, and as the default training precision for many neural networks. It is the <code>float</code> type in C/C++, Java, and C#, and <code>numpy.float32</code> in Python.</p>
+        </section>
+
+        <!-- Encoding Rules -->
+        <section class="doc-section">
+            <h2>Encoding Rules</h2>
+            <h3>Normal Numbers</h3>
+            <p>For most values, the number is encoded as:</p>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>(exponent - 127)</sup> × (1 + mantissa / 2<sup>23</sup>)</div>
+            <p>The leading <code>1.</code> before the mantissa is <strong>implicit</strong>: it doesn't need to be stored, giving you an extra bit of precision for free. The stored exponent is <em>biased</em> by adding 127, so an actual exponent of 0 is stored as 127. The bias of 127 is calculated as 2<sup>(<em>e</em>-1)</sup> - 1, where <em>e</em> is the number of exponent bits (8).</p>
+
+            <h3>Subnormal Numbers (Denormals)</h3>
+            <p>When the stored exponent is all zeros (biased exponent = 0), the number is <em>subnormal</em>:</p>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>-126</sup> × (0 + mantissa / 2<sup>23</sup>)</div>
+            <p>Subnormals have no implicit leading 1, and use a fixed exponent of -126. They allow "gradual underflow," where numbers can get closer to zero than the smallest normal number, at the cost of losing precision.</p>
+
+            <h3>Special Values</h3>
+            <ul>
+                <li><strong>Zero:</strong> Exponent = 0, Mantissa = 0. Both +0 and -0 exist (sign bit can be 0 or 1).</li>
+                <li><strong>Infinity:</strong> Exponent = 255 (all ones), Mantissa = 0. Positive or negative infinity based on sign bit.</li>
+                <li><strong>NaN (Not a Number):</strong> Exponent = 255, Mantissa ≠ 0. Results from undefined operations like 0/0 or √(-1).</li>
+            </ul>
+
+            <div class="callout callout-tip">
+                <strong>Tip for beginners</strong>
+                Think of the exponent as a "zoom level" and the mantissa as the "detail" at that zoom level. A larger exponent lets you represent bigger (or smaller) numbers, while more mantissa bits give you finer granularity between consecutive values.
+            </div>
+        </section>
+
+        <!-- Dynamic Range & Precision -->
+        <section class="doc-section">
+            <h2>Interactive Value Visualizer</h2>
+            <p>Click any bit to flip it, drag the slider, or enter a decimal  or hex value. The graphs show how values are distributed across the encoding space.</p>
+            <div id="value-distribution"></div>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 3.14" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x40490FDB" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-normal">Min Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-sub">Min Sub</button>
+                    <button class="viz-preset-btn" data-preset="inf">+Inf</button>
+                    <button class="viz-preset-btn" data-preset="nan">NaN</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <!-- Dynamic Range & Precision -->
+        <section class="doc-section">
+            <h2>Dynamic Range & Precision</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <!-- Special Values -->
+        <section class="doc-section">
+            <h2>Special Values & Bit Patterns</h2>
+            <p>Key values and their exact binary representations:</p>
+            <div id="special-table"></div>
+        </section>
+
+        <!-- Comparison -->
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <p>See how FP32 compares to related floating-point formats:</p>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where FP32 Is Used</h2>
+            <ul>
+                <li><strong>GPU and CPU compute:</strong> FP32 (<code>.f32</code>) is the most heavily optimized arithmetic type across all GPU and CPU architectures. The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> uses <code>.f32</code> as the default MMA accumulator output for FP16, BF16, TF32, and FP8 Tensor Core inputs.</li>
+                <li><strong>Mixed-precision training:</strong> NVIDIA's <a href="https://docs.nvidia.com/deeplearning/performance/mixed-precision-training/index.html" target="_blank" rel="noopener">mixed-precision guide</a> defines FP32 as the baseline accumulator and master-weight type. Optimizer states and weight updates are kept in FP32 to preserve fidelity across many small gradient steps.</li>
+                <li><strong>ML frameworks:</strong> FP32 is the <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener">default dtype</a> for tensor creation in PyTorch (<code>torch.float32</code>). The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines it as <code>FLOAT = 1</code>, the first entry in the data type enum.</li>
+                <li><strong>Compiler infrastructure:</strong> The <a href="https://mlir.llvm.org/docs/Dialects/ArithOps/" target="_blank" rel="noopener">MLIR arith dialect</a> uses <code>f32</code> as a core type for arithmetic operations. In <a href="https://github.com/openai/triton/blob/main/python/triton/language/semantic.py" target="_blank" rel="noopener">Triton</a>, lower-precision divisions are automatically upcast to <code>tl.float32</code> to prevent precision loss.</li>
+                <li><strong>Accumulation for low-precision ops:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library recommends FP32 as the accumulation upgrade path for BF16 and FP8 operations (e.g., <code>vals.sum(dtype='float32')</code>).</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'fp32',
+            signBits: 1, exponentBits: 8, mantissaBits: 23,
+            hasInfinity: true, hasNaN: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['fp64', 'fp16', 'bf16'],
+            valueDistributionId: 'value-distribution',
+            initialValue: 3.14,
+        };
+    </script>
+</body>
+</html>

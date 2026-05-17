@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INT4 - 4-Bit Signed Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 4-bit signed integers work. Sub-byte quantization for extreme ML compression with interactive bit visualizer.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>INT4 - 4-Bit Signed Integer</h1>
+            <p class="subtitle">Sub-byte signed integer: extreme quantization for LLM inference and edge deployment</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>A 4-bit integer (also called a <strong>nibble</strong>) stores one of 16 possible values. For <strong>INT4</strong>, <a href="https://en.wikipedia.org/wiki/Two%27s_complement" target="_blank" rel="noopener">two's complement</a> gives the range -8 to 7. For the unsigned variant (0–15), see <a href="uint4.html">UINT4</a>.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>4-bit integers are a <strong>sub-byte format</strong>, meaning two INT4 values can be packed into a single byte. While not a standard hardware data type on most processors, INT4 has become critically important in machine learning for <strong>extreme quantization</strong> of large language models (LLMs).</p>
+            <p>With only 16 possible values, INT4 provides 8× compression over FP32 and 2× over INT8. This makes it possible to run large models (7B, 13B, 70B parameters) on consumer GPUs and mobile devices that would otherwise require enterprise hardware.</p>
+
+            <h3>INT4 in LLM Quantization</h3>
+            <p>Techniques like <strong>GPTQ</strong>, <strong>AWQ</strong>, and <strong>GGML/GGUF Q4</strong> quantize LLM weights to 4 bits. The typical approach:</p>
+            <ol>
+                <li>Group weights into blocks (e.g., 32 or 128 values per block)</li>
+                <li>Compute a per-block scale factor (stored in higher precision)</li>
+                <li>Quantize each weight to the nearest INT4 value</li>
+                <li>At inference time, dequantize on-the-fly: <code>weight = int4_value × scale</code></li>
+            </ol>
+
+            <div class="callout callout-tip">
+                <strong>A nibble = half a byte</strong>
+                A 4-bit value is traditionally called a "nibble" (or "nybble"). One byte contains exactly two nibbles. Each nibble corresponds to one hexadecimal digit (0–F), which is why hex is so convenient for displaying binary data.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>All Representable Values</h2>
+            <p>With only 16 possible bit patterns, here is the complete set:</p>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>With only 4 bits, you can click through every possible value. Try flipping the sign bit (leftmost) to see two's complement in action.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 5" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x5" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Signed</button>
+                    <button class="viz-preset-btn" data-preset="min">Min Signed</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where INT4 Is Used</h2>
+            <ul>
+                <li><strong>NVIDIA Tensor Cores:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> documents <code>.s4</code> packed types for signed 4-bit MMA instructions (m16n8k32, m16n8k64 shapes on Turing/Ampere). <a href="https://developer.nvidia.com/blog/nvidia-ampere-architecture-in-depth/" target="_blank" rel="noopener">A100</a> supports sparse INT4 Tensor Core acceleration for inference.</li>
+                <li><strong>LLM weight quantization:</strong> INT4 is the element type in quantization schemes like <a href="https://github.com/AutoGPTQ/AutoGPTQ" target="_blank" rel="noopener">GPTQ</a>, <a href="https://github.com/mit-han-lab/llm-awq" target="_blank" rel="noopener">AWQ</a>, and GGUF Q4_x formats. These methods store 4-bit weights with group-level scale factors, enabling 7B–70B models to fit on consumer GPUs.</li>
+                <li><strong>TensorRT inference:</strong> <a href="https://docs.nvidia.com/deeplearning/tensorrt/latest/architecture/capabilities.html" target="_blank" rel="noopener">TensorRT</a> lists INT4 as a supported quantized type for weight-only quantization.</li>
+                <li><strong>Model interchange:</strong> The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>INT4</code> with a packing rule of two 4-bit elements per byte (first element in LSB). <a href="https://github.com/NVIDIA/cutlass/issues/1034" target="_blank" rel="noopener">CUTLASS</a> packs eight <code>int4b_t</code> elements into a single 32-bit GPU register.</li>
+                <li><strong>Python libraries:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library provides <code>int4</code> as a narrow signed integer NumPy extension (4-bit, stored in a byte, with defined cast behavior).</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'int4',
+            isInteger: true, totalBits: 4, signed: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['int8', 'int16', 'int32'],
+            initialValue: 5,
+        };
+    </script>
+</body>
+</html>

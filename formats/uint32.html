@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UINT32 - 32-Bit Unsigned Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 32-bit unsigned integers work. Range, bit patterns, and interactive visualizer for the standard unsigned int type.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>UINT32 - 32-Bit Unsigned Integer</h1>
+            <p class="subtitle">The standard unsigned 32-bit type: 4 billion values for sizes, counts, and bit manipulation</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>A 32-bit unsigned integer uses all 32 bits to represent magnitude, with no sign bit. This gives a range of 0 to 4,294,967,295 (2<sup>32</sup> - 1). It is the <code>unsigned int</code> type in C/C++ and <code>u32</code> in Rust.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>UINT32 is the natural type for quantities that are never negative: array sizes, memory addresses, pixel counts, and hash values. By not reserving a bit for the sign, UINT32 doubles the positive range compared to <a href="int32.html">INT32</a>.</p>
+            <p>In systems programming, UINT32 is used for pointer arithmetic, memory-mapped register access, and bitfield manipulation where arithmetic sign semantics are not needed. In graphics, UINT32 stores RGBA pixel values as four packed bytes.</p>
+
+            <h3>Common Uses</h3>
+            <ul>
+                <li><strong>Memory and sizes:</strong> Array lengths, buffer sizes, file offsets, and memory addresses on 32-bit systems.</li>
+                <li><strong>Bit manipulation:</strong> Hash functions (CRC32, MurmurHash), bitfield packing, flags/masks, and color values (0xAARRGGBB).</li>
+                <li><strong>Identifiers:</strong> Database keys, network packet sequence numbers, and unique IDs where negative values have no meaning.</li>
+                <li><strong>Graphics:</strong> Vertex indices for large meshes (>65K vertices), texture dimensions, and pixel buffer sizes.</li>
+            </ul>
+
+            <div class="callout callout-tip">
+                <strong>See also: <a href="int32.html">INT32</a></strong>
+                For the signed variant using two's complement encoding, which trades half the positive range for negative number support.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Key Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>Click any bit to flip it. All 32 bits contribute directly to the unsigned magnitude.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 42" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x0000002A" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where UINT32 Is Used</h2>
+            <ul>
+                <li><strong>ML packed storage:</strong> The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> uses the <code>int32_data</code> field to store packed sub-32-bit types including INT4, UINT4, FP8, FP4, FLOAT16, BFLOAT16, and BOOL - making UINT32 the universal container for narrow-format tensors.</li>
+                <li><strong>GPU accumulators:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> documents <code>.u32</code> as an accumulator type for unsigned integer Tensor Core operations.</li>
+                <li><strong>ML frameworks:</strong> PyTorch provides <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.uint32</code></a> for unsigned 32-bit tensor storage.</li>
+                <li><strong>Graphics and systems:</strong> UINT32 is the standard type for vertex indices in large meshes, RGBA packed colors, CRC checksums, and memory-mapped hardware register access.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'uint32',
+            isInteger: true, totalBits: 32, signed: false,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['uint16', 'uint8', 'uint4'],
+            initialValue: 42,
+        };
+    </script>
+</body>
+</html>

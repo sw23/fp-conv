@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INT8 - 8-Bit Signed Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 8-bit signed integers work. The workhorse of ML quantization with interactive bit visualizer.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>INT8 - 8-Bit Signed Integer</h1>
+            <p class="subtitle">The signed byte: key to ML quantization and inference acceleration</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>An 8-bit integer (one byte) is the fundamental addressable unit in most computer architectures. <strong>INT8</strong> uses <a href="https://en.wikipedia.org/wiki/Two%27s_complement" target="_blank" rel="noopener">two's complement</a> for the range -128 to 127. For the unsigned variant (0–255), see <a href="uint8.html">UINT8</a>.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>The 8-bit integer is perhaps the most fundamental data type in computing. A single byte can represent 256 distinct values, which is sufficient for ASCII characters, pixel color channels, and increasingly, quantized neural network parameters.</p>
+            <p>In machine learning, <strong>INT8 quantization</strong> has become one of the most important techniques for deploying models efficiently. By converting FP32 weights and activations to INT8, you get 4× memory reduction and significantly faster inference on hardware with INT8 support (virtually all modern CPUs and GPUs).</p>
+
+            <h3>INT8 in ML Quantization</h3>
+            <p>ML quantization maps floating-point values to integers using a <strong>scale factor</strong> and optional <strong>zero point</strong>:</p>
+            <div class="formula">quantized_value = round(float_value / scale) + zero_point</div>
+            <p>The scale and zero point are chosen to map the typical range of activations or weights to the INT8 range. This introduces quantization error but typically has minimal impact on model accuracy for well-calibrated models.</p>
+
+            <div class="callout callout-tip">
+                <strong>Why INT8 is so popular for inference</strong>
+                INT8 matrix multiplications are 2-4× faster than FP32 on modern CPUs (via VNNI/AMX instructions) and GPUs. Combined with 4× memory savings, INT8 quantization often gives 2-4× end-to-end speedup with less than 1% accuracy loss on well-quantized models.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Key Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>Click any of the 8 bits to flip them. With only 256 possible values, you can explore the entire format.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 42" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x2A" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Signed</button>
+                    <button class="viz-preset-btn" data-preset="min">Min Signed</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where INT8 Is Used</h2>
+            <ul>
+                <li><strong>NVIDIA Tensor Cores:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> documents <code>.s8x4</code> packed types with MMA shapes (m16n8k16, m16n8k32) for INT8 matrix multiply, accumulating into INT32. <a href="https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/" target="_blank" rel="noopener">H100</a> delivers 2000 INT8 TOPS (4000 with sparsity).</li>
+                <li><strong>Inference engines:</strong> INT8 is the most broadly supported quantization format, with hardware acceleration across <a href="https://docs.nvidia.com/deeplearning/tensorrt/latest/architecture/capabilities.html" target="_blank" rel="noopener">TensorRT</a>, ONNX Runtime, Core ML, and TFLite. <a href="https://docs.nvidia.com/deeplearning/cudnn/archives/cudnn-892/developer-guide/index.html" target="_blank" rel="noopener">cuDNN</a> supports INT8x4/INT8x32 packed tensor formats for Tensor Core inference.</li>
+                <li><strong>OCP Microscaling:</strong> The <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP MX Spec v1.0</a> defines MXINT8 (INT8 elements, 32-element blocks, E8M0 scale). <a href="https://quark.docs.amd.com/latest/pytorch/adv_mx.html" target="_blank" rel="noopener">AMD Quark</a> provides <code>OCP_MXINT8Spec</code> for MXINT8 quantization on ROCm.</li>
+                <li><strong>ML frameworks:</strong> PyTorch provides <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.int8</code></a> for signed 8-bit quantized tensors. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>INT8 = 3</code> as a core data type.</li>
+                <li><strong>Compiler support:</strong> The <a href="https://mlir.llvm.org/docs/Dialects/NVVMDialect/" target="_blank" rel="noopener">MLIR NVVM dialect</a> maps <code>s8</code> types to MMA shapes with i32 accumulator. The <a href="https://mlir.llvm.org/docs/Dialects/AMDGPU/" target="_blank" rel="noopener">AMDGPU dialect</a> supports <code>i8 × i8 → i32</code> signed dot-product (sdot4) operations and WMMA shapes on AMD GPUs.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'int8',
+            isInteger: true, totalBits: 8, signed: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['int32', 'int16', 'int4'],
+            initialValue: 42,
+        };
+    </script>
+</body>
+</html>

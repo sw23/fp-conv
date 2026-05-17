@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UINT16 - 16-Bit Unsigned Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 16-bit unsigned integers work. Range, bit patterns, and interactive visualizer for graphics indices, Unicode, and network ports.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>UINT16 - 16-Bit Unsigned Integer</h1>
+            <p class="subtitle">Compact unsigned 16-bit type: graphics indices, Unicode code units, and network ports</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>A 16-bit unsigned integer uses all 16 bits to represent magnitude, giving a range of 0 to 65,535 (2<sup>16</sup> - 1). It is the <code>unsigned short</code> type in C/C++ and <code>u16</code> in Rust.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>UINT16 is ideal for compact storage of non-negative values that fit within 0–65,535. It uses half the memory of UINT32 while covering a range sufficient for many common applications.</p>
+
+            <h3>Common Uses</h3>
+            <ul>
+                <li><strong>Graphics index buffers:</strong> UINT16 is the standard type for mesh vertex indices in OpenGL and Vulkan, supporting up to 65,535 vertices per draw call at half the memory cost of UINT32.</li>
+                <li><strong>Unicode:</strong> UTF-16 code units are UINT16 values, covering the Basic Multilingual Plane (most common characters) in a single unit.</li>
+                <li><strong>Network protocols:</strong> TCP/UDP port numbers (0–65,535) are stored as UINT16.</li>
+                <li><strong>Sensor data:</strong> 16-bit ADC readings, telemetry values, and fixed-width file format fields.</li>
+            </ul>
+
+            <div class="callout callout-tip">
+                <strong>See also: <a href="int16.html">INT16</a></strong>
+                For the signed variant using two's complement, commonly used for 16-bit PCM audio samples.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Key Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>Click any bit to flip it. All 16 bits contribute directly to the unsigned magnitude.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 1000" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x03E8" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where UINT16 Is Used</h2>
+            <ul>
+                <li><strong>GPU packed operations:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA 9.2</a> introduces <code>.u16x2</code> packed types (two 16-bit unsigned integers in a 32-bit register) with add/sub/min/max and <code>.sat</code> qualifier support.</li>
+                <li><strong>Graphics index buffers:</strong> UINT16 is the standard vertex index type in OpenGL and Vulkan, supporting up to 65,535 vertices per draw call at half the memory cost of UINT32 indices.</li>
+                <li><strong>ML frameworks:</strong> PyTorch provides <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.uint16</code></a>. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>UINT16 = 4</code> as a tensor data type.</li>
+                <li><strong>Unicode and networking:</strong> UTF-16 code units and TCP/UDP port numbers are both UINT16 values, making this the standard type for text processing and network protocol implementations.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'uint16',
+            isInteger: true, totalBits: 16, signed: false,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['uint32', 'uint8', 'uint4'],
+            initialValue: 1000,
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FP6 E3M2 (OCP) | Floating Point Format Guide</title>
+    <meta name="description" content="Learn how FP6 E3M2 works. 6-bit floating point for ultra-low precision ML with 3 exponent bits and 2 mantissa bits.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>FP6 E3M2 - 6-Bit Floating Point</h1>
+            <p class="subtitle">OCP microscaling format: 3 exponent bits, 2 mantissa bits, no infinity or NaN</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>FP6 E3M2 squeezes a floating-point number into just 6 bits. The 3 exponent bits provide a modest range, while the 2 mantissa bits give 4 values per power-of-2 interval.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>FP6 E3M2 is part of the <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP Microscaling (MX) Specification</a>, designed for extreme quantization in machine learning. With only 64 possible bit patterns (6 bits), it represents a tiny subset of real numbers.</p>
+            <p>This format is <strong>never used alone</strong>. It's designed to be used within microscaling blocks, where a shared block exponent provides additional range. The 6-bit element captures the relative differences within a block, while the shared exponent positions the entire block on the number line.</p>
+            <p>FP6 E3M2 has more range than its sibling E2M3 (3 exponent bits vs 2), but less precision (2 mantissa bits vs 3). It does <strong>not support infinity or NaN</strong>, so all 64 bit patterns represent finite numbers (or zero).</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Encoding Rules</h2>
+            <h3>Normal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>(exponent - 3)</sup> × (1 + mantissa / 4)</div>
+            <p>The bias of 3 is calculated as 2<sup>(<em>e</em>-1)</sup> - 1, where <em>e</em> is the number of exponent bits (3).</p>
+
+            <h3>Subnormal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>-2</sup> × (mantissa / 4)</div>
+
+            <h3>Special Values</h3>
+            <ul>
+                <li><strong>Zero:</strong> Exponent = 0, Mantissa = 0.</li>
+                <li><strong>No Infinity:</strong> All exponent patterns represent finite numbers.</li>
+                <li><strong>No NaN:</strong> All bit patterns are valid numbers.</li>
+            </ul>
+
+            <div class="callout callout-note">
+                <strong>All patterns are numbers</strong>
+                Since FP6 E3M2 has no infinity or NaN, every one of its 64 bit patterns (32 positive, 32 negative including ±0) maps to a real number. The maximum exponent (7) represents normal numbers, not special values.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Value Visualizer</h2>
+            <p>Click any bit to flip it, drag the slider, or enter a decimal  or hex value. The graphs show how values are distributed across the encoding space.</p>
+            <div id="value-distribution"></div>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 1.5" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x0E" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-normal">Min Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-sub">Min Sub</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Dynamic Range & Precision</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Special Values & Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where FP6 E3M2 Is Used</h2>
+            <ul>
+                <li><strong>OCP Microscaling (MXFP6):</strong> The <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP MX Spec v1.0</a> defines E3M2 as the wider-range 6-bit element type in <a href="https://arxiv.org/pdf/2310.10537" target="_blank" rel="noopener">MXFP6 blocks</a> (32 elements, E8M0 shared scale). With 3 exponent bits it covers values up to 28 - nearly 4× E2M3's range.</li>
+                <li><strong>NVIDIA CUDA:</strong> The <a href="https://docs.nvidia.com/cuda/cuda-math-api/cuda_math_api/struct____nv__fp6__e3m2.html" target="_blank" rel="noopener">CUDA Math API</a> defines the <code>__nv_fp6_e3m2</code> struct with constructors and rounding conversion operators for device-side sub-byte floating-point operations.</li>
+                <li><strong>Kernel libraries:</strong> <a href="https://docs.nvidia.com/cutlass/latest/media/docs/cpp/fundamental_types.html" target="_blank" rel="noopener">CUTLASS</a> provides <code>float_e3m2_t</code> and <code>mx_float6_t&lt;float_e3m2_t&gt;</code> for MX block-scaled GPU matrix kernels. The <a href="https://mlir.llvm.org/docs/Dialects/AMDGPU/" target="_blank" rel="noopener">MLIR AMDGPU dialect</a> supports <code>f6E3M2FN</code> via <code>scaled_ext_packed_matrix</code> on gfx12+.</li>
+                <li><strong>AMD quantization:</strong> <a href="https://quark.docs.amd.com/latest/pytorch/adv_mx.html" target="_blank" rel="noopener">AMD Quark</a> provides <code>OCP_MXFP6E3M2Spec</code> for quantizing LLMs to MXFP6 E3M2 format using per-block E8M0 scales on ROCm.</li>
+                <li><strong>Python libraries:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library registers <code>float6_e3m2fn</code> as a NumPy dtype extension (6-bit, encoding <code>0bSEEEMM</code>, byte storage, no Inf/NaN). A <a href="https://github.com/pytorch/pytorch/issues/146414" target="_blank" rel="noopener">PyTorch RFC</a> proposes adding <code>torch.float6_e3m2fn</code> to the PT2 stack.</li>
+            </ul>
+            <div class="callout callout-tip">
+                <strong>E3M2 vs E2M3</strong>
+                E3M2 has wider range (max 28 vs 7.5) but fewer distinct values per interval (4 vs 8). Choose E3M2 when your values span a wider range; choose E2M3 when you need finer granularity within a narrower range.
+            </div>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'fp6_e3m2',
+            signBits: 1, exponentBits: 3, mantissaBits: 2,
+            bias: 3, hasInfinity: false, hasNaN: false,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['fp6_e2m3', 'fp8_e4m3', 'fp4_e2m1'],
+            valueDistributionId: 'value-distribution',
+            initialValue: 1.5,
+        };
+    </script>
+</body>
+</html>

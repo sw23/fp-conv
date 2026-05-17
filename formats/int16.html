@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INT16 - 16-Bit Signed Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 16-bit signed integers work. Two's complement encoding, range, and interactive bit visualizer.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>INT16 - 16-Bit Signed Integer</h1>
+            <p class="subtitle">Compact 16-bit signed integer: audio samples, embedded systems, and sensor data</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>A 16-bit integer uses 16 bits to store a whole number. For <strong>INT16</strong> (signed), the most significant bit is the sign bit using <a href="https://en.wikipedia.org/wiki/Two%27s_complement" target="_blank" rel="noopener">two's complement</a>. For the unsigned variant, see <a href="uint16.html">UINT16</a>.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>16-bit integers are widely used where the range of ±32,767 or 0–65,535 is sufficient and memory conservation matters. They are the <code>short</code> type in C/C++ and Java.</p>
+
+            <h3>Common Uses</h3>
+            <ul>
+                <li><strong>Audio samples:</strong> CD-quality audio (16-bit PCM) stores each sample as an INT16, giving 65,536 amplitude levels and ~96 dB dynamic range.</li>
+                <li><strong>Embedded systems:</strong> 16-bit microcontrollers (MSP430, PIC24) use INT16 as their native integer type.</li>
+                <li><strong>Sensor data:</strong> Accelerometers, gyroscopes, and temperature sensors commonly output signed 16-bit readings where negative values represent opposite directions or below-zero temperatures.</li>
+            </ul>
+
+            <div class="callout callout-tip">
+                <strong>Audio connection</strong>
+                When you listen to a CD or most digital audio, each sample is an INT16. The 65,536 possible values give enough resolution that the quantization noise is below human hearing threshold at normal listening levels.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Key Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>Click any bit to flip it. See both signed and unsigned interpretations.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 1000" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x03E8" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Signed</button>
+                    <button class="viz-preset-btn" data-preset="min">Min Signed</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where INT16 Is Used</h2>
+            <ul>
+                <li><strong>GPU packed operations:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA 9.2</a> introduces <code>.s16x2</code> packed types (two signed 16-bit integers in a 32-bit register) with add/sub/min/max and <code>.sat</code> qualifier support.</li>
+                <li><strong>Audio processing:</strong> 16-bit signed PCM is the standard for CD-quality audio (44.1 kHz, 96 dB dynamic range) and most digital audio pipelines.</li>
+                <li><strong>ML frameworks:</strong> PyTorch provides <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.int16</code></a> for signed 16-bit tensor storage. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>INT16 = 5</code> as a tensor data type.</li>
+                <li><strong>AMD GPU dot-product:</strong> The <a href="https://mlir.llvm.org/docs/Dialects/AMDGPU/" target="_blank" rel="noopener">MLIR AMDGPU dialect</a> supports <code>i16 × i16 → i32</code> signed dot-product (sdot2) operations on gfx906+ architectures.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'int16',
+            isInteger: true, totalBits: 16, signed: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['int32', 'int8', 'int4'],
+            initialValue: 1000,
+        };
+    </script>
+</body>
+</html>
