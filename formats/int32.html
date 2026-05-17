@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INT32 - 32-Bit Signed Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 32-bit signed integers work. Two's complement encoding, range, overflow behavior, and interactive bit visualizer.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>INT32 - 32-Bit Signed Integer</h1>
+            <p class="subtitle">The standard signed integer: two's complement encoding for general-purpose computing</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>A 32-bit integer stores a whole number using all 32 bits. For <strong>signed integers (INT32)</strong>, the most significant bit is the sign bit (0 = positive, 1 = negative) using <a href="https://en.wikipedia.org/wiki/Two%27s_complement" target="_blank" rel="noopener">two's complement</a> encoding. For the unsigned variant, see <a href="uint32.html">UINT32</a>.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>32-bit integers are the most common integer type in computing. They are the default <code>int</code> type in C, C++, Java, C#, and Rust on most platforms. They provide over 4 billion distinct values, sufficient for most counting, indexing, and general-purpose integer operations.</p>
+            <p>Unlike floating-point formats, integers represent exact values with no rounding error. Every integer within the format's range is perfectly representable. The trade-off is that they cannot represent fractions or very large/small numbers.</p>
+
+            <h3>Two's Complement</h3>
+            <p>Signed integers use <strong>two's complement</strong> encoding, where negative numbers are represented by inverting all bits and adding 1. This elegant system has a key property: addition and subtraction work the same way for both signed and unsigned values at the hardware level.</p>
+            <div class="formula">For negative values: -n is encoded as 2<sup>32</sup> - n</div>
+            <p>For example, -1 is encoded as <code>11111111 11111111 11111111 11111111</code> (all ones), because 2<sup>32</sup> - 1 = 4,294,967,295.</p>
+
+            <div class="callout callout-note">
+                <strong>Asymmetric range</strong>
+                Two's complement has one more negative value than positive: INT32 ranges from -2,147,483,648 to +2,147,483,647. This asymmetry occurs because zero uses one of the "positive" patterns, leaving one extra pattern for the negative side.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Key Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>Click any bit to flip it. See both the signed (two's complement) and unsigned interpretation of the same bit pattern.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 42" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x0000002A" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Signed</button>
+                    <button class="viz-preset-btn" data-preset="min">Min Signed</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where INT32 Is Used</h2>
+            <ul>
+                <li><strong>Tensor Core accumulator:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> documents <code>.s32</code> as the signed accumulator type (MMA C/D output) for integer Tensor Core operations. INT8×INT8 and INT4×INT4 matrix multiplies accumulate partial sums into INT32 to prevent overflow.</li>
+                <li><strong>ML frameworks:</strong> PyTorch provides <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.int32</code></a> for signed 32-bit tensor storage. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>INT32 = 6</code> as a core data type.</li>
+                <li><strong>Compiler infrastructure:</strong> The <a href="https://mlir.llvm.org/docs/Dialects/NVVMDialect/" target="_blank" rel="noopener">MLIR NVVM dialect</a> accumulates INT8 and INT4 MMA instructions into <code>4× i32</code> C/D fragments. <a href="https://docs.nvidia.com/cuda/cublas/" target="_blank" rel="noopener">cuBLAS</a> uses <code>int32_t</code> workspace allocations in fixed-point emulation pipelines.</li>
+                <li><strong>cuBLASDx:</strong> The <a href="https://docs.nvidia.com/cuda/cublasdx/requirements_func.html" target="_blank" rel="noopener">cuBLASDx framework</a> identifies <code>int32_t</code> as the default, stable accumulator type for low-precision integer matrix operations on NVIDIA Tensor Cores.</li>
+                <li><strong>General-purpose computing:</strong> INT32 is the default integer type in most languages and ABIs - used for loop counters, array indices, hash functions, CRC computation, and bitfield packing where exact arithmetic is needed.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'int32',
+            isInteger: true, totalBits: 32, signed: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['int16', 'int8', 'int4'],
+            initialValue: 42,
+        };
+    </script>
+</body>
+</html>

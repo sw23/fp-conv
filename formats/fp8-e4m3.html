@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FP8 E4M3 (OCP) | Floating Point Format Guide</title>
+    <meta name="description" content="Learn how FP8 E4M3 works. 8-bit floating point with higher precision, used for ML weights and activations in the OCP standard.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>FP8 E4M3 - 8-Bit Floating Point</h1>
+            <p class="subtitle">OCP 8-bit format with higher precision: 4 exponent bits, 3 mantissa bits</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>FP8 E4M3 uses 4 exponent bits and 3 mantissa bits. The extra mantissa bit (compared to E5M2) doubles the number of distinct values per power-of-2 interval from 4 to 8, at the cost of a narrower exponent range.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>FP8 E4M3 is the precision-focused variant of the <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP Microscaling Specification</a>. It's designed for storing <strong>weights and activations</strong> in neural networks, where precision matters more than range.</p>
+            <p>The OCP variant of E4M3 has an important special rule: <strong>it does not support infinity</strong>. The bit pattern that would normally be infinity (max exponent, mantissa = 0) instead represents a normal number. Only the single pattern with max exponent and all-ones mantissa (0 1111 111) is reserved for NaN. This gives E4M3 a higher maximum representable value (448 vs 240 if infinity were supported).</p>
+            <p>FP8 E4M3 is the preferred format for quantized inference on NVIDIA Hopper (H100) and later GPUs. Combined with E5M2 for gradients, it enables full FP8 training pipelines.</p>
+
+            <div class="callout callout-warning">
+                <strong>No infinity in OCP E4M3</strong>
+                Unlike standard <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank" rel="noopener">IEEE 754</a> formats, OCP E4M3 does not have infinity. Overflow saturates to the maximum normal value (±448) instead of producing infinity. This is intentional, as it prevents training instabilities caused by inf propagation.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Encoding Rules</h2>
+            <h3>Normal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>(exponent - 7)</sup> × (1 + mantissa / 8)</div>
+            <p>With 3 mantissa bits, there are 8 representable values per power-of-2 interval: 1.000, 1.125, 1.250, 1.375, 1.500, 1.625, 1.750, 1.875 (times the power of 2). The bias of 7 is calculated as 2<sup>(<em>e</em>-1)</sup> - 1, where <em>e</em> is the number of exponent bits (4).</p>
+
+            <h3>Subnormal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>-6</sup> × (mantissa / 8)</div>
+
+            <h3>Special Values (OCP Rules)</h3>
+            <ul>
+                <li><strong>Zero:</strong> Exponent = 0, Mantissa = 0.</li>
+                <li><strong>No Infinity:</strong> Overflow saturates to max normal (±448).</li>
+                <li><strong>NaN:</strong> Only the single pattern <code>S 1111 111</code> (max exponent, all-ones mantissa) is NaN. All other max-exponent patterns are normal numbers.</li>
+            </ul>
+
+            <div class="callout callout-note">
+                <strong>OCP NaN convention</strong>
+                In standard IEEE 754, any non-zero mantissa at max exponent is NaN (giving many NaN encodings). In OCP E4M3, only the all-ones mantissa is NaN. This reclaims the other patterns as usable normal values, increasing the format's representable range.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Value Visualizer</h2>
+            <p>Click any bit to flip it, drag the slider, or enter a decimal  or hex value. The graphs show how values are distributed across the encoding space.</p>
+            <div id="value-distribution"></div>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 1.5" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x3E" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-normal">Min Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-sub">Min Sub</button>
+                    <button class="viz-preset-btn" data-preset="nan">NaN</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Dynamic Range & Precision</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Special Values & Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where FP8 E4M3 Is Used</h2>
+            <ul>
+                <li><strong>NVIDIA Hopper Tensor Cores:</strong> The <a href="https://developer.nvidia.com/blog/nvidia-hopper-architecture-in-depth/" target="_blank" rel="noopener">H100 GPU</a> introduced FP8 Tensor Cores that deliver 2000 TFLOPS (4000 with sparsity) - doubling throughput vs FP16. E4M3 is the precision-optimized variant for forward-pass weights and activations (max ±448, no infinities).</li>
+                <li><strong>Transformer Engine:</strong> NVIDIA's <a href="https://docs.nvidia.com/deeplearning/transformer-engine/user-guide/examples/fp8_primer.html" target="_blank" rel="noopener">Transformer Engine FP8 primer</a> documents E4M3 as the forward-pass format in the FP8 training recipe, using delayed scaling or MXFP8 block scaling to manage dynamic range.</li>
+                <li><strong>ML frameworks:</strong> PyTorch registers <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.float8_e4m3fn</code></a> as a native dtype. The <a href="https://docs.pytorch.org/ao/stable/contributing/quantization_overview.html" target="_blank" rel="noopener">torchao</a> quantization library uses it directly in <code>Float8DynamicActivationFloat8WeightConfig</code> pipelines.</li>
+                <li><strong>OCP Microscaling:</strong> The <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP MX Spec v1.0</a> defines E4M3 as the element type in MXFP8 blocks (32 elements with an <a href="https://arxiv.org/pdf/2310.10537" target="_blank" rel="noopener">E8M0 shared scale</a>), extending effective dynamic range beyond standalone 4-exponent-bit limits.</li>
+                <li><strong>Kernel libraries:</strong> <a href="https://github.com/NVIDIA/cutlass/blob/main/include/cutlass/float8.h" target="_blank" rel="noopener">CUTLASS</a> defines <code>float_e4m3_t</code> with PTX inline asm for saturation-mode conversion. <a href="https://github.com/triton-lang/triton/blob/main/python/triton/language/__init__.py" target="_blank" rel="noopener">Triton</a> exports <code>float8e4nv</code> as a kernel-programmable dtype.</li>
+                <li><strong>NumPy ecosystem:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library provides <code>float8_e4m3fn</code> (and variants <code>float8_e4m3fnuz</code>, <code>float8_e4m3b11fnuz</code>) as NumPy dtype extensions for JAX and TensorFlow. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX proto</a> defines <code>FLOAT8E4M3FN = 17</code>.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'fp8_e4m3',
+            signBits: 1, exponentBits: 4, mantissaBits: 3,
+            bias: 7, hasInfinity: false, hasNaN: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['fp8_e5m2', 'fp6_e3m2', 'fp6_e2m3'],
+            valueDistributionId: 'value-distribution',
+            initialValue: 1.5,
+        };
+    </script>
+</body>
+</html>

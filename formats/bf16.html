@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BF16 (Brain Float 16) | Floating Point Format Guide</title>
+    <meta name="description" content="Learn how BF16 Brain Float 16 works. Interactive bit-level visualizer, encoding rules, dynamic range, and precision details for ML training.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>BF16 - Brain Float 16</h1>
+            <p class="subtitle">Google Brain's 16-bit format: same range as FP32, designed for deep learning</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <p>A BF16 number uses 16 bits divided into three fields:</p>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>BF16 uses the <strong>same 8-bit exponent as FP32</strong>, giving it identical dynamic range. The trade-off is a smaller 7-bit mantissa, providing less precision than FP16's 10 bits.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>BF16 (<a href="https://en.wikipedia.org/wiki/Bfloat16_floating-point_format" target="_blank" rel="noopener">Brain Floating Point 16</a>) was developed by <strong>Google Brain</strong> for use in their TPU (Tensor Processing Unit) hardware. It has since been adopted by virtually every major ML hardware vendor including NVIDIA (Ampere and later), AMD, Intel, and ARM.</p>
+            <p>The key insight behind BF16 is that deep learning training is more sensitive to <em>dynamic range</em> than to precision. Neural network weights, activations, and gradients can span many orders of magnitude, and FP16's narrow range (max ~65K) often causes overflow. BF16 solves this by keeping FP32's full exponent range while truncating the mantissa.</p>
+            <p>Converting between FP32 and BF16 is trivially simple: just truncate the lower 16 bits of the FP32 representation. This makes BF16 extremely hardware-friendly.</p>
+
+            <div class="callout callout-tip">
+                <strong>Think of BF16 as "truncated FP32"</strong>
+                BF16 is literally the upper 16 bits of an FP32 number. You can convert FP32 → BF16 by chopping off the lower 16 bits, and BF16 → FP32 by padding with 16 zeros.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Encoding Rules</h2>
+            <h3>Normal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>(exponent - 127)</sup> × (1 + mantissa / 2<sup>7</sup>)</div>
+            <p>BF16 follows the same rules as FP32, but with only 7 mantissa bits instead of 23. The bias of 127 is calculated as 2<sup>(<em>e</em>-1)</sup> - 1, where <em>e</em> is the number of exponent bits (8), identical to FP32.</p>
+
+            <h3>Subnormal Numbers</h3>
+            <div class="formula">value = (-1)<sup>sign</sup> × 2<sup>-126</sup> × (0 + mantissa / 2<sup>7</sup>)</div>
+
+            <h3>Special Values</h3>
+            <ul>
+                <li><strong>Zero:</strong> Exponent = 0, Mantissa = 0.</li>
+                <li><strong>Infinity:</strong> Exponent = 255, Mantissa = 0 (same as FP32).</li>
+                <li><strong>NaN:</strong> Exponent = 255, Mantissa ≠ 0.</li>
+            </ul>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Value Visualizer</h2>
+            <p>Click any bit to flip it, drag the slider, or enter a decimal  or hex value. The graphs show how values are distributed across the encoding space.</p>
+            <div id="value-distribution"></div>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 3.14" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x4049" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-normal">Min Norm</button>
+                    <button class="viz-preset-btn" data-preset="min-sub">Min Sub</button>
+                    <button class="viz-preset-btn" data-preset="inf">+Inf</button>
+                    <button class="viz-preset-btn" data-preset="nan">NaN</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Dynamic Range & Precision</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Special Values & Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where BF16 Is Used</h2>
+            <ul>
+                <li><strong>GPU Tensor Cores:</strong> NVIDIA <a href="https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html" target="_blank" rel="noopener">Ampere (A100)</a> and later GPUs accelerate BF16 via HMMA Tensor Core instructions at the same throughput as FP16. ARM processors support BF16 natively through <a href="https://developer.arm.com/community/arm-community-blogs/b/ai-blog/posts/bfloat16-processing-for-neural-networks-on-armv8_2d00_a" target="_blank" rel="noopener">Armv8.6 BFDOT/BFMMLA instructions</a>, and Intel AMX provides BF16 tile multiply-accumulate.</li>
+                <li><strong>LLM training:</strong> BF16 is the default precision for training large language models (GPT, LLaMA, Gemma). Its FP32-matching exponent range avoids the loss scaling required by FP16. PyTorch exposes it as <a href="https://docs.pytorch.org/docs/main/tensor_attributes.html" target="_blank" rel="noopener"><code>torch.bfloat16</code></a>.</li>
+                <li><strong>Model interchange:</strong> The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>BFLOAT16</code> as a first-class tensor data type, enabling cross-framework model export and inference in BF16.</li>
+                <li><strong>Kernel compilers:</strong> <a href="https://github.com/NVIDIA/cutlass/blob/main/include/cutlass/numeric_types.h" target="_blank" rel="noopener">CUTLASS</a> provides a <code>bfloat16_t</code> type for templated GPU matrix kernels. Triton maps <code>tl.bfloat16</code> to MLIR backend targets, and the <a href="https://mlir.llvm.org/docs/Dialects/ArithOps/" target="_blank" rel="noopener">MLIR arith dialect</a> supports <code>bf16</code> as a builtin type.</li>
+                <li><strong>NumPy ecosystem:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library registers <code>bfloat16</code> as a NumPy custom dtype for JAX and TensorFlow interop, since NumPy does not yet include a <a href="https://github.com/numpy/numpy/issues/30659" target="_blank" rel="noopener">native BF16 type</a>.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'bf16',
+            signBits: 1, exponentBits: 8, mantissaBits: 7,
+            hasInfinity: true, hasNaN: true,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['fp32', 'fp16', 'tf32'],
+            valueDistributionId: 'value-distribution',
+            initialValue: 3.14,
+        };
+    </script>
+</body>
+</html>

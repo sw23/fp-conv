@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UINT4 - 4-Bit Unsigned Integer | Integer Format Guide</title>
+    <meta name="description" content="Learn how 4-bit unsigned integers work. Sub-byte unsigned type for weight quantization packing with interactive bit visualizer.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>UINT4 - 4-Bit Unsigned Integer</h1>
+            <p class="subtitle">Sub-byte unsigned integer: quantization packing and nibble-level data</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>A 4-bit unsigned integer (also called a <strong>nibble</strong>) uses all 4 bits for magnitude, giving a range of 0 to 15 (2<sup>4</sup> - 1). Two UINT4 values pack into a single byte, and each corresponds to one hexadecimal digit (0–F).</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>UINT4 is a sub-byte format primarily used as a packing container for quantized ML weights. While <a href="int4.html">INT4</a> (signed) is more common in quantization schemes like GPTQ and AWQ, UINT4 appears in frameworks that use asymmetric quantization with a non-zero zero-point offset.</p>
+            <p>With only 16 possible values (0–15), UINT4 achieves the same 8× compression over FP32 as INT4. Two UINT4 values are packed into a single byte, with the first element in the least-significant nibble.</p>
+
+            <h3>UINT4 in Quantization</h3>
+            <p>In asymmetric quantization, the float-to-integer mapping includes a <strong>zero point</strong>:</p>
+            <div class="formula">quantized_value = round(float_value / scale) + zero_point</div>
+            <p>The zero point shifts the mapping so that zero maps to a non-zero integer, allowing the full 0–15 range to cover an asymmetric distribution of float values.</p>
+
+            <div class="callout callout-tip">
+                <strong>See also: <a href="int4.html">INT4</a></strong>
+                For the signed variant using two's complement (range -8 to 7), which is more common in symmetric weight quantization schemes.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Range & Properties</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>All Representable Values</h2>
+            <p>With only 16 possible bit patterns, here is the complete set:</p>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Bit Visualizer</h2>
+            <p>With only 4 bits, you can click through every possible value. Each nibble corresponds to one hex digit.</p>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 12" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0xC" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="zero">0</button>
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where UINT4 Is Used</h2>
+            <ul>
+                <li><strong>ONNX packing:</strong> The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX specification</a> defines <code>UINT4</code> in <code>TensorProto.DataType</code> with a packing rule of two 4-bit elements per byte (first element in LSB). This is used for asymmetric quantization with unsigned zero-point offsets.</li>
+                <li><strong>Python libraries:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library provides <code>uint4</code> as a narrow integer NumPy extension (4-bit, stored in a byte, with defined cast behavior).</li>
+                <li><strong>GPU hardware:</strong> The <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> documents <code>.u4</code> packed types for unsigned 4-bit MMA instructions on Turing/Ampere. The <a href="https://mlir.llvm.org/docs/Dialects/AMDGPU/" target="_blank" rel="noopener">MLIR AMDGPU dialect</a> supports unsigned <code>i4</code> via <code>udot8</code> instructions on gfx906+.</li>
+                <li><strong>Hexadecimal representation:</strong> Each UINT4 value corresponds to exactly one hex digit (0–F), making UINT4 the natural unit for displaying and parsing hexadecimal data.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'uint4',
+            isInteger: true, totalBits: 4, signed: false,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['uint8', 'uint16', 'uint32'],
+            initialValue: 12,
+        };
+    </script>
+</body>
+</html>

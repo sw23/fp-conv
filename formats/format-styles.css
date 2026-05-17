@@ -1,0 +1,876 @@
+/****************************************************************
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ *
+ * Standalone stylesheet for format documentation pages.
+ ****************************************************************/
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #3b82f6;
+    --background: #f8fafc;
+    --surface: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --sign-color: #ef4444;
+    --exponent-color: #3b82f6;
+    --mantissa-color: #10b981;
+    --integer-color: #8b5cf6;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: var(--background);
+    color: var(--text-primary);
+    padding: 5px 20px;
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+/* ── Layout ────────────────────────────────────────────────── */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* ── Navigation ────────────────────────────────────────────── */
+.format-nav {
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    position: sticky;
+    top: 5px;
+    z-index: 100;
+}
+
+.format-nav .back-link {
+    display: inline-block;
+    margin-bottom: 8px;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.format-nav .back-link:hover {
+    text-decoration: underline;
+}
+
+.nav-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: baseline;
+}
+
+.nav-group {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.nav-group-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 2px;
+    white-space: nowrap;
+}
+
+.nav-link {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    text-decoration: none;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.nav-link:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.nav-link.active {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+}
+
+.nav-separator {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    align-self: center;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+header {
+    text-align: center;
+    padding-bottom: 10px;
+}
+
+header h1 {
+    font-size: 2rem;
+    color: var(--primary-color);
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+header .subtitle {
+    color: var(--text-secondary);
+    font-size: 1.05rem;
+    margin-bottom: 8px;
+}
+
+/* ── Content Sections ──────────────────────────────────────── */
+.doc-section {
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+.doc-section h2 {
+    font-size: 1.4rem;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+}
+
+.doc-section h3 {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin: 16px 0 8px;
+}
+
+.doc-section p {
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.doc-section ul, .doc-section ol {
+    padding-left: 24px;
+    margin-bottom: 12px;
+}
+
+.doc-section li {
+    margin-bottom: 6px;
+}
+
+.doc-section a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.doc-section a:hover {
+    text-decoration: underline;
+}
+
+.doc-section code {
+    font-family: 'Courier New', monospace;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+/* ── Bit Layout Diagram ───────────────────────────────────── */
+.bit-layout {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin: 16px 0;
+}
+
+.bit-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.bit-field-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+
+.bit-field-boxes {
+    display: flex;
+    gap: 2px;
+}
+
+.bit-box {
+    width: 22px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.bit-field.sign .bit-field-label { color: var(--sign-color); }
+.bit-field.sign .bit-box { border-color: var(--sign-color); background: var(--sign-color); }
+
+.bit-field.exponent .bit-field-label { color: var(--exponent-color); }
+.bit-field.exponent .bit-box { border-color: var(--exponent-color); background: var(--exponent-color); }
+
+.bit-field.mantissa .bit-field-label { color: var(--mantissa-color); }
+.bit-field.mantissa .bit-box { border-color: var(--mantissa-color); background: var(--mantissa-color); }
+
+.bit-field.integer .bit-field-label { color: var(--integer-color); }
+.bit-field.integer .bit-box { border-color: var(--integer-color); background: var(--integer-color); }
+
+.bit-field-width {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+/* For large formats, collapse to show count instead of individual boxes */
+.bit-field-collapsed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.bit-field-collapsed .bit-field-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.bit-field-collapsed .collapsed-box {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    padding: 0 12px;
+    white-space: nowrap;
+}
+
+.bit-field-collapsed.sign .bit-field-label { color: var(--sign-color); }
+.bit-field-collapsed.sign .collapsed-box { border-color: var(--sign-color); background: var(--sign-color); }
+
+.bit-field-collapsed.exponent .bit-field-label { color: var(--exponent-color); }
+.bit-field-collapsed.exponent .collapsed-box { border-color: var(--exponent-color); background: var(--exponent-color); }
+
+.bit-field-collapsed.mantissa .bit-field-label { color: var(--mantissa-color); }
+.bit-field-collapsed.mantissa .collapsed-box { border-color: var(--mantissa-color); background: var(--mantissa-color); }
+
+.bit-field-collapsed.integer .bit-field-label { color: var(--integer-color); }
+.bit-field-collapsed.integer .collapsed-box { border-color: var(--integer-color); background: var(--integer-color); }
+
+.bit-field-collapsed .bit-field-width {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+/* ── Tables ────────────────────────────────────────────────── */
+.info-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.9rem;
+}
+
+.info-table th,
+.info-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.info-table th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #f8fafc;
+}
+
+.info-table td {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+.info-table td.text-cell {
+    font-family: inherit;
+    font-weight: normal;
+}
+
+.info-table tr:last-child td {
+    border-bottom: none;
+}
+
+.info-table tr:hover {
+    background: #f8fafc;
+}
+
+.info-table .highlight-row td {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+/* ── Special Values Table ──────────────────────────────────── */
+.special-table .bit-pattern {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.special-table .sign-bits { color: var(--sign-color); font-weight: 700; }
+.special-table .exp-bits { color: var(--exponent-color); font-weight: 700; }
+.special-table .mant-bits { color: var(--mantissa-color); font-weight: 700; }
+
+/* ── Interactive Visualizer ────────────────────────────────── */
+.visualizer {
+    margin: 16px 0;
+}
+
+.viz-input-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.viz-input-group {
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.viz-input-row label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.viz-input-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: border-color 0.2s;
+}
+
+.viz-input-row input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.viz-presets {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.viz-preset-btn {
+    padding: 6px 10px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    color: var(--text-primary);
+}
+
+.viz-preset-btn:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.viz-preset-btn.active {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: #fff;
+}
+
+/* Binary display for visualizer */
+.viz-binary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 12px 0;
+    justify-content: center;
+}
+
+.viz-bit-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 6px 4px;
+    border-radius: 8px;
+    border: 2px solid;
+    max-width: 100%;
+}
+
+.viz-bit-section.sign-section {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: var(--sign-color);
+}
+
+.viz-bit-section.exponent-section {
+    background: rgba(59, 130, 246, 0.08);
+    border-color: var(--exponent-color);
+}
+
+.viz-bit-section.mantissa-section {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: var(--mantissa-color);
+}
+
+.viz-bit-section.integer-section {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: var(--integer-color);
+}
+
+.viz-section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.sign-section .viz-section-label { color: var(--sign-color); }
+.exponent-section .viz-section-label { color: var(--exponent-color); }
+.mantissa-section .viz-section-label { color: var(--mantissa-color); }
+.integer-section .viz-section-label { color: var(--integer-color); }
+
+.viz-bits {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.viz-bit {
+    width: 24px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    background: var(--surface);
+    color: var(--text-primary);
+}
+
+.viz-bit:hover {
+    transform: scale(1.1);
+    border-color: var(--primary-color);
+}
+
+.viz-bit.checked {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
+.sign-section .viz-bit.checked { background: var(--sign-color); border-color: var(--sign-color); }
+.exponent-section .viz-bit.checked { background: var(--exponent-color); border-color: var(--exponent-color); }
+.mantissa-section .viz-bit.checked { background: var(--mantissa-color); border-color: var(--mantissa-color); }
+.integer-section .viz-bit.checked { background: var(--integer-color); border-color: var(--integer-color); }
+
+/* Components display */
+.viz-components {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.viz-component {
+    display: flex;
+    gap: 6px;
+    font-size: 0.85rem;
+}
+
+.viz-comp-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.viz-comp-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* ── Comparison Table ──────────────────────────────────────── */
+.comparison-table {
+    overflow-x: auto;
+}
+
+.comparison-table .info-table td.current-format {
+    background: rgba(37, 99, 235, 0.08);
+    font-weight: 700;
+}
+
+.comparison-table .info-table th.current-format {
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--primary-color);
+}
+
+/* ── Tip / Note callouts ──────────────────────────────────── */
+.callout {
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+}
+
+.callout-tip {
+    background: rgba(16, 185, 129, 0.08);
+    border-left: 4px solid var(--mantissa-color);
+}
+
+.callout-note {
+    background: rgba(59, 130, 246, 0.08);
+    border-left: 4px solid var(--exponent-color);
+}
+
+.callout-warning {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 4px solid #f59e0b;
+}
+
+.callout strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+/* ── Formula display ───────────────────────────────────────── */
+.formula {
+    text-align: center;
+    padding: 16px;
+    margin: 16px 0;
+    background: #f8fafc;
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    overflow-x: auto;
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+footer {
+    text-align: center;
+    padding: 20px 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--border);
+    margin-top: 10px;
+}
+
+footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    body {
+        padding: 5px 12px;
+    }
+
+    .format-nav {
+        padding: 10px 14px;
+    }
+
+    .nav-groups {
+        gap: 8px;
+    }
+
+    .doc-section {
+        padding: 18px;
+    }
+
+    .bit-layout {
+        gap: 6px;
+    }
+
+    .viz-binary {
+        gap: 6px;
+    }
+
+    .viz-bit {
+        width: 20px;
+        height: 24px;
+        font-size: 0.75rem;
+    }
+
+    .viz-components {
+        grid-template-columns: 1fr;
+    }
+
+    .info-table th,
+    .info-table td {
+        padding: 8px 10px;
+        font-size: 0.82rem;
+    }
+
+    .viz-presets {
+        gap: 3px;
+    }
+
+    .viz-preset-btn {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    .nav-groups {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .vd-readout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Value Distribution Chart ──────────────────────────────── */
+.vd-container {
+    margin: 16px 0;
+}
+
+.vd-charts-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.vd-chart-col {
+    flex: 1;
+    min-width: 0;
+}
+
+.vd-chart-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.vd-chart-title.sub-title { color: var(--mantissa-color); }
+.vd-chart-title.norm-title { color: var(--exponent-color); }
+
+.vd-chart-col.vd-inactive {
+    opacity: 0.45;
+    transition: opacity 0.2s ease;
+}
+
+.vd-chart-wrap {
+    position: relative;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.vd-chart-col.vd-active .vd-chart-wrap {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+}
+
+.vd-canvas {
+    display: block;
+    width: 100%;
+    cursor: crosshair;
+}
+
+.vd-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.vd-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    outline: none;
+}
+
+.vd-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.vd-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.vd-step-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    color: var(--text-primary);
+    flex-shrink: 0;
+}
+
+.vd-step-btn:hover {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+    color: #fff;
+}
+
+.vd-readout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.vd-readout-item {
+    display: flex;
+    gap: 6px;
+    font-size: 0.85rem;
+}
+
+.vd-readout-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.vd-readout-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.vd-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 10px;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.vd-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.vd-legend-sub { color: var(--mantissa-color); }
+.vd-legend-norm { color: var(--exponent-color); }
+.vd-legend-cursor { color: #ef4444; }
+
+@media (max-width: 768px) {
+    .vd-charts-row {
+        flex-direction: column;
+    }
+}
