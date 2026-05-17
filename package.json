@@ -44,10 +44,10 @@
   "homepage": "https://sw23.github.io/fp-conv/",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.3.0",
+    "eslint": "^10.4.0",
     "globals": "^17.6.0",
     "htmlhint": "^1.9.2",
-    "jest": "^30.3.0",
+    "jest": "^30.4.2",
     "jest-canvas-mock": "^2.5.2",
     "jest-environment-jsdom": "^30.4.1"
   }
