@@ -20,10 +20,12 @@ Interactive tool for converting and visualizing floating-point numbers across st
 
 ## Supported Formats
 
-- **IEEE 754:** FP64, FP32, FP16
-- **ML/AI:** TF32, BF16
-- **Integer:** INT32, UINT32, INT16, UINT16, INT8, UINT8, INT4, UINT4
-- **OCP Microscaling:** FP8 E4M3/E5M2, FP6 E2M3/E3M2, FP4 E2M1
+Each format has a dedicated converter page:
+
+- **IEEE 754:** [FP64](https://sw23.github.io/fp-conv/formats/fp64.html), [FP32](https://sw23.github.io/fp-conv/formats/fp32.html), [FP16](https://sw23.github.io/fp-conv/formats/fp16.html)
+- **ML/AI:** [TF32](https://sw23.github.io/fp-conv/formats/tf32.html), [BF16](https://sw23.github.io/fp-conv/formats/bf16.html)
+- **Integer:** [INT32](https://sw23.github.io/fp-conv/formats/int32.html), [UINT32](https://sw23.github.io/fp-conv/formats/uint32.html), [INT16](https://sw23.github.io/fp-conv/formats/int16.html), [UINT16](https://sw23.github.io/fp-conv/formats/uint16.html), [INT8](https://sw23.github.io/fp-conv/formats/int8.html), [UINT8](https://sw23.github.io/fp-conv/formats/uint8.html), [INT4](https://sw23.github.io/fp-conv/formats/int4.html), [UINT4](https://sw23.github.io/fp-conv/formats/uint4.html)
+- **OCP Microscaling:** [FP8 E4M3](https://sw23.github.io/fp-conv/formats/fp8-e4m3.html), [FP8 E5M2](https://sw23.github.io/fp-conv/formats/fp8-e5m2.html), [FP6 E2M3](https://sw23.github.io/fp-conv/formats/fp6-e2m3.html), [FP6 E3M2](https://sw23.github.io/fp-conv/formats/fp6-e3m2.html), [FP4 E2M1](https://sw23.github.io/fp-conv/formats/fp4-e2m1.html)
 - **Custom:** Any user-defined bit allocation
 
 ## License
