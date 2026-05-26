@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sw23.github.io/fp-conv/sitemap.xml
