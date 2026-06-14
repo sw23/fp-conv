@@ -7,7 +7,6 @@ require('jest-canvas-mock');
 
 const {
     FORMAT_PAGES,
-    GROUP_LABELS,
     renderNav,
     renderBitLayout,
     renderRangeTable,
@@ -80,13 +79,12 @@ describe('renderNav', () => {
         expect(labelTexts).toContain('Integer');
     });
 
-    test('renders separators between groups', () => {
+    test('does not render separators between groups', () => {
         createContainer('format-nav');
         renderNav('fp32');
         const separators = document.querySelectorAll('.nav-separator');
 
-        // 4 groups → 3 separators
-        expect(separators.length).toBe(Object.keys(GROUP_LABELS).length - 1);
+        expect(separators.length).toBe(0);
     });
 });
 

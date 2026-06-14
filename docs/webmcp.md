@@ -50,7 +50,7 @@ Convert a value from one format to another, with precision loss analysis.
 
 ### `get_format_info`
 
-Get detailed information about a format including value range and special value support.
+Get detailed information about a format, including value range and special value support.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
