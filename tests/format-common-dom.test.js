@@ -7,7 +7,6 @@ require('jest-canvas-mock');
 
 const {
     FORMAT_PAGES,
-    GROUP_LABELS,
     renderNav,
     renderBitLayout,
     renderRangeTable,
