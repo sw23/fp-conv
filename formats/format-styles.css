@@ -54,9 +54,6 @@ body {
     box-shadow: var(--shadow);
     padding: 12px 20px;
     margin-bottom: 20px;
-    position: sticky;
-    top: 5px;
-    z-index: 100;
 }
 
 .format-nav .back-link {
@@ -123,12 +120,6 @@ body {
     box-shadow: var(--shadow);
 }
 
-.nav-separator {
-    width: 1px;
-    height: 16px;
-    background: var(--border);
-    align-self: center;
-}
 
 /* ── Header ────────────────────────────────────────────────── */
 header {

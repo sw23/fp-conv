@@ -68,10 +68,7 @@ function renderNav(currentKey) {
         groups[info.group].push({ key, ...info });
     }
 
-    let first = true;
     for (const [groupId, items] of Object.entries(groups)) {
-        if (!first) html += '<div class="nav-separator"></div>';
-        first = false;
         html += `<div class="nav-group">`;
         html += `<span class="nav-group-label">${GROUP_LABELS[groupId]}:</span>`;
         for (const item of items) {
