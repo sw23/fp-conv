@@ -44,7 +44,7 @@
   "homepage": "https://sw23.github.io/fp-conv/",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint": "^10.4.0",
+    "eslint": "^10.4.1",
     "globals": "^17.6.0",
     "htmlhint": "^1.9.2",
     "jest": "^30.4.2",
