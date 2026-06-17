@@ -20,6 +20,13 @@ export default [
     },
   },
   {
-    ignores: ["coverage/**", "node_modules/**"],
+    // The MCP server package is authored as ES modules.
+    files: ["packages/**/*.js"],
+    languageOptions: {
+      sourceType: "module",
+    },
+  },
+  {
+    ignores: ["coverage/**", "node_modules/**", "packages/**/dist/**"],
   },
 ];

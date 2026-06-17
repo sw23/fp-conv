@@ -26,8 +26,8 @@ All have class `.input-preset` with `data-format` attribute. Click to switch inp
 | FP16 | `button.input-preset[data-format="fp16"]` |
 | BF16 | `button.input-preset[data-format="bf16"]` |
 | TF32 | `button.input-preset[data-format="tf32"]` |
-| FP8 E5M2 | `button.input-preset[data-format="fp8_e5m2_ocp"]` |
-| FP8 E4M3 | `button.input-preset[data-format="fp8_e4m3_ocp"]` |
+| FP8 E5M2 | `button.input-preset[data-format="fp8_e5m2"]` |
+| FP8 E4M3 | `button.input-preset[data-format="fp8_e4m3"]` |
 | FP6 E3M2 | `button.input-preset[data-format="fp6_e3m2"]` |
 | FP6 E2M3 | `button.input-preset[data-format="fp6_e2m3"]` |
 | FP4 E2M1 | `button.input-preset[data-format="fp4_e2m1"]` |
@@ -51,8 +51,8 @@ Same format keys as input, with class `.output-preset`.
 | FP16 | `button.output-preset[data-format="fp16"]` |
 | BF16 | `button.output-preset[data-format="bf16"]` |
 | TF32 | `button.output-preset[data-format="tf32"]` |
-| FP8 E5M2 | `button.output-preset[data-format="fp8_e5m2_ocp"]` |
-| FP8 E4M3 | `button.output-preset[data-format="fp8_e4m3_ocp"]` |
+| FP8 E5M2 | `button.output-preset[data-format="fp8_e5m2"]` |
+| FP8 E4M3 | `button.output-preset[data-format="fp8_e4m3"]` |
 | FP6 E3M2 | `button.output-preset[data-format="fp6_e3m2"]` |
 | FP6 E2M3 | `button.output-preset[data-format="fp6_e2m3"]` |
 | FP4 E2M1 | `button.output-preset[data-format="fp4_e2m1"]` |

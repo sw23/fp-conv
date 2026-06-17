@@ -480,7 +480,7 @@ describe('OCP FP8 E4M3 Format', () => {
   let fp8;
 
   beforeEach(() => {
-    const format = FORMATS.fp8_e4m3_ocp;
+    const format = FORMATS.fp8_e4m3;
     fp8 = new FloatingPoint(format.sign, format.exponent, format.mantissa, {
       bias: format.bias,
       hasInfinity: format.hasInfinity,
@@ -567,7 +567,7 @@ describe('OCP FP8 E5M2 Format', () => {
   let fp8;
 
   beforeEach(() => {
-    const format = FORMATS.fp8_e5m2_ocp;
+    const format = FORMATS.fp8_e5m2;
     fp8 = new FloatingPoint(format.sign, format.exponent, format.mantissa, {
       bias: format.bias,
       hasInfinity: format.hasInfinity,
@@ -671,7 +671,7 @@ describe('OCP Formats - Saturation Behavior', () => {
   });
 
   test('FP8 E4M3 OCP saturates on Infinity but supports NaN', () => {
-    const format = FORMATS.fp8_e4m3_ocp;
+    const format = FORMATS.fp8_e4m3;
     const fp8 = new FloatingPoint(format.sign, format.exponent, format.mantissa, {
       bias: format.bias,
       hasInfinity: format.hasInfinity,
@@ -719,7 +719,7 @@ describe('OCP Formats - Custom Bias Verification', () => {
   });
 
   test('FP8 E4M3 OCP uses bias=7', () => {
-    const format = FORMATS.fp8_e4m3_ocp;
+    const format = FORMATS.fp8_e4m3;
     const fp8 = new FloatingPoint(format.sign, format.exponent, format.mantissa, {
       bias: format.bias
     });
@@ -729,7 +729,7 @@ describe('OCP Formats - Custom Bias Verification', () => {
   });
 
   test('FP8 E5M2 OCP uses bias=15', () => {
-    const format = FORMATS.fp8_e5m2_ocp;
+    const format = FORMATS.fp8_e5m2;
     const fp8 = new FloatingPoint(format.sign, format.exponent, format.mantissa, {
       bias: format.bias
     });
@@ -793,7 +793,7 @@ describe('OCP Formats - Round-trip Conversions', () => {
   });
 
   test('FP8 E4M3 OCP values round-trip correctly', () => {
-    const format = FORMATS.fp8_e4m3_ocp;
+    const format = FORMATS.fp8_e4m3;
     const fp8 = new FloatingPoint(format.sign, format.exponent, format.mantissa, {
       bias: format.bias,
       hasInfinity: format.hasInfinity,

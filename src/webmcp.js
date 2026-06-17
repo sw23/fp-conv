@@ -34,7 +34,14 @@ if (typeof require !== 'undefined') {
  */
 function resolveFormat(formatSpec) {
     if (typeof formatSpec === 'string') {
-        const preset = _FORMATS[formatSpec];
+        let preset = _FORMATS[formatSpec];
+        if (!preset) {
+            // Fall back to a normalized lookup so common variants (e.g. the
+            // hyphenated, mixed-case spelling "FP8-E4M3" used in web URLs)
+            // resolve to the canonical underscore key "fp8_e4m3".
+            const normalized = formatSpec.toLowerCase().replace(/-/g, '_');
+            preset = _FORMATS[normalized];
+        }
         if (!preset) {
             throw new Error(`Unknown format preset: "${formatSpec}". Use the list_formats tool to see available presets.`);
         }
@@ -218,8 +225,8 @@ function buildStats(format, encoded) {
 function listFormats() {
     const categories = {
         'IEEE 754': ['fp64', 'fp32', 'fp16'],
-        'ML': ['bf16', 'tf32', 'fp8_e4m3', 'fp8_e5m2', 'fp8_e8m0'],
-        'OCP Microscaling': ['fp4_e2m1', 'fp6_e2m3', 'fp6_e3m2', 'fp8_e4m3_ocp', 'fp8_e5m2_ocp'],
+        'ML': ['bf16', 'tf32'],
+        'OCP': ['fp8_e5m2', 'fp8_e4m3', 'fp6_e3m2', 'fp6_e2m3', 'fp4_e2m1'],
         'Integer': ['int32', 'uint32', 'int16', 'uint16', 'int8', 'uint8', 'int4', 'uint4'],
     };
 

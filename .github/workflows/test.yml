@@ -28,3 +28,9 @@ jobs:
 
     - name: Run tests with coverage
       run: npm run test:coverage
+
+    - name: Build MCP server
+      run: npm run build --workspace fp-conv-mcp
+
+    - name: Run MCP server tests
+      run: npm test --workspace fp-conv-mcp

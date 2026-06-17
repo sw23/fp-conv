@@ -6,8 +6,8 @@ describe('FloatingPoint Round-trip encode/decode', () => {
     fp32: new FloatingPoint(1, 8, 23),
     fp16: new FloatingPoint(1, 5, 10),
     bf16: new FloatingPoint(1, 8, 7),
-    fp8_e4m3: new FloatingPoint(1, 4, 3),
-    fp8_e5m2: new FloatingPoint(1, 5, 2),
+    fp8_e4m3: new FloatingPoint(1, 4, 3, { bias: 7, hasInfinity: false, hasNaN: true }),
+    fp8_e5m2: new FloatingPoint(1, 5, 2, { bias: 15, hasInfinity: true, hasNaN: true }),
   };
 
   test('preserves exact values through round-trip (FP32)', () => {

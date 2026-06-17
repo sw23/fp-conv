@@ -51,6 +51,16 @@ describe('resolveFormat', () => {
         expect(fmt.hasNaN).toBe(false);
     });
 
+    test('normalizes hyphenated and mixed-case preset keys', () => {
+        const fmt = resolveFormat('FP8-E4M3');
+        expect(fmt).toBeInstanceOf(FloatingPoint);
+        expect(fmt.exponentBits).toBe(4);
+        expect(fmt.mantissaBits).toBe(3);
+        // Hyphen-only and case-only variants resolve to the same canonical key.
+        expect(resolveFormat('fp8-e4m3').exponentBits).toBe(4);
+        expect(resolveFormat('FP32').mantissaBits).toBe(23);
+    });
+
     test('resolves a custom floating-point object', () => {
         const fmt = resolveFormat({ signBits: 1, exponentBits: 6, mantissaBits: 9 });
         expect(fmt).toBeInstanceOf(FloatingPoint);
@@ -388,7 +398,7 @@ describe('listFormats', () => {
         const categories = [...new Set(formats.map(f => f.category))];
         expect(categories).toContain('IEEE 754');
         expect(categories).toContain('ML');
-        expect(categories).toContain('OCP Microscaling');
+        expect(categories).toContain('OCP');
         expect(categories).toContain('Integer');
     });
 });
@@ -769,21 +779,6 @@ describe('getFormatInfo', () => {
         expect(info.exponentBits).toBe(0);
         expect(info.maxValue).toBeDefined();
         expect(info.minValue).toBeDefined();
-    });
-
-    test('returns info for FP8_E8M0 (0 mantissa bits)', () => {
-        const result = getFormatInfo({ format: 'fp8_e8m0' });
-        const info = JSON.parse(result.content[0].text);
-
-        expect(info.type).toBe('floating-point');
-        expect(info.signBits).toBe(0);
-        expect(info.exponentBits).toBe(8);
-        expect(info.mantissaBits).toBe(0);
-        expect(info.maxNormal).toBeDefined();
-        expect(info.minNormal).toBeDefined();
-        // No subnormals when mantissaBits=0
-        expect(info.maxSubnormal).toBeUndefined();
-        expect(info.minSubnormal).toBeUndefined();
     });
 
     test('returns info for format without infinity or NaN', () => {

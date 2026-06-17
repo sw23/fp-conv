@@ -1,0 +1,55 @@
+{
+  "name": "fp-conv-mcp",
+  "version": "1.0.2",
+  "description": "Model Context Protocol (MCP) server for floating-point conversions. Encode, decode, and convert numbers across FP32, FP16, BF16, TF32, FP8, FP6, FP4, and integer formats, with binary/hex breakdowns and precision-loss analysis.",
+  "type": "module",
+  "bin": {
+    "fp-conv-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "start": "node dist/index.js",
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config jest.config.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sw23/fp-conv.git",
+    "directory": "packages/fp-conv-mcp"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "floating-point",
+    "fp32",
+    "fp16",
+    "bf16",
+    "tf32",
+    "fp8",
+    "fp6",
+    "fp4",
+    "ieee-754",
+    "ai-tools"
+  ],
+  "author": "Spencer Williams",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sw23/fp-conv/issues"
+  },
+  "homepage": "https://github.com/sw23/fp-conv/tree/main/packages/fp-conv-mcp#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
