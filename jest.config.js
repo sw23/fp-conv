@@ -1,5 +1,6 @@
 module.exports = {
   testEnvironment: 'node',
+  testPathIgnorePatterns: ['/node_modules/', '/packages/'],
   collectCoverageFrom: ['lib/**/*.js'],
   // Pure math module has near-complete coverage
   coverageThreshold: {

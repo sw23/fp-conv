@@ -33,11 +33,16 @@
     "bf16",
     "tf32",
     "fp8",
+    "fp6",
+    "fp4",
     "ieee-754"
   ],
   "author": "Spencer Williams",
   "license": "MIT",
   "type": "commonjs",
+  "workspaces": [
+    "packages/*"
+  ],
   "bugs": {
     "url": "https://github.com/sw23/fp-conv/issues"
   },

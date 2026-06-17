@@ -372,7 +372,7 @@ function renderComparisonTable(containerId, currentKey, compareKeys) {
 
     const allKeys = [currentKey, ...compareKeys];
     const allConfigs = allKeys.map(key => {
-        const fmt = _FORMATS[key + '_ocp'] || _FORMATS[key] || _FORMATS[key.replace('-', '_')];
+        const fmt = _FORMATS[key] || _FORMATS[key.replace('-', '_')];
         return { key, fmt };
     });
 

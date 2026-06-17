@@ -51,6 +51,29 @@ created to help explain and visualize each standard format:
   [FP4 E2M1](https://sw23.github.io/fp-conv/formats/fp4-e2m1.html)
 - **Custom:** Supports a wide range of user-defined formats
 
+## MCP Server
+
+The [`fp-conv-mcp`](https://www.npmjs.com/package/fp-conv-mcp) npm package provides
+a local [Model Context Protocol](https://modelcontextprotocol.io) server, giving
+agents direct local access to floating point format conversions.
+
+Example client configuration (VS Code, `.vscode/mcp.json`):
+
+```json
+{
+  "servers": {
+    "fp-conv": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "fp-conv-mcp"]
+    }
+  }
+}
+```
+
+See the [package README](packages/fp-conv-mcp/README.md) for full usage,
+per-client setup, and debugging instructions.
+
 ## License
 
 MIT © 2026 Spencer Williams. See [LICENSE](LICENSE).
