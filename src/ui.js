@@ -349,8 +349,8 @@ function updateRepresentation() {
     const { sign, exponent, mantissa } = currentEncoded;
 
     // Get section containers
-    const signSection = document.querySelector('#input-binary-sign-labels').closest('.bit-section-container');
-    const expSection = document.querySelector('#input-binary-exponent-labels').closest('.bit-section-container');
+    const signSection = document.querySelector('#input-binary-sign-checks').closest('.bit-section-container');
+    const expSection = document.querySelector('#input-binary-exponent-checks').closest('.bit-section-container');
 
     // For integer formats, show single contiguous field
     if (currentFormat.isInteger) {
@@ -403,12 +403,10 @@ function calculateBitStartPosition(format, section) {
 }
 
 function createBinaryCheckboxes(section, binaryString) {
-    const labelsContainer = document.getElementById(`input-binary-${section}-labels`);
     const checksContainer = document.getElementById(`input-binary-${section}-checks`);
     const positionsContainer = document.getElementById(`input-binary-${section}-positions`);
 
     // Clear existing
-    labelsContainer.innerHTML = '';
     checksContainer.innerHTML = '';
     positionsContainer.innerHTML = '';
 
@@ -431,14 +429,8 @@ function createBinaryCheckboxes(section, binaryString) {
 
     const startPosition = calculateBitStartPosition(currentFormat, section);
 
-    // Create labels, checkboxes, and positions for each bit
+    // Create checkboxes and positions for each bit
     for (let i = 0; i < binaryString.length; i++) {
-        // Create label
-        const label = document.createElement('div');
-        label.className = 'bit-label';
-        label.textContent = binaryString[i];
-        labelsContainer.appendChild(label);
-
         // Create checkbox
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -468,13 +460,6 @@ function handleBinaryCheckboxChange(e) {
     let binaryString = '';
     checkboxes.forEach(cb => {
         binaryString += cb.checked ? '1' : '0';
-    });
-
-    // Update labels to match checkboxes
-    const labelsContainer = document.getElementById(`input-binary-${section}-labels`);
-    const labels = labelsContainer.querySelectorAll('.bit-label');
-    labels.forEach((label, i) => {
-        label.textContent = binaryString[i];
     });
 
     // Convert binary to integer safely
@@ -908,8 +893,8 @@ function updateOutput() {
     document.getElementById('output-decimal').textContent = outputValue;
 
     // Get output section containers
-    const outputSignSection = document.querySelector('#output-binary-sign-labels').closest('.bit-section-container');
-    const outputExpSection = document.querySelector('#output-binary-exponent-labels').closest('.bit-section-container');
+    const outputSignSection = document.querySelector('#output-binary-sign-values').closest('.bit-section-container');
+    const outputExpSection = document.querySelector('#output-binary-exponent-values').closest('.bit-section-container');
 
     // Update binary display (read-only)
     if (outputFormat.isInteger) {
@@ -963,12 +948,10 @@ function updateOutput() {
 }
 
 function createOutputBinaryDisplay(section, binaryString) {
-    const labelsContainer = document.getElementById(`output-binary-${section}-labels`);
     const valuesContainer = document.getElementById(`output-binary-${section}-values`);
     const positionsContainer = document.getElementById(`output-binary-${section}-positions`);
 
     // Clear existing
-    labelsContainer.innerHTML = '';
     valuesContainer.innerHTML = '';
     positionsContainer.innerHTML = '';
 
@@ -991,14 +974,8 @@ function createOutputBinaryDisplay(section, binaryString) {
 
     const startPosition = calculateBitStartPosition(outputFormat, section);
 
-    // Create labels, value displays, and positions for each bit
+    // Create value displays and positions for each bit
     for (let i = 0; i < binaryString.length; i++) {
-        // Create label
-        const label = document.createElement('div');
-        label.className = 'bit-label';
-        label.textContent = binaryString[i];
-        labelsContainer.appendChild(label);
-
         // Create value display
         const value = document.createElement('div');
         value.className = binaryString[i] === '1' ? 'bit checked' : 'bit';

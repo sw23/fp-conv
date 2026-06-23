@@ -384,34 +384,6 @@ section h3 {
     min-width: 0;
 }
 
-.bit-labels {
-    display: flex;
-    gap: 0px;
-    flex-wrap: wrap;
-}
-
-.bit-label {
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.sign-section .bit-label {
-    color: var(--sign-color);
-}
-
-.exponent-section .bit-label {
-    color: var(--exponent-color);
-}
-
-.mantissa-section .bit-label {
-    color: var(--mantissa-color);
-}
-
 .bits {
     display: flex;
     gap: 0px;
@@ -568,8 +540,8 @@ input.bit:hover {
 
 /* Footer */
 footer {
-    margin-top: 40px;
-    padding: 20px;
+    margin-top: 5px;
+    padding: 12px;
     text-align: center;
     color: var(--text-secondary);
     font-size: 0.9rem;
@@ -577,8 +549,24 @@ footer {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    body {
+        padding: 5px 10px;
+    }
+
     header h1 {
-        font-size: 2rem;
+        font-size: 1.5rem;
+    }
+
+    section {
+        padding: 16px;
+    }
+
+    section h2 {
+        font-size: 1.2rem;
+    }
+
+    section h3 {
+        font-size: 1.05rem;
     }
 
     .format-groups-container {
@@ -614,5 +602,10 @@ footer {
 
     .binary-display {
         font-size: 0.9rem;
+    }
+
+    footer {
+        margin-top: 5px;
+        padding: 12px;
     }
 }
