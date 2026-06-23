@@ -97,13 +97,10 @@ Bits are rendered as checkboxes inside section containers. Each bit has an indiv
 
 | Container | Selector | Description |
 |-----------|----------|-------------|
-| Sign labels | `#input-binary-sign-labels` | Bit label row for sign |
 | Sign checkboxes | `#input-binary-sign-checks` | Clickable sign bit(s) |
 | Sign positions | `#input-binary-sign-positions` | Bit position numbers |
-| Exponent labels | `#input-binary-exponent-labels` | Bit label row for exponent |
 | Exponent checkboxes | `#input-binary-exponent-checks` | Clickable exponent bits |
 | Exponent positions | `#input-binary-exponent-positions` | Bit position numbers |
-| Mantissa labels | `#input-binary-mantissa-labels` | Bit label row for mantissa |
 | Mantissa checkboxes | `#input-binary-mantissa-checks` | Clickable mantissa bits |
 | Mantissa positions | `#input-binary-mantissa-positions` | Bit position numbers |
 
@@ -144,13 +141,10 @@ Same structure as input, with `output-` prefix and `-values` instead of `-checks
 
 | Container | Selector |
 |-----------|----------|
-| Sign labels | `#output-binary-sign-labels` |
 | Sign values | `#output-binary-sign-values` |
 | Sign positions | `#output-binary-sign-positions` |
-| Exponent labels | `#output-binary-exponent-labels` |
 | Exponent values | `#output-binary-exponent-values` |
 | Exponent positions | `#output-binary-exponent-positions` |
-| Mantissa labels | `#output-binary-mantissa-labels` |
 | Mantissa values | `#output-binary-mantissa-values` |
 | Mantissa positions | `#output-binary-mantissa-positions` |
 
