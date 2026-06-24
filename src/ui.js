@@ -1,8 +1,9 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS */
+/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, decimalToString */
 // UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
+// and the URL helpers from url-state.js.
 
 // Application State
 let currentFormat = new FloatingPoint(1, 8, 23);
@@ -12,6 +13,7 @@ let currentEncoded = null;
 let currentInputFormatKey = null;  // Track if an integer preset is active
 let currentOutputFormatKey = null; // Track if an integer preset is active
 let currentRoundingMode = 'tiesToEven';
+let urlSyncEnabled = false; // Suppress URL writes until initial state is loaded
 
 // Helper functions to show/hide format controls for integer vs floating-point
 function updateInputFormatControlsVisibility(isInteger) {
@@ -67,7 +69,166 @@ document.addEventListener('DOMContentLoaded', () => {
     updateOutputFormat();
     updateValue();
     setupEventListeners();
+
+    // Restore any state encoded in the URL, then start keeping the URL in sync.
+    const restored = applyStateFromUrl();
+    urlSyncEnabled = true;
+    if (restored) {
+        syncUrl();
+    }
 });
+
+// Reflect the current conversion in the URL so it can be bookmarked or shared.
+function syncUrl() {
+    if (!urlSyncEnabled) return;
+    if (typeof history === 'undefined' || !history.replaceState) return;
+    try {
+        const query = buildSearchParams({
+            inputFormat: currentFormat,
+            outputFormat: outputFormat,
+            currentValue: currentValue,
+            currentEncoded: currentEncoded,
+            roundingMode: currentRoundingMode,
+        });
+        const newUrl = query
+            ? `${window.location.pathname}?${query}`
+            : window.location.pathname;
+        history.replaceState(null, '', newUrl);
+    } catch {
+        // Ignore URL update failures (e.g. sandboxed environments).
+    }
+}
+
+// Copy the current page URL to the clipboard and give brief visual feedback.
+function copyShareLink(button) {
+    const url = window.location.href;
+    const showCopied = () => {
+        const original = button.dataset.label || button.textContent;
+        button.dataset.label = original;
+        button.textContent = 'Copied!';
+        button.classList.add('copied');
+        clearTimeout(button._copyTimer);
+        button._copyTimer = setTimeout(() => {
+            button.textContent = button.dataset.label;
+            button.classList.remove('copied');
+        }, 1500);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showCopied).catch(() => fallbackCopy(url, showCopied));
+    } else {
+        fallbackCopy(url, showCopied);
+    }
+}
+
+// Clipboard fallback for insecure contexts or older browsers.
+function fallbackCopy(text, onSuccess) {
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'absolute';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        onSuccess();
+    } catch {
+        // Clipboard access is unavailable; leave the URL in the address bar.
+    }
+}
+
+// Apply a parsed format descriptor to the input or output controls.
+function applyFormatDescriptor(desc, which) {
+    const isInput = which === 'input';
+    if (desc.presetKey) {
+        if (isInput) {
+            loadInputPreset(desc.presetKey);
+        } else {
+            loadOutputPreset(desc.presetKey);
+        }
+        return;
+    }
+
+    const ids = isInput
+        ? { sign: 'input-sign-bits', exp: 'input-exponent-bits', mant: 'input-mantissa-bits', inf: 'input-has-infinity', nan: 'input-has-nan', preset: '.input-preset' }
+        : { sign: 'output-sign-bits', exp: 'output-exponent-bits', mant: 'output-mantissa-bits', inf: 'output-has-infinity', nan: 'output-has-nan', preset: '.output-preset' };
+
+    if (desc.kind === 'int') {
+        // Use a matching-signedness integer preset as the signedness carrier so
+        // the existing integer code path builds Integer(bits, signed) correctly.
+        const carrier = desc.signed ? 'int8' : 'uint8';
+        if (isInput) {
+            currentInputFormatKey = carrier;
+        } else {
+            currentOutputFormatKey = carrier;
+        }
+        document.getElementById(ids.sign).checked = false;
+        document.getElementById(ids.exp).value = 0;
+        document.getElementById(ids.mant).value = desc.bits;
+        document.getElementById(ids.inf).checked = false;
+        document.getElementById(ids.nan).checked = false;
+        document.querySelectorAll(ids.preset).forEach(btn => btn.classList.remove('active'));
+        if (isInput) {
+            updateInputFormatControlsVisibility(true);
+            updateFormat();
+        } else {
+            updateOutputFormatControlsVisibility(true);
+            updateOutputFormat();
+        }
+        return;
+    }
+
+    // Custom floating-point format.
+    if (isInput) {
+        currentInputFormatKey = null;
+    } else {
+        currentOutputFormatKey = null;
+    }
+    document.getElementById(ids.sign).checked = desc.signBits === 1;
+    document.getElementById(ids.exp).value = desc.exponentBits;
+    document.getElementById(ids.mant).value = desc.mantissaBits;
+    document.getElementById(ids.inf).checked = desc.hasInfinity;
+    document.getElementById(ids.nan).checked = desc.hasNaN;
+    document.querySelectorAll(ids.preset).forEach(btn => btn.classList.remove('active'));
+    if (isInput) {
+        updateInputFormatControlsVisibility(false);
+        updateFormat();
+    } else {
+        updateOutputFormatControlsVisibility(false);
+        updateOutputFormat();
+    }
+}
+
+// Restore state from the page URL. Returns true if any parameter was applied.
+function applyStateFromUrl() {
+    const parsed = parseSearchParams(window.location.search);
+    if (!parsed) return false;
+
+    if (parsed.roundingMode) {
+        currentRoundingMode = parsed.roundingMode;
+        const select = document.getElementById('rounding-mode');
+        if (select) select.value = parsed.roundingMode;
+    }
+
+    if (parsed.input) applyFormatDescriptor(parsed.input, 'input');
+    if (parsed.output) applyFormatDescriptor(parsed.output, 'output');
+
+    if (parsed.value && parsed.value.hex !== undefined) {
+        // Exact bit pattern: set bits directly without re-encoding the decimal.
+        handleHexInput({ target: { value: parsed.value.hex } });
+        updateActiveValuePreset();
+    } else {
+        if (parsed.value && parsed.value.decimal !== undefined) {
+            currentValue = parsed.value.decimal;
+            document.getElementById('input-decimal-input').value = decimalToString(currentValue);
+        }
+        updateValue();
+    }
+
+    return true;
+}
 
 function setupEventListeners() {
     // Input format preset buttons
@@ -93,6 +254,12 @@ function setupEventListeners() {
             loadValuePreset(valueKey);
         });
     });
+
+    // Copy the current shareable URL to the clipboard.
+    const copyLinkBtn = document.getElementById('copy-link-btn');
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener('click', () => copyShareLink(copyLinkBtn));
+    }
 
     // Input format inputs
     document.getElementById('input-sign-bits').addEventListener('change', updateFormat);
@@ -945,6 +1112,10 @@ function updateOutput() {
 
     // Update output value preset highlighting
     updateActiveOutputValuePreset(outputEncoded, outputValue);
+
+    // Keep the shareable URL in sync with the latest conversion. updateOutput()
+    // is the single chokepoint reached by every state change.
+    syncUrl();
 }
 
 function createOutputBinaryDisplay(section, binaryString) {

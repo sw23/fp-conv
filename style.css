@@ -241,6 +241,29 @@ section h3 {
     color: var(--text-secondary);
 }
 
+.copy-link-btn {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-primary);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.copy-link-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.copy-link-btn.copied {
+    background: var(--success-color, #16a34a);
+    border-color: var(--success-color, #16a34a);
+    color: white;
+}
+
 /* Output value presets - read-only indicators */
 .output-value-preset {
     cursor: default;
@@ -550,7 +573,7 @@ footer {
 /* Responsive Design */
 @media (max-width: 768px) {
     body {
-        padding: 5px 10px;
+        padding: 5px 4px;
     }
 
     header h1 {
@@ -558,7 +581,7 @@ footer {
     }
 
     section {
-        padding: 16px;
+        padding: 16px 10px;
     }
 
     section h2 {
