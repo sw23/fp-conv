@@ -18,6 +18,8 @@ while inspecting binary representations and precision loss.
 - **Rounding modes:** Implements IEEE 754 rounding modes (ties to even, ties away
   from zero, toward zero, toward +inf, and toward −inf)
 - **Fixed-point mode:** Set exponent bits to 0 for fractional representations
+- **Shareable links:** Bookmark or share a conversion via URL parameters (input/output
+  format, value, and rounding mode)
 - **Mobile-friendly:** Works on screens of all sizes
 - **WebMCP API:** AI agents can perform conversions via [WebMCP](docs/webmcp.md)
 

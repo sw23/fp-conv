@@ -80,6 +80,8 @@
         "Support for custom floating-point formats",
         "Interactive bit-level manipulation",
         "Real-time conversion and calculation",
+        "Explore special values including infinity, NaN, and subnormals",
+        "Shareable and bookmarkable conversion links via URL parameters",
         "WebMCP API for AI agent integration"
       ]
     }
@@ -432,28 +434,37 @@
                 round to nearest (ties away from zero), round toward zero (truncation), round toward +infinity (ceiling), and
                 round toward &minus;infinity (floor). The default is ties to even, which is the standard IEEE 754 rounding mode.
             </p>
+            <p>
+                The tool also reports the precision loss of each conversion as the absolute and relative error between the input value
+                and its output representation. Value presets let you explore special cases like zero, infinity, NaN, subnormals, and the
+                smallest and largest representable numbers.
+            </p>
 
             <h3>How to Use</h3>
             <div class="bullets">
-            <ol>
-                <li>
-                    <strong>Choose Your Input Format</strong>
-                    Select from standard formats (FP32, FP16, BF16, etc.) or customize the number of sign, exponent, and mantissa bits.
-                </li>
-                <li>
-                    <strong>Enter a Value</strong>
-                    Type any decimal number, or use the value presets to explore special cases like infinity, NaN, or the smallest/largest representable numbers. You can also edit the binary or hexadecimal representation directly.
-                </li>
-                <li>
-                    <strong>Select Output Format</strong>
-                    Choose a different format to see how your number would be represented. The tool automatically shows precision loss when converting between formats.
-                </li>
-                <li>
-                    <strong>Explore Components</strong>
-                    View the breakdown of sign bit, exponent, and mantissa. Interactive binary checkboxes let you flip individual bits to see how they affect the final value.
-                </li>
-            </ol>
-        </div>
+                <ol>
+                    <li>
+                        <strong>Choose Your Input Format</strong>
+                        Select from standard formats (FP32, FP16, BF16, etc.) or customize the number of sign, exponent, and mantissa bits.
+                    </li>
+                    <li>
+                        <strong>Enter a Value</strong>
+                        Type any decimal number, or use the value presets to explore special cases like infinity, NaN, or the smallest/largest representable numbers. You can also edit the binary or hexadecimal representation directly.
+                    </li>
+                    <li>
+                        <strong>Select Output Format</strong>
+                        Choose a different format to see how your number would be represented. The tool automatically shows precision loss when converting between formats.
+                    </li>
+                    <li>
+                        <strong>Explore Components</strong>
+                        View the breakdown of sign bit, exponent, and mantissa. Interactive binary checkboxes let you flip individual bits to see how they affect the final value.
+                    </li>
+                    <li>
+                        <strong>Bookmark or Share Your Conversion</strong>
+                        The address bar automatically updates to reflect your current input format, output format, value, and rounding mode. Copy the link to share an exact conversion, or bookmark the page to return to it later.
+                    </li>
+                </ol>
+            </div>
 
             <h3>Common Use Cases</h3>
             <div class="bullets">
@@ -506,6 +517,14 @@
                     </li>
                 </ul>
             </div>
+
+            <h3>Shareable Links</h3>
+            <p>
+                Every conversion is encoded in the page URL, so a conversion is easy to bookmark or share. As you change the
+                input format, output format, value, or rounding mode, the address bar updates automatically. Copy it to share
+                the exact state you are looking at, or click the button below to copy it to your clipboard.
+            </p>
+            <button type="button" id="copy-link-btn" class="copy-link-btn">Copy Link</button>
         </section>
 
         <footer>
@@ -513,6 +532,7 @@
         </footer>
     </div>
 
+    <script src="src/url-state.js" defer></script>
     <script src="src/ui.js" defer></script>
     <script src="src/webmcp.js" defer></script>
 </body>
