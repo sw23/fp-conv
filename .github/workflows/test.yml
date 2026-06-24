@@ -34,3 +34,9 @@ jobs:
 
     - name: Run MCP server tests
       run: npm test --workspace fp-conv-mcp
+
+    - name: Build CLI
+      run: npm run build --workspace fp-conv-cli
+
+    - name: Run CLI tests
+      run: npm test --workspace fp-conv-cli
