@@ -76,6 +76,21 @@ Example client configuration (VS Code, `.vscode/mcp.json`):
 See the [package README](packages/fp-conv-mcp/README.md) for full usage,
 per-client setup, and debugging instructions.
 
+## Command-Line Tool
+
+The [`fp-conv-cli`](https://www.npmjs.com/package/fp-conv-cli) npm package provides a
+cross-platform command-line version of the converter (Windows, macOS, and Linux),
+reusing the same conversion engine as the web app and MCP server. The installed
+command is `fp-conv`.
+
+```bash
+npx fp-conv-cli convert 3.14 --from fp32 --to fp16
+```
+
+It supports `encode`, `decode`, `convert`, `info`, and `list` commands with
+human-readable or `--json` output. See the
+[package README](packages/fp-conv-cli/README.md) for full usage and examples.
+
 ## License
 
 MIT © 2026 Spencer Williams. See [LICENSE](LICENSE).
