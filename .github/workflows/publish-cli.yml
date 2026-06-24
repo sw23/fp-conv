@@ -1,4 +1,4 @@
-name: Publish fp-conv-mcp
+name: Publish fp-conv-cli
 
 on:
   release:
@@ -7,12 +7,12 @@ on:
 
 jobs:
   publish:
-    # Only react to this package's release tags (e.g. mcp-v1.0.2) so a release
-    # for another package does not trigger an MCP publish. Manual
+    # Only react to this package's release tags (e.g. cli-v1.0.1) so a release
+    # for another package does not trigger a CLI publish. Manual
     # workflow_dispatch runs are always allowed.
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      startsWith(github.event.release.tag_name, 'mcp-v')
+      startsWith(github.event.release.tag_name, 'cli-v')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,15 +34,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build MCP server
-        run: npm run build --workspace fp-conv-mcp
+      - name: Build CLI
+        run: npm run build --workspace fp-conv-cli
 
       - name: Run tests
         run: |
           npm run test:coverage
-          npm test --workspace fp-conv-mcp
+          npm test --workspace fp-conv-cli
 
       - name: Publish to npm
         # Authentication and provenance are handled automatically via OIDC
         # trusted publishing (see Settings > Trusted Publishing on npmjs.com).
-        run: npm publish --workspace fp-conv-mcp --access public
+        run: npm publish --workspace fp-conv-cli --access public
