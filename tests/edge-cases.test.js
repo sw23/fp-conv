@@ -214,11 +214,10 @@ describe('FloatingPoint Edge Cases and Boundary Conditions', () => {
   });
 
   test('decode subnormal with mantissaBits=0 and non-zero mantissa returns 0', () => {
-    // FP with 0 mantissa bits: subnormal mantissaValue branch → 0
+    // FP with 0 mantissa bits: only mantissa=0 is a valid field, so an
+    // out-of-range mantissa is rejected rather than silently decoded.
     const fp = new FloatingPoint(0, 4, 0);
-    // Artificially pass mantissa=1 to exercise the mantissaBits=0 subnormal branch
-    // mantissaValue = mantissaBits > 0 ? m/2^mBits : 0 → 0, so value = 0 * 2^(1-bias) = 0
-    const decoded = fp.decode(0, 0, 1);
-    expect(decoded).toBe(0);
+    expect(() => fp.decode(0, 0, 1)).toThrow(RangeError);
+    expect(fp.decode(0, 0, 0)).toBe(0);
   });
 });
