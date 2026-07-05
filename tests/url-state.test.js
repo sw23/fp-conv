@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // URL state serialization tests
 const { FloatingPoint, Integer } = require('../lib/floating-point.js');
 const {

@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // Regression tests for exponent extraction at binade boundaries.
 //
 // Math.log2 rounds up for values just below a power of two (e.g. nextDown(2^k)

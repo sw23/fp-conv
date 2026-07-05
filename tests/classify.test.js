@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // Tests for FloatingPoint.classify() — the shared bit-pattern classifier.
 const { FloatingPoint } = require('../lib/floating-point.js');
 

@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // Regression tests for the fixed-point path (exponentBits === 0), the unsigned
 // clamp, field validation, and canonical quiet-NaN behavior.
 const { FloatingPoint, FORMATS } = require('../lib/floating-point.js');

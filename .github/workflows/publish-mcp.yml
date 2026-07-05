@@ -49,10 +49,24 @@ jobs:
       - name: Build MCP server
         run: npm run build --workspace fp-conv-mcp
 
+      - name: Run lint
+        run: npm run lint
+
       - name: Run tests
         run: |
           npm run test:coverage
           npm test --workspace fp-conv-mcp
+
+      - name: Smoke-test built artifact
+        # Every test imports from src/; exercise the bundled dist/ that actually
+        # ships by driving a real JSON-RPC session over stdio before publishing.
+        run: |
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke","version":"1.0.0"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+            | node packages/fp-conv-mcp/dist/index.js > /tmp/mcp-smoke.txt
+          node -e 'const fs=require("fs");const lines=fs.readFileSync("/tmp/mcp-smoke.txt","utf8").trim().split("\n").filter(Boolean);const last=JSON.parse(lines[lines.length-1]);if(!last.result||!Array.isArray(last.result.tools)||last.result.tools.length===0){throw new Error("tools/list response malformed");}console.log("MCP artifact smoke test passed:",last.result.tools.length,"tools");'
 
       - name: Publish to npm
         # Authentication and provenance are handled automatically via OIDC

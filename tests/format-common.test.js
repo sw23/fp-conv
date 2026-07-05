@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // Pure-logic unit tests for formats/format-common.js
 // These tests don't require a DOM environment.
 const { FloatingPoint } = require('../lib/floating-point.js');
@@ -17,8 +20,10 @@ describe('FORMAT_PAGES', () => {
         const expected = [
             'fp64', 'fp32', 'fp16', 'bf16', 'tf32',
             'fp8_e5m2', 'fp8_e4m3', 'fp6_e3m2', 'fp6_e2m3', 'fp4_e2m1',
-            'int32', 'int16', 'int8', 'int4',
+            'int32', 'uint32', 'int16', 'uint16',
+            'int8', 'uint8', 'int4', 'uint4',
         ];
+        expect(Object.keys(FORMAT_PAGES).sort()).toEqual([...expected].sort());
         for (const key of expected) {
             expect(FORMAT_PAGES[key]).toBeDefined();
             expect(FORMAT_PAGES[key].file).toMatch(/\.html$/);
