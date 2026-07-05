@@ -62,6 +62,17 @@ describe("callTool", () => {
         expect(info.totalBits).toBe(32);
     });
 
+    test("E4M3 encodes 448 as a Normal value (not NaN)", () => {
+        const stats = parseResult(callTool("encode_number", { value: 448, format: "fp8_e4m3" }));
+        expect(stats.type).toBe("Normal");
+        expect(stats.actualValue).toBe(448);
+    });
+
+    test("get_format_info reports E4M3 max normal as 448", () => {
+        const info = parseResult(callTool("get_format_info", { format: "fp8_e4m3" }));
+        expect(info.maxNormal).toBe(448);
+    });
+
     test("list_formats returns all presets", () => {
         const formats = parseResult(callTool("list_formats", {}));
         expect(Array.isArray(formats)).toBe(true);

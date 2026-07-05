@@ -110,15 +110,13 @@ function classifyValue(format, sign, exponent, mantissa) {
         return 'Fixed-point';
     }
 
-    if (exponent === format.maxExponent) {
-        if (format.hasNaN && mantissa !== 0) return 'NaN';
-        if (format.hasInfinity && mantissa === 0) return sign ? '-Infinity' : '+Infinity';
+    const kind = format.classify(sign, exponent, mantissa);
+    switch (kind) {
+        case 'Zero': return sign ? '-Zero' : '+Zero';
+        case 'Infinity': return sign ? '-Infinity' : '+Infinity';
+        case 'NaN': return 'NaN';
+        default: return kind; // 'Normal' | 'Subnormal'
     }
-    if (exponent === 0) {
-        if (mantissa === 0) return sign ? '-Zero' : '+Zero';
-        return 'Subnormal';
-    }
-    return 'Normal';
 }
 
 /**
@@ -136,11 +134,16 @@ function mantissaDecimal(format, exponent, mantissa) {
 /**
  * Format the actual exponent string (e.g. "128 - 127 = 1").
  */
-function exponentActual(format, exponent) {
+function exponentActual(format, exponent, mantissa = 0) {
     if (format.isInteger) return 'N/A';
     if (format.exponentBits === 0) return 'N/A';
     if (exponent === 0) return `1 - ${format.bias} = ${1 - format.bias}`;
-    if (exponent === format.maxExponent && (format.hasInfinity || format.hasNaN)) return 'Special';
+    if (exponent === format.maxExponent) {
+        // Only genuine Infinity/NaN encodings have a "Special" exponent; a
+        // normal value living at maxExponent (OCP-style) shows the real value.
+        const kind = format.classify(0, exponent, mantissa);
+        if (kind === 'Infinity' || kind === 'NaN') return 'Special';
+    }
     return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
 }
 
@@ -158,16 +161,28 @@ function parseValueInput(input) {
         if (lower === '-infinity' || lower === '-inf') return -Infinity;
         if (lower === 'nan') return NaN;
 
+        // Reject empty/whitespace-only input (Number("") === 0 would hide it).
+        if (lower === '') {
+            throw new Error('Value cannot be empty.');
+        }
+
         // Hex string
         if (lower.startsWith('0x')) {
+            if (!/^0x[0-9a-f]+$/.test(lower)) {
+                throw new Error(`Invalid hex value: "${input}"`);
+            }
             const parsed = parseInt(lower, 16);
-            if (isNaN(parsed)) throw new Error(`Invalid hex value: "${input}"`);
+            if (parsed > Number.MAX_SAFE_INTEGER) {
+                throw new Error(
+                    `Hex value "${input}" exceeds the safe integer range; ` +
+                    'use decode_bits to inspect wide bit patterns.');
+            }
             return parsed;
         }
 
         // Try decimal parse
         const num = Number(input);
-        if (!isNaN(num) || lower === 'nan') return num;
+        if (!isNaN(num)) return num;
 
         throw new Error(`Cannot parse value: "${input}". Provide a number, hex (0x…), or keyword (infinity, nan).`);
     }
@@ -205,7 +220,7 @@ function buildStats(format, encoded) {
         stats.signed = format.signed;
     } else {
         stats.exponentBiased = exponent;
-        stats.exponentActual = exponentActual(format, exponent);
+        stats.exponentActual = exponentActual(format, exponent, mantissa);
         stats.mantissaDecimal = mantissaDecimal(format, exponent, mantissa);
         stats.totalBits = format.totalBits;
         stats.signBits = format.signBits;
@@ -223,18 +238,21 @@ function buildStats(format, encoded) {
  * list_formats – Return every available preset format.
  */
 function listFormats() {
-    const categories = {
-        'IEEE 754': ['fp64', 'fp32', 'fp16'],
-        'ML': ['bf16', 'tf32'],
-        'OCP': ['fp8_e5m2', 'fp8_e4m3', 'fp6_e3m2', 'fp6_e2m3', 'fp4_e2m1'],
-        'Integer': ['int32', 'uint32', 'int16', 'uint16', 'int8', 'uint8', 'int4', 'uint4'],
+    // Derived from the single FORMATS catalog so new presets appear automatically
+    // and category labels can never drift out of sync.
+    const CATEGORY_LABELS = {
+        ieee: 'IEEE 754',
+        ml: 'ML',
+        ocp: 'OCP',
+        integer: 'Integer',
     };
+    const CATEGORY_ORDER = ['ieee', 'ml', 'ocp', 'integer'];
 
     const formats = [];
-    for (const [category, keys] of Object.entries(categories)) {
-        for (const key of keys) {
-            const f = _FORMATS[key];
-            const entry = { key, name: f.name, category };
+    for (const category of CATEGORY_ORDER) {
+        for (const [key, f] of Object.entries(_FORMATS)) {
+            if (f.category !== category) continue;
+            const entry = { key, name: f.name, category: CATEGORY_LABELS[category] };
 
             if (f.isInteger) {
                 entry.bits = f.bits;
@@ -299,9 +317,23 @@ function decodeBits({ bits, format: formatSpec }) {
         if (!/^[0-9a-fA-F]+$/.test(hexDigits)) {
             throw new Error(`Invalid hex value: "${bitString}"`);
         }
-        const binary = BigInt('0x' + hexDigits).toString(2).padStart(format.totalBits, '0');
+        const significant = BigInt('0x' + hexDigits).toString(2);
+        if (significant.length > format.totalBits) {
+            throw new Error(
+                `Bit pattern "${bitString}" has ${significant.length} significant bits, ` +
+                `which does not fit the ${format.totalBits}-bit format.`);
+        }
+        const binary = significant.padStart(format.totalBits, '0');
         ({ sign, exponent, mantissa } = extractComponents(binary, format));
     } else if (/^[01]+$/.test(bitString)) {
+        // A binary pattern is an exact bit layout: reject anything wider than
+        // the format (a caller passing a 32-bit string to fp16 almost certainly
+        // meant fp32). Leading zeros are only tolerated for hex input above.
+        if (bitString.length > format.totalBits) {
+            throw new Error(
+                `Binary pattern "${bitString}" is ${bitString.length} bits wide, ` +
+                `which does not fit the ${format.totalBits}-bit format.`);
+        }
         const padded = bitString.padStart(format.totalBits, '0');
         ({ sign, exponent, mantissa } = extractComponents(padded, format));
     } else {
@@ -412,20 +444,18 @@ function getFormatInfo({ format: formatSpec }) {
         info.hasNaN = format.hasNaN;
 
         if (format.exponentBits > 0) {
-            // Max normal
-            const maxExp = format.hasInfinity || format.hasNaN
-                ? format.maxExponent - 1
-                : format.maxExponent;
-            const maxMantissa = format.mantissaBits > 0
-                ? (Math.pow(2, format.mantissaBits) - 1)
-                : 0;
-            info.maxNormal = format.decode(0, maxExp, maxMantissa);
+            // Max normal (delegated to the engine so OCP-style formats whose
+            // largest normal lives at maxExponent — e.g. E4M3 max = 448 — are
+            // reported correctly).
+            const mn = format.getMaxNormal(false);
+            info.maxNormal = format.decode(mn.sign, mn.exponent, mn.mantissa);
 
             // Min normal
             info.minNormal = format.decode(0, 1, 0);
 
             // Subnormals
             if (format.mantissaBits > 0) {
+                const maxMantissa = Math.pow(2, format.mantissaBits) - 1;
                 info.maxSubnormal = format.decode(0, 0, maxMantissa);
                 info.minSubnormal = format.decode(0, 0, 1);
             }

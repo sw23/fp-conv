@@ -96,14 +96,15 @@ describe("startHttpServer", () => {
         expect(res.headers.get("allow")).toBe("GET, POST, DELETE");
     });
 
-    test("returns a JSON error for a malformed initialize body", async () => {
+    test("returns a JSON-RPC parse error for a malformed initialize body", async () => {
         const res = await rawFetch(server, "/mcp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: "{ not valid json",
         });
-        expect(res.status).toBe(500);
+        expect(res.status).toBe(400);
         const body = await res.json();
-        expect(body.error.message).toMatch(/Internal server error/);
+        expect(body.error.code).toBe(-32700);
+        expect(body.error.message).toMatch(/Parse error/);
     });
 });

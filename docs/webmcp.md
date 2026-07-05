@@ -22,6 +22,7 @@ Encode a decimal number (or special value) into a format.
 |-----------|------|-------------|
 | `value` | number \| string | Decimal number, hex string (`"0xFF"`), or keyword (`"infinity"`, `"-infinity"`, `"nan"`) |
 | `format` | string \| object | Preset key (e.g. `"fp16"`, `"int8"`) or custom format object |
+| `roundingMode` | string | Optional. One of `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative` |
 
 **Returns:** Binary string, hex string, sign, exponent (biased & actual), mantissa, type classification, and actual value.
 
@@ -45,6 +46,7 @@ Convert a value from one format to another, with precision loss analysis.
 | `value` | number \| string | The value to convert |
 | `inputFormat` | string \| object | Source format |
 | `outputFormat` | string \| object | Target format |
+| `roundingMode` | string | Optional. One of `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative` |
 
 **Returns:** Full encoding stats for both input and output, plus `precisionLoss` with `absolute`, `relativePercent`, and `lossless` flag.
 

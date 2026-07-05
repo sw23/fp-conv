@@ -164,6 +164,8 @@ function decimalToString(value) {
     if (value === Infinity) return 'inf';
     if (value === -Infinity) return '-inf';
     if (typeof value === 'number' && Number.isNaN(value)) return 'nan';
+    // String(-0) === "0", which would silently drop the sign on a shared link.
+    if (Object.is(value, -0)) return '-0';
     return String(value);
 }
 
@@ -175,7 +177,7 @@ function parseDecimal(str) {
     const lower = str.toLowerCase().trim();
     if (lower === 'inf' || lower === '+inf' || lower === 'infinity' || lower === '+infinity') return Infinity;
     if (lower === '-inf' || lower === '-infinity') return -Infinity;
-    if (lower === 'nan') return NaN;
+    if (lower === 'nan' || lower === '-nan' || lower === '+nan') return NaN;
     if (lower === '') return null;
     const n = Number(str);
     return Number.isNaN(n) ? null : n;
@@ -252,7 +254,10 @@ function parseSearchParams(search) {
 
     if (params.has('hex')) {
         const hex = params.get('hex').trim();
-        if (/^0x[0-9a-f]+$/i.test(hex)) {
+        // Bound the length so a crafted link cannot smuggle a pathologically
+        // wide bit pattern; the widest supported format is 128 bits
+        // (sign + 15 exponent + 112 mantissa = 32 hex digits).
+        if (/^0x[0-9a-f]+$/i.test(hex) && hex.length - 2 <= 32) {
             result.value = { hex };
         }
     } else if (params.has('val')) {

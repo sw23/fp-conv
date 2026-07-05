@@ -49,6 +49,28 @@ describe("parseArgs", () => {
     test("throws on an unknown option", () => {
         expect(() => parseArgs(["encode", "--nope"])).toThrow();
     });
+
+    test("treats a bare negative number as a positional value", () => {
+        const parsed = parseArgs(["encode", "-1.5", "--format", "fp16"]);
+        expect(parsed.command).toBe("encode");
+        expect(parsed.positionals).toEqual(["encode", "-1.5"]);
+        expect(parsed.values.format).toBe("fp16");
+    });
+
+    test("treats -inf and -0 as positional values", () => {
+        expect(parseArgs(["encode", "-inf", "-f", "fp16"]).positionals)
+            .toEqual(["encode", "-inf"]);
+        expect(parseArgs(["encode", "-0", "-f", "fp16"]).positionals)
+            .toEqual(["encode", "-0"]);
+        expect(parseArgs(["encode", "-.5", "-f", "fp16"]).positionals)
+            .toEqual(["encode", "-.5"]);
+    });
+
+    test("still supports the -- separator for values", () => {
+        const parsed = parseArgs(["encode", "--format", "fp16", "--", "-1.5"]);
+        expect(parsed.positionals).toEqual(["encode", "-1.5"]);
+        expect(parsed.values.format).toBe("fp16");
+    });
 });
 
 describe("main: help and version", () => {
@@ -104,5 +126,58 @@ describe("main: error handling", () => {
         ]);
         expect(stderr).toMatch(/Invalid custom format JSON/);
         expect(exitCodes).toContain(1);
+    });
+});
+
+describe("main: negative values", () => {
+    test("encodes a negative decimal without a -- separator", async () => {
+        const { stdout, stderr, exitCodes } = await runCli(main, [
+            "encode",
+            "-1.5",
+            "--format",
+            "fp16",
+            "--json",
+        ]);
+        expect(exitCodes).toEqual([]);
+        expect(stderr).toBe("");
+        const data = JSON.parse(stdout);
+        expect(data.actualValue).toBe(-1.5);
+        expect(data.sign).toBe(1);
+    });
+
+    test("encodes -inf", async () => {
+        const { stdout, exitCodes } = await runCli(main, [
+            "encode",
+            "-inf",
+            "--format",
+            "fp16",
+            "--json",
+        ]);
+        expect(exitCodes).toEqual([]);
+        const data = JSON.parse(stdout);
+        expect(data.actualValue).toBe("-Infinity");
+    });
+});
+
+describe("main: OCP E4M3", () => {
+    test("info reports max normal 448", async () => {
+        const { stdout, exitCodes } = await runCli(main, ["info", "fp8_e4m3", "--json"]);
+        expect(exitCodes).toEqual([]);
+        const info = JSON.parse(stdout);
+        expect(info.maxNormal).toBe(448);
+    });
+
+    test("encodes 448 as a Normal value (not NaN)", async () => {
+        const { stdout, exitCodes } = await runCli(main, [
+            "encode",
+            "448",
+            "--format",
+            "fp8_e4m3",
+            "--json",
+        ]);
+        expect(exitCodes).toEqual([]);
+        const data = JSON.parse(stdout);
+        expect(data.type).toBe("Normal");
+        expect(data.actualValue).toBe(448);
     });
 });

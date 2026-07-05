@@ -96,6 +96,13 @@ describe('resolveFormat', () => {
     test('throws on invalid integer bits', () => {
         expect(() => resolveFormat({ bits: 0 })).toThrow(/between 1 and 64/);
         expect(() => resolveFormat({ bits: 100 })).toThrow(/between 1 and 64/);
+        expect(() => resolveFormat({ bits: 65 })).toThrow(/between 1 and 64/);
+    });
+
+    test('supports custom integer widths up to 64 bits', () => {
+        const fmt = resolveFormat({ bits: 64, signed: false });
+        expect(fmt).toBeInstanceOf(Integer);
+        expect(fmt.bits).toBe(64);
     });
 
     test('throws on non-string non-object input', () => {
@@ -139,6 +146,19 @@ describe('parseValueInput', () => {
 
     test('throws on invalid hex', () => {
         expect(() => parseValueInput('0xZZZZ')).toThrow(/Invalid hex/);
+    });
+
+    test('throws on hex with trailing garbage', () => {
+        expect(() => parseValueInput('0x12zz')).toThrow(/Invalid hex/);
+    });
+
+    test('throws on empty or whitespace input', () => {
+        expect(() => parseValueInput('')).toThrow(/empty/);
+        expect(() => parseValueInput('   ')).toThrow(/empty/);
+    });
+
+    test('throws on hex beyond the safe integer range', () => {
+        expect(() => parseValueInput('0xFFFFFFFFFFFFFFFF')).toThrow(/safe integer/);
     });
 
     test('throws on non-number non-string', () => {
@@ -401,6 +421,13 @@ describe('listFormats', () => {
         expect(categories).toContain('OCP');
         expect(categories).toContain('Integer');
     });
+
+    test('exposes exactly the keys in the FORMATS catalog', () => {
+        const formats = JSON.parse(listFormats().content[0].text);
+        const listed = formats.map(f => f.key).sort();
+        const catalog = Object.keys(FORMATS).sort();
+        expect(listed).toEqual(catalog);
+    });
 });
 
 // ── encodeNumber tool ─────────────────────────────────────────────
@@ -569,6 +596,66 @@ describe('decodeBits', () => {
 
     test('throws when format is missing', () => {
         expect(() => decodeBits({ bits: '0x3F800000' })).toThrow(/format/);
+    });
+});
+
+// ── E4M3 classification (OCP hasNaN-only) regression ──────────────
+
+describe('OCP E4M3 classification', () => {
+    test('encode_number(448, fp8_e4m3) is a Normal value, not NaN', () => {
+        const result = encodeNumber({ value: 448, format: 'fp8_e4m3' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats.type).toBe('Normal');
+        expect(stats.actualValue).toBe(448);
+        // The exponent is real, not "Special".
+        expect(stats.exponentActual).not.toBe('Special');
+    });
+
+    test('decode_bits(01111110, fp8_e4m3) is Normal 448', () => {
+        const result = decodeBits({ bits: '01111110', format: 'fp8_e4m3' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats.type).toBe('Normal');
+        expect(stats.actualValue).toBe(448);
+    });
+
+    test('decode_bits(01111111, fp8_e4m3) is NaN (all-ones mantissa)', () => {
+        const result = decodeBits({ bits: '01111111', format: 'fp8_e4m3' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats.type).toBe('NaN');
+    });
+
+    test('get_format_info(fp8_e4m3) reports max normal 448', () => {
+        const result = getFormatInfo({ format: 'fp8_e4m3' });
+        const info = JSON.parse(result.content[0].text);
+        expect(info.maxNormal).toBe(448);
+    });
+});
+
+// ── decode_bits overlong pattern rejection ────────────────────────
+
+describe('decodeBits rejects overlong patterns', () => {
+    test('rejects 32-bit hex decoded as fp16', () => {
+        expect(() => decodeBits({ bits: '0xFFFFFFFF', format: 'fp16' }))
+            .toThrow(/does not fit the 16-bit/);
+    });
+
+    test('rejects overlong binary string', () => {
+        expect(() => decodeBits({ bits: '1'.repeat(17), format: 'fp16' }))
+            .toThrow(/does not fit the 16-bit/);
+    });
+
+    test('rejects a full-width binary pattern for a narrower format', () => {
+        // A 32-bit FP32 subnormal pattern must NOT silently decode as fp16.
+        const fp32Bits = '0'.repeat(16) + '0011110000000000';
+        expect(fp32Bits.length).toBe(32);
+        expect(() => decodeBits({ bits: fp32Bits, format: 'fp16' }))
+            .toThrow(/does not fit the 16-bit/);
+    });
+
+    test('allows leading-zero-padded hex', () => {
+        const result = decodeBits({ bits: '0x00000040', format: 'fp16' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats).toBeDefined();
     });
 });
 

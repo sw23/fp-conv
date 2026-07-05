@@ -38,6 +38,8 @@ export function parseArgs(argv) {
         http: false,
         host: "127.0.0.1",
         port: 3001,
+        hostSet: false,
+        portSet: false,
     };
 
     for (let i = 0; i < argv.length; i++) {
@@ -54,15 +56,24 @@ export function parseArgs(argv) {
             case "--http":
                 opts.http = true;
                 break;
-            case "--host":
-                opts.host = argv[++i];
+            case "--host": {
+                const value = argv[++i];
+                if (value === undefined || value.startsWith("-")) {
+                    throw new Error(
+                        `Invalid --host value: ${value === undefined ? "(missing)" : value}`);
+                }
+                opts.host = value;
+                opts.hostSet = true;
                 break;
+            }
             case "--port": {
-                const value = Number(argv[++i]);
-                if (!Number.isInteger(value) || value < 1 || value > 65535) {
-                    throw new Error(`Invalid --port value: ${argv[i]}`);
+                const raw = argv[++i];
+                const value = Number(raw);
+                if (raw === undefined || !Number.isInteger(value) || value < 1 || value > 65535) {
+                    throw new Error(`Invalid --port value: ${raw === undefined ? "(missing)" : raw}`);
                 }
                 opts.port = value;
+                opts.portSet = true;
                 break;
             }
             default:
@@ -84,17 +95,22 @@ export async function main() {
     }
 
     if (opts.help) {
-        process.stderr.write(`${HELP}\n`);
+        process.stdout.write(`${HELP}\n`);
         return;
     }
     if (opts.version) {
-        process.stderr.write(`${SERVER_VERSION}\n`);
+        process.stdout.write(`${SERVER_VERSION}\n`);
         return;
     }
 
     if (opts.http) {
         await startHttpServer({ host: opts.host, port: opts.port });
         return;
+    }
+
+    // --host/--port only apply to HTTP mode; warn instead of silently ignoring.
+    if (opts.hostSet || opts.portSet) {
+        log("Ignoring --host/--port without --http (stdio transport does not bind a socket).");
     }
 
     const transport = new StdioServerTransport();

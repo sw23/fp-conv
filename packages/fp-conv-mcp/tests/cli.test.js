@@ -14,6 +14,8 @@ describe("parseArgs", () => {
             http: false,
             host: "127.0.0.1",
             port: 3001,
+            hostSet: false,
+            portSet: false,
         });
     });
 
@@ -46,34 +48,49 @@ describe("parseArgs", () => {
     test("rejects an unknown argument", () => {
         expect(() => parseArgs(["--nope"])).toThrow(/Unknown argument: --nope/);
     });
+
+    test("rejects a --host without a value", () => {
+        expect(() => parseArgs(["--host"])).toThrow(/Invalid --host/);
+        expect(() => parseArgs(["--host", "--port", "3000"])).toThrow(/Invalid --host/);
+    });
+
+    test("tracks whether host/port were explicitly set", () => {
+        expect(parseArgs(["--http", "--host", "0.0.0.0"]).hostSet).toBe(true);
+        expect(parseArgs(["--http", "--port", "8080"]).portSet).toBe(true);
+        expect(parseArgs([]).hostSet).toBe(false);
+        expect(parseArgs([]).portSet).toBe(false);
+    });
 });
 
 describe("main", () => {
     let argv;
     let stderr;
+    let stdout;
 
     beforeEach(() => {
         argv = process.argv;
         stderr = spyOn(process.stderr, "write");
+        stdout = spyOn(process.stdout, "write");
     });
 
     afterEach(() => {
         process.argv = argv;
         stderr.restore();
+        stdout.restore();
     });
 
-    test("--help prints usage to stderr and returns", async () => {
+    test("--help prints usage to stdout and returns", async () => {
         process.argv = ["node", "index.js", "--help"];
         await expect(main()).resolves.toBeUndefined();
-        const output = stderr.calls.map((c) => c[0]).join("");
+        const output = stdout.calls.map((c) => c[0]).join("");
         expect(output).toMatch(/Usage:/);
         expect(output).toMatch(/fp-conv-mcp/);
     });
 
-    test("--version prints the version to stderr and returns", async () => {
+    test("--version prints the version to stdout and returns", async () => {
         process.argv = ["node", "index.js", "--version"];
         await expect(main()).resolves.toBeUndefined();
-        const output = stderr.calls.map((c) => c[0]).join("");
+        const output = stdout.calls.map((c) => c[0]).join("");
         expect(output).toContain(SERVER_VERSION);
     });
 

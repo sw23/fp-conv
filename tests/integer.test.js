@@ -59,6 +59,19 @@ describe('Integer Class', () => {
             expect(uint4.minValue).toBe(0);
             expect(uint4.maxValue).toBe(15);
         });
+
+        test('supports widths up to 64 bits', () => {
+            const i64 = new Integer(64, true);
+            expect(i64.bits).toBe(64);
+            expect(i64.totalBits).toBe(64);
+        });
+
+        test('rejects out-of-range or non-integer widths', () => {
+            expect(() => new Integer(0)).toThrow(RangeError);
+            expect(() => new Integer(65)).toThrow(RangeError);
+            expect(() => new Integer(-8)).toThrow(RangeError);
+            expect(() => new Integer(8.5)).toThrow(RangeError);
+        });
     });
 
     describe('FORMATS entries', () => {

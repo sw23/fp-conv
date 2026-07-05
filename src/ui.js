@@ -1,9 +1,18 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, decimalToString */
+/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, decimalToString, parseDecimal */
 // UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
 // and the URL helpers from url-state.js.
+
+// Clamp a raw numeric-field string to an integer within [min, max], falling
+// back when unparseable. Keeps out-of-range typing from throwing out of the
+// FloatingPoint/Integer constructors (which reject e.g. exponentBits > 15).
+function clampFieldInt(raw, min, max, fallback) {
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
+}
 
 // Application State
 let currentFormat = new FloatingPoint(1, 8, 23);
@@ -217,8 +226,8 @@ function applyStateFromUrl() {
 
     if (parsed.value && parsed.value.hex !== undefined) {
         // Exact bit pattern: set bits directly without re-encoding the decimal.
+        // handleHexInput refreshes the active preset highlight itself.
         handleHexInput({ target: { value: parsed.value.hex } });
-        updateActiveValuePreset();
     } else {
         if (parsed.value && parsed.value.decimal !== undefined) {
             currentValue = parsed.value.decimal;
@@ -277,12 +286,13 @@ function setupEventListeners() {
 
     // Value input
     document.getElementById('input-decimal-input').addEventListener('input', (e) => {
-        const parsed = parseFloat(e.target.value);
-        if (Number.isNaN(parsed)) {
-            currentValue = /^\s*-?nan\s*$/i.test(e.target.value) ? NaN : 0;
-        } else {
-            currentValue = parsed;
+        const parsed = parseDecimal(e.target.value);
+        if (parsed === null) {
+            // Transient/unparseable input ("-", "1e", ".", "3.14abc", ""):
+            // keep the last valid value instead of resetting the UI to zero.
+            return;
         }
+        currentValue = parsed;
         updateValue();
     });
 
@@ -369,17 +379,19 @@ function loadOutputPreset(formatKey) {
 function updateFormat() {
     const signBits = document.getElementById('input-sign-bits').checked ? 1 : 0;
     const exponentBitsInput = document.getElementById('input-exponent-bits').value;
-    const exponentBits = exponentBitsInput === '' ? 8 : parseInt(exponentBitsInput);
+    const exponentBits = exponentBitsInput === '' ? 8 : clampFieldInt(exponentBitsInput, 0, 15, 8);
     const mantissaBitsInput = document.getElementById('input-mantissa-bits').value;
-    const mantissaBits = mantissaBitsInput === '' ? 23 : parseInt(mantissaBitsInput);
+    const mantissaBits = mantissaBitsInput === '' ? 23 : clampFieldInt(mantissaBitsInput, 0, 112, 23);
     const hasInfinity = document.getElementById('input-has-infinity').checked;
     const hasNaN = document.getElementById('input-has-nan').checked;
 
     // Check if this matches an integer format
     if (currentInputFormatKey && FORMATS[currentInputFormatKey] && FORMATS[currentInputFormatKey].isInteger) {
         const intFormat = FORMATS[currentInputFormatKey];
-        // Use the bits from UI input, but preserve signedness from the preset
-        const bitsFromUI = mantissaBits;
+        // Use the bits from UI input, but preserve signedness from the preset.
+        // Integer widths are clamped to [1, 64] (the Integer/resolveFormat/URL
+        // range) rather than the float mantissa's [0, 112].
+        const bitsFromUI = clampFieldInt(mantissaBitsInput, 1, 64, intFormat.bits);
         currentFormat = new Integer(bitsFromUI, intFormat.signed);
         
         // Check if bits changed from preset - clear active button if custom
@@ -453,17 +465,19 @@ function updateValuePresetButtons() {
 function updateOutputFormat() {
     const signBits = document.getElementById('output-sign-bits').checked ? 1 : 0;
     const exponentBitsInput = document.getElementById('output-exponent-bits').value;
-    const exponentBits = exponentBitsInput === '' ? 5 : parseInt(exponentBitsInput);
+    const exponentBits = exponentBitsInput === '' ? 5 : clampFieldInt(exponentBitsInput, 0, 15, 5);
     const mantissaBitsInput = document.getElementById('output-mantissa-bits').value;
-    const mantissaBits = mantissaBitsInput === '' ? 10 : parseInt(mantissaBitsInput);
+    const mantissaBits = mantissaBitsInput === '' ? 10 : clampFieldInt(mantissaBitsInput, 0, 112, 10);
     const hasInfinity = document.getElementById('output-has-infinity').checked;
     const hasNaN = document.getElementById('output-has-nan').checked;
 
     // Check if this matches an integer format
     if (currentOutputFormatKey && FORMATS[currentOutputFormatKey] && FORMATS[currentOutputFormatKey].isInteger) {
         const intFormat = FORMATS[currentOutputFormatKey];
-        // Use the bits from UI input, but preserve signedness from the preset
-        const bitsFromUI = mantissaBits;
+        // Use the bits from UI input, but preserve signedness from the preset.
+        // Integer widths are clamped to [1, 64] (the Integer/resolveFormat/URL
+        // range) rather than the float mantissa's [0, 112].
+        const bitsFromUI = clampFieldInt(mantissaBitsInput, 1, 64, intFormat.bits);
         outputFormat = new Integer(bitsFromUI, intFormat.signed);
         
         // Check if bits changed from preset - clear active button if custom
@@ -675,8 +689,19 @@ function handleHexInput(e) {
         return;
     }
 
+    // Reject patterns wider than the format. Otherwise the fixed-offset
+    // substring below would read the TOP bits as sign/exponent/mantissa and
+    // silently produce a wrong value (reachable from typing and shared URLs).
+    if (hexValue.length > Math.ceil(currentFormat.totalBits / 4)) {
+        return;
+    }
+
     // Convert hex to binary (BigInt-safe for >53 bits)
-    const binary = BigInt('0x' + hexValue).toString(2).padStart(currentFormat.totalBits, '0');
+    const rawBinary = BigInt('0x' + hexValue).toString(2);
+    if (rawBinary.length > currentFormat.totalBits) {
+        return; // Overlong even after accounting for a partial leading nibble.
+    }
+    const binary = rawBinary.padStart(currentFormat.totalBits, '0');
 
     // Handle integer formats
     if (currentFormat.isInteger) {
@@ -692,6 +717,7 @@ function handleHexInput(e) {
         
         updateComponents();
         updateOutput();
+        updateActiveValuePreset();
         return;
     }
 
@@ -719,6 +745,7 @@ function handleHexInput(e) {
 
     updateComponents();
     updateOutput();
+    updateActiveValuePreset();
 }
 
 function determineFloatType(format, sign, exponent, mantissa) {
@@ -742,29 +769,14 @@ function determineFloatType(format, sign, exponent, mantissa) {
         return 'Fixed-point';
     }
 
-    if (exponent === format.maxExponent) {
-        if (format.hasInfinity && mantissa === 0) {
-            return sign ? '-Infinity' : '+Infinity';
-        }
-        if (format.hasNaN) {
-            const maxMant = format.mantissaBits > 0 ? Math.pow(2, format.mantissaBits) - 1 : 0;
-            if (format.hasInfinity ? mantissa !== 0 : mantissa === maxMant) {
-                return 'NaN';
-            }
-        }
-        // Not a special value — it's a normal number at maxExponent
-        return 'Normal';
+    // Floating-point classification lives in the library so every surface agrees.
+    const kind = format.classify(sign, exponent, mantissa);
+    switch (kind) {
+        case 'Zero': return sign ? '-Zero' : '+Zero';
+        case 'Infinity': return sign ? '-Infinity' : '+Infinity';
+        case 'NaN': return 'NaN';
+        default: return kind; // 'Normal' | 'Subnormal'
     }
-
-    if (exponent === 0) {
-        if (mantissa === 0) {
-            return sign ? '-Zero' : '+Zero';
-        } else {
-            return 'Subnormal';
-        }
-    }
-
-    return 'Normal';
 }
 
 function calculateMantissaDecimal(format, exponent, mantissa) {
@@ -793,11 +805,11 @@ function formatExponentActual(format, exponent, mantissa) {
     if (exponent === 0) {
         return `1 - ${format.bias} = ${1 - format.bias}`;
     } else if (exponent === format.maxExponent) {
-        // Check if this specific encoding is a special value (Infinity or NaN)
-        const isInf = format.hasInfinity && mantissa === 0;
-        const maxMant = format.mantissaBits > 0 ? Math.pow(2, format.mantissaBits) - 1 : 0;
-        const isNaN_ = format.hasNaN && (format.hasInfinity ? mantissa !== 0 : mantissa === maxMant);
-        if (isInf || isNaN_) {
+        // Only genuine Infinity/NaN encodings are "Special"; a normal value at
+        // maxExponent (OCP-style) shows the real exponent. Sign is irrelevant
+        // to the classification here.
+        const kind = format.classify(0, exponent, mantissa);
+        if (kind === 'Infinity' || kind === 'NaN') {
             return 'Special';
         }
         return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
@@ -970,9 +982,10 @@ function valuesMatch(a, b, format) {
     // Handle NaN comparison
     if (Number.isNaN(a) && Number.isNaN(b)) return true;
     if (Number.isNaN(a) || Number.isNaN(b)) return false;
-    // Compare the encoded representations to handle floating-point precision
-    const encodedA = format.encode(a);
-    const encodedB = format.encode(b);
+    // Compare the encoded representations under the active rounding mode so the
+    // preset highlight matches the encoding the user actually sees.
+    const encodedA = format.encode(a, { roundingMode: currentRoundingMode });
+    const encodedB = format.encode(b, { roundingMode: currentRoundingMode });
     return encodedA.sign === encodedB.sign &&
            encodedA.exponent === encodedB.exponent &&
            encodedA.mantissa === encodedB.mantissa;
@@ -1106,8 +1119,14 @@ function updateOutput() {
         precisionLossElement.style.display = 'none';
     } else {
         precisionLossElement.style.display = 'flex';
-        document.getElementById('output-precision-loss').textContent =
-            `${loss.toExponential(6)} (${relativeLoss}%)`;
+        if (!isFinite(loss)) {
+            // Finite input rounded to Infinity in the output format: the
+            // relative loss is meaningless, so label it plainly.
+            document.getElementById('output-precision-loss').textContent = 'overflow';
+        } else {
+            document.getElementById('output-precision-loss').textContent =
+                `${loss.toExponential(6)} (${relativeLoss}%)`;
+        }
     }
 
     // Update output value preset highlighting

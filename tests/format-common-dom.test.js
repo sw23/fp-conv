@@ -724,4 +724,35 @@ describe('initPage', () => {
         const container = document.getElementById('comparison-table');
         expect(container.querySelector('.info-table')).toBeTruthy();
     });
+
+    test('does not reset the visualizer initial value when a distribution chart is present', () => {
+        // Build the visualizer + distribution DOM the way a format page does.
+        const viz = document.createElement('div');
+        viz.id = 'visualizer';
+        viz.className = 'visualizer';
+        viz.innerHTML = `
+            <div class="viz-input-row">
+                <div class="viz-input-group"><input type="text" id="viz-decimal" class="viz-decimal-input"></div>
+                <div class="viz-input-group"><input type="text" id="viz-hex"></div>
+            </div>
+            <div class="viz-presets"></div>
+            <div class="viz-binary"></div>
+            <div class="viz-components"></div>
+        `;
+        document.body.appendChild(viz);
+        createContainer('value-distribution');
+
+        window.FORMAT_CONFIG = {
+            signBits: 1, exponentBits: 8, mantissaBits: 23,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 3.14,
+            valueDistributionId: 'value-distribution',
+        };
+        initPage();
+
+        // Before the fix, initValueDistribution pushed index 0 into the
+        // visualizer, resetting this to "0".
+        const decimalInput = document.getElementById('viz-decimal');
+        expect(parseFloat(decimalInput.value)).toBeCloseTo(3.14, 2);
+    });
 });
