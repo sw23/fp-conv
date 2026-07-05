@@ -91,6 +91,11 @@ It supports `encode`, `decode`, `convert`, `info`, and `list` commands with
 human-readable or `--json` output. See the
 [package README](packages/fp-conv-cli/README.md) for full usage and examples.
 
+## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, testing, linting,
+serving the site, and the oracle test-vector workflow.
+
 ## License
 
 MIT © 2026 Spencer Williams. See [LICENSE](LICENSE).

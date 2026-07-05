@@ -2,6 +2,9 @@
 
 Known-good values for browser validation. Sourced from `tests/oracle-vectors.json` and `tests/conversions.test.js`.
 
+> Keep the rounding-mode vectors here in sync with
+> `tests/rounding-reference-vectors.test.js`; changing one requires updating the other.
+
 ## FP32 Encode Vectors
 
 Enter these decimal values with **FP32** input format and verify the displayed components.

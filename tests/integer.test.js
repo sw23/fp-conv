@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // Import the Integer class and FORMATS from the pure math module
 const { Integer, FloatingPoint, FORMATS } = require('../lib/floating-point.js');
 

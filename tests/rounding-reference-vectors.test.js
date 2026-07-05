@@ -1,5 +1,14 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 /**
  * Comprehensive rounding mode validation tests.
+ *
+ * These run under Node (not a browser). They exercise the same reference
+ * vectors documented in
+ * .github/skills/browser-testing/references/test-vectors.md — keep the two in
+ * sync: when a vector changes here, update that markdown table (and vice versa).
+ *
  * Tests correctness of all 5 IEEE 754 rounding modes across:
  * - Normal values (halfway and non-halfway)
  * - Subnormal values

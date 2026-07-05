@@ -1183,3 +1183,31 @@ function createOutputBinaryDisplay(section, binaryString) {
 // Initialize with FP16 input and BF16 output presets
 loadInputPreset('fp16');
 loadOutputPreset('bf16');
+
+// Export for Node.js (testing). The browser loads this file as a plain script,
+// so this block is inert there.
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        clampFieldInt,
+        updateInputFormatControlsVisibility,
+        updateOutputFormatControlsVisibility,
+        applyFormatDescriptor,
+        applyStateFromUrl,
+        setupEventListeners,
+        loadInputPreset,
+        loadOutputPreset,
+        loadValuePreset,
+        updateFormat,
+        updateOutputFormat,
+        updateValue,
+        updateOutput,
+        handleHexInput,
+        determineFloatType,
+        calculateMantissaDecimal,
+        formatExponentActual,
+        calculateBitStartPosition,
+        getPresetValue,
+        valuesMatch,
+        isAllOnesMatch,
+    };
+}

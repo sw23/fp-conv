@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // WebMCP integration tests
 const { FloatingPoint, Integer, FORMATS } = require('../lib/floating-point.js');
 const {
@@ -1087,5 +1090,40 @@ describe('End-to-end round-trip scenarios', () => {
             const info = JSON.parse(result.content[0].text);
             expect(info.totalBits).toBeGreaterThan(0);
         }
+    });
+});
+
+describe('WebMCP rounding-mode integration', () => {
+    test('encode_number accepts roundingMode parameter', () => {
+        const result = encodeNumber({ value: 1.7, format: 'fp16', roundingMode: 'towardZero' });
+        const stats = JSON.parse(result.content[0].text);
+
+        const resultDefault = encodeNumber({ value: 1.7, format: 'fp16' });
+        const statsDefault = JSON.parse(resultDefault.content[0].text);
+
+        // 1.7 is not exactly representable in fp16; tiesToEven (the default)
+        // rounds up while towardZero truncates, so the two must differ.
+        expect(statsDefault.actualValue).toBe(1.7001953125);
+        expect(stats.actualValue).toBe(1.69921875);
+        expect(stats.actualValue).not.toBe(statsDefault.actualValue);
+    });
+
+    test('convert_format accepts roundingMode parameter', () => {
+        const result = convertFormat({
+            value: Math.PI,
+            inputFormat: 'fp32',
+            outputFormat: 'fp16',
+            roundingMode: 'towardZero'
+        });
+        const data = JSON.parse(result.content[0].text);
+        expect(data.input).toBeDefined();
+        expect(data.output).toBeDefined();
+        expect(data.precisionLoss).toBeDefined();
+    });
+
+    test('encode_number without roundingMode uses default', () => {
+        const result = encodeNumber({ value: 1.5, format: 'fp16' });
+        const stats = JSON.parse(result.content[0].text);
+        expect(stats.actualValue).toBe(1.5);
     });
 });

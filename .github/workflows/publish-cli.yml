@@ -49,10 +49,21 @@ jobs:
       - name: Build CLI
         run: npm run build --workspace fp-conv-cli
 
+      - name: Run lint
+        run: npm run lint
+
       - name: Run tests
         run: |
           npm run test:coverage
           npm test --workspace fp-conv-cli
+
+      - name: Smoke-test built artifact
+        # Every test imports from src/; exercise the bundled dist/ that actually
+        # ships before publishing.
+        run: |
+          node packages/fp-conv-cli/dist/index.js --version
+          node packages/fp-conv-cli/dist/index.js convert 3.14 --from fp32 --to fp16 --json \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{JSON.parse(s);console.log("CLI artifact smoke test passed");});'
 
       - name: Publish to npm
         # Authentication and provenance are handled automatically via OIDC

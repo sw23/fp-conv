@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // Import the FloatingPoint class from the pure math module
 const { FloatingPoint } = require('../lib/floating-point.js');
 
@@ -99,5 +102,49 @@ describe('FloatingPoint Round-trip encode/decode', () => {
       const nanEnc = format.encode(NaN);
       expect(isNaN(format.decode(nanEnc.sign, nanEnc.exponent, nanEnc.mantissa))).toBe(true);
     }
+  });
+
+  describe('Cross-format round-trip conversions', () => {
+    test('FP32→FP16→FP32 preserves FP16-representable values', () => {
+      const fp32 = new FloatingPoint(1, 8, 23);
+      const fp16 = new FloatingPoint(1, 5, 10);
+
+      const testValues = [0, 1, -1, 2, 0.5, 0.25, 100, -50];
+
+      testValues.forEach(value => {
+        const fp32Encoded1 = fp32.encode(value);
+        const fp32Value1 = fp32.decode(fp32Encoded1.sign, fp32Encoded1.exponent, fp32Encoded1.mantissa);
+
+        const fp16Encoded = fp16.encode(fp32Value1);
+        const fp16Value = fp16.decode(fp16Encoded.sign, fp16Encoded.exponent, fp16Encoded.mantissa);
+
+        const fp32Encoded2 = fp32.encode(fp16Value);
+        const fp32Value2 = fp32.decode(fp32Encoded2.sign, fp32Encoded2.exponent, fp32Encoded2.mantissa);
+
+        // Round-trip through FP16 should be idempotent
+        expect(fp32Value2).toBe(fp16Value);
+      });
+    });
+
+    test('FP16→FP32→FP16 is exact (no loss)', () => {
+      const fp16 = new FloatingPoint(1, 5, 10);
+      const fp32 = new FloatingPoint(1, 8, 23);
+
+      const testValues = [0, 1, -1, 2, 0.5, 3.14];
+
+      testValues.forEach(value => {
+        const fp16Encoded1 = fp16.encode(value);
+        const fp16Value1 = fp16.decode(fp16Encoded1.sign, fp16Encoded1.exponent, fp16Encoded1.mantissa);
+
+        const fp32Encoded = fp32.encode(fp16Value1);
+        const fp32Value = fp32.decode(fp32Encoded.sign, fp32Encoded.exponent, fp32Encoded.mantissa);
+
+        const fp16Encoded2 = fp16.encode(fp32Value);
+        const fp16Value2 = fp16.decode(fp16Encoded2.sign, fp16Encoded2.exponent, fp16Encoded2.mantissa);
+
+        // Should be exactly preserved
+        expect(fp16Value2).toBe(fp16Value1);
+      });
+    });
   });
 });

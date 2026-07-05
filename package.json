@@ -13,12 +13,13 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "oracle:regen": "python3 tests/oracle-validator.py > tests/oracle-vectors.json",
     "lint": "eslint . && npm run lint:html",
     "lint:fix": "eslint . --fix",
     "lint:html": "htmlhint index.html 'formats/*.html'"

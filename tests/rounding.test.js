@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 const { FloatingPoint, Integer, ROUNDING_MODES } = require('../lib/floating-point.js');
 
 describe('Rounding Modes', () => {
@@ -435,41 +438,6 @@ describe('Rounding Modes', () => {
         test('throws error for unknown rounding mode on Integer', () => {
             const int8 = new Integer(8, true);
             expect(() => int8.encode(1.5, { roundingMode: 'invalid' })).toThrow('Unknown rounding mode');
-        });
-    });
-
-    describe('WebMCP integration', () => {
-        const { encodeNumber, convertFormat } = require('../src/webmcp.js');
-
-        test('encode_number accepts roundingMode parameter', () => {
-            const result = encodeNumber({ value: 1.3, format: 'fp16', roundingMode: 'towardZero' });
-            const stats = JSON.parse(result.content[0].text);
-            
-            const resultDefault = encodeNumber({ value: 1.3, format: 'fp16' });
-            const statsDefault = JSON.parse(resultDefault.content[0].text);
-            
-            // towardZero should truncate, potentially giving different result
-            expect(stats.actualValue).toBeDefined();
-            expect(statsDefault.actualValue).toBeDefined();
-        });
-
-        test('convert_format accepts roundingMode parameter', () => {
-            const result = convertFormat({
-                value: Math.PI,
-                inputFormat: 'fp32',
-                outputFormat: 'fp16',
-                roundingMode: 'towardZero'
-            });
-            const data = JSON.parse(result.content[0].text);
-            expect(data.input).toBeDefined();
-            expect(data.output).toBeDefined();
-            expect(data.precisionLoss).toBeDefined();
-        });
-
-        test('encode_number without roundingMode uses default', () => {
-            const result = encodeNumber({ value: 1.5, format: 'fp16' });
-            const stats = JSON.parse(result.content[0].text);
-            expect(stats.actualValue).toBe(1.5);
         });
     });
 });

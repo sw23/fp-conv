@@ -5,6 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 import { startHttpServer } from "../src/http.js";
+import { spyOn } from "./helpers.js";
 
 /** Resolve the base http URL (including /mcp) for a listening server. */
 function mcpUrl(server) {
@@ -21,6 +22,16 @@ async function rawFetch(server, path, init) {
 describe("startHttpServer", () => {
     /** @type {import('node:http').Server} */
     let server;
+
+    // The server logs a "listening" line to stderr on startup; suppress it so
+    // it does not pollute the test runner output.
+    let stderrSpy;
+    beforeAll(() => {
+        stderrSpy = spyOn(process.stderr, "write");
+    });
+    afterAll(() => {
+        stderrSpy.restore();
+    });
 
     beforeEach(async () => {
         // Port 0 lets the OS pick a free ephemeral port.

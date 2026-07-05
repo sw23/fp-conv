@@ -1,3 +1,6 @@
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // Import the FloatingPoint class from the pure math module
 const { FloatingPoint } = require('../lib/floating-point.js');
 const fs = require('fs');

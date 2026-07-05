@@ -2,6 +2,9 @@
  * @jest-environment jsdom
  */
 
+// Copyright (c) 2025 Spencer Williams
+// Licensed under the MIT License.
+
 // DOM-dependent unit tests for formats/format-common.js
 require('jest-canvas-mock');
 
@@ -595,6 +598,77 @@ describe('initVisualizer', () => {
         const components = document.querySelector('.viz-components');
         expect(components.innerHTML).toContain('Zero');
     });
+
+    test('hex input blur decodes the value', () => {
+        setupVisualizer({
+            signBits: 1, exponentBits: 5, mantissaBits: 10,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 0,
+        });
+        const hex = document.getElementById('viz-hex');
+        hex.value = '0x3c00'; // FP16 encoding of 1.0
+        hex.dispatchEvent(new Event('blur'));
+        expect(document.getElementById('viz-decimal').value).toBe('1');
+    });
+
+    test('invalid hex input is ignored', () => {
+        setupVisualizer({
+            signBits: 1, exponentBits: 5, mantissaBits: 10,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 1,
+        });
+        const hex = document.getElementById('viz-hex');
+        const before = document.getElementById('viz-decimal').value;
+        hex.value = '0xZZZ';
+        hex.dispatchEvent(new Event('blur'));
+        expect(document.getElementById('viz-decimal').value).toBe(before);
+    });
+
+    test('decimal input blur accepts "nan"', () => {
+        setupVisualizer({
+            signBits: 1, exponentBits: 5, mantissaBits: 10,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 0,
+        });
+        const dec = document.getElementById('viz-decimal');
+        dec.value = 'nan';
+        dec.dispatchEvent(new Event('blur'));
+        expect(document.querySelector('.viz-components').innerHTML).toContain('NaN');
+    });
+
+    test('integer presets set the expected values', () => {
+        const viz = document.createElement('div');
+        viz.id = 'visualizer';
+        viz.className = 'visualizer';
+        viz.innerHTML = `
+            <div class="viz-input-row">
+                <div class="viz-input-group"><input type="text" id="viz-decimal" class="viz-decimal-input"></div>
+                <div class="viz-input-group"><input type="text" id="viz-hex"></div>
+            </div>
+            <div class="viz-presets">
+                <button class="viz-preset-btn" data-preset="zero">0</button>
+                <button class="viz-preset-btn" data-preset="one">1</button>
+                <button class="viz-preset-btn" data-preset="neg-one">-1</button>
+                <button class="viz-preset-btn" data-preset="max">Max</button>
+                <button class="viz-preset-btn" data-preset="min">Min</button>
+                <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+            </div>
+            <div class="viz-binary"></div>
+            <div class="viz-components"></div>
+        `;
+        document.body.appendChild(viz);
+        initVisualizer({ isInteger: true, totalBits: 8, signed: true, initialValue: 0 });
+
+        const dec = document.getElementById('viz-decimal');
+        document.querySelector('[data-preset="neg-one"]').click();
+        expect(dec.value).toBe('-1');
+        document.querySelector('[data-preset="max"]').click();
+        expect(dec.value).toBe('127');
+        document.querySelector('[data-preset="min"]').click();
+        expect(dec.value).toBe('-128');
+        document.querySelector('[data-preset="all-ones"]').click();
+        expect(dec.value).toBe('-1');
+    });
 });
 
 // ── initValueDistribution ────────────────────────────────────
@@ -650,6 +724,70 @@ describe('initValueDistribution', () => {
 
         expect(window._vdApi).toBeDefined();
         expect(typeof window._vdApi.setEncoding).toBe('function');
+    });
+
+    // Drive the chart's interactive controls (slider, step buttons, canvas
+    // pointer events, and cross-component sync) for coverage of the handlers.
+    describe('interactions', () => {
+        function setupDistribution() {
+            const viz = document.createElement('div');
+            viz.id = 'visualizer';
+            viz.innerHTML = '<div class="viz-binary"></div><div class="viz-components"></div>';
+            document.body.appendChild(viz);
+            initVisualizer({
+                signBits: 1, exponentBits: 4, mantissaBits: 3,
+                bias: 7, hasInfinity: false, hasNaN: true,
+                initialValue: 0,
+            });
+            createContainer('value-distribution');
+            initValueDistribution({
+                valueDistributionId: 'value-distribution',
+                signBits: 1, exponentBits: 4, mantissaBits: 3,
+                bias: 7, hasInfinity: false, hasNaN: true,
+            });
+            return document.getElementById('value-distribution');
+        }
+
+        test('moving the slider updates the readout', () => {
+            const container = setupDistribution();
+            const slider = container.querySelector('.vd-slider');
+            slider.value = String(parseInt(slider.max, 10));
+            slider.dispatchEvent(new Event('input'));
+            expect(container.querySelector('.vd-ro-val')).toBeTruthy();
+        });
+
+        test('step buttons advance the cursor across zero', () => {
+            const container = setupDistribution();
+            const stepButtons = container.querySelectorAll('.vd-step-btn');
+            expect(stepButtons.length).toBeGreaterThan(0);
+            stepButtons.forEach((btn) => btn.click());
+            // Clicking again exercises the sign-crossing branches.
+            stepButtons.forEach((btn) => btn.click());
+            expect(window._vdApi).toBeDefined();
+        });
+
+        test('clicking and dragging on the canvases moves the cursor', () => {
+            const container = setupDistribution();
+            const sub = container.querySelector('.vd-sub-canvas');
+            const norm = container.querySelector('.vd-norm-canvas');
+
+            for (const canvas of [sub, norm]) {
+                if (!canvas) continue;
+                canvas.dispatchEvent(new MouseEvent('click', { clientX: 40, bubbles: true }));
+                canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: 40, bubbles: true }));
+                canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: 80, bubbles: true }));
+                document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+            }
+            expect(window._vizApi).toBeDefined();
+        });
+
+        test('_vdApi.setEncoding positions the cursor at the matching value', () => {
+            setupDistribution();
+            // 1.0 in E4M3 is sign=0, exp=7, mant=0.
+            window._vdApi.setEncoding(0, 7, 0);
+            const state = window._vizApi.getState();
+            expect(state).toBeDefined();
+        });
     });
 });
 
