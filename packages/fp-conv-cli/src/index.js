@@ -43,9 +43,12 @@ Options:
 
 Values accept a number, hex (e.g. 0xFF), or keyword (infinity, -infinity, nan).
 Bit-patterns accept a binary string (e.g. 0100000) or hex (e.g. 0x40).
+Negative values work directly (e.g. "encode -1.5 --format fp16"); if a value is
+ever mistaken for an option, place it after "--" (e.g. "encode --format fp16 -- -1.5").
 
 Examples:
   fp-conv encode 3.14 --format fp32
+  fp-conv encode -1.5 --format fp16
   fp-conv decode 0x4048 --format fp16
   fp-conv convert 3.14 --from fp32 --to fp16
   fp-conv info bf16
@@ -64,16 +67,39 @@ const OPTIONS = {
 
 /**
  * Parse CLI arguments into command, positionals, and option values.
+ *
+ * Node's util.parseArgs treats any token beginning with "-" as an option, so a
+ * bare negative number ("encode -1.5") or "-inf" would be rejected as an
+ * unknown option. We pull those value-looking tokens out as positionals before
+ * delegating, so negative values work naturally without requiring a "--".
  * @param {string[]} argv
  * @returns {{command: string|undefined, positionals: string[], values: object}}
  */
 export function parseArgs(argv) {
+    const NEGATIVE_VALUE = /^-(?:\d.*|\.\d.*|inf(?:inity)?)$/i;
+    const forwarded = [];
+    const extraPositionals = [];
+    for (let i = 0; i < argv.length; i++) {
+        const token = argv[i];
+        if (token === "--") {
+            // Everything after "--" is already positional; forward verbatim.
+            forwarded.push(...argv.slice(i));
+            break;
+        }
+        if (NEGATIVE_VALUE.test(token)) {
+            extraPositionals.push(token);
+            continue;
+        }
+        forwarded.push(token);
+    }
+
     const { values, positionals } = nodeParseArgs({
-        args: argv,
+        args: forwarded,
         options: OPTIONS,
         allowPositionals: true,
     });
-    return { command: positionals[0], positionals, values };
+    const allPositionals = [...positionals, ...extraPositionals];
+    return { command: allPositionals[0], positionals: allPositionals, values };
 }
 
 /**

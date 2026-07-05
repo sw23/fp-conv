@@ -341,7 +341,7 @@ function renderIntegerSpecialValues(container, config) {
     ];
     if (config.totalBits > 1) {
         entries.push({ name: 'Max Signed', raw: Math.pow(2, config.totalBits - 1) - 1 });
-        entries.push({ name: 'Min Signed (-1)', raw: Math.pow(2, config.totalBits) - 1 });
+        entries.push({ name: 'All Ones (-1)', raw: Math.pow(2, config.totalBits) - 1 });
         entries.push({ name: `Min Signed (-${Math.pow(2, config.totalBits - 1)})`, raw: Math.pow(2, config.totalBits - 1) });
     }
 
@@ -372,7 +372,7 @@ function renderComparisonTable(containerId, currentKey, compareKeys) {
 
     const allKeys = [currentKey, ...compareKeys];
     const allConfigs = allKeys.map(key => {
-        const fmt = _FORMATS[key] || _FORMATS[key.replace('-', '_')];
+        const fmt = _FORMATS[key] || _FORMATS[key.replaceAll('-', '_')];
         return { key, fmt };
     });
 
@@ -646,17 +646,7 @@ function initVisualizer(config) {
                 ? (format.mantissaBits > 0 ? currentMantissa / Math.pow(2, format.mantissaBits) : 0)
                 : (format.mantissaBits > 0 ? 1 + currentMantissa / Math.pow(2, format.mantissaBits) : 1);
 
-            let type = 'Normal';
-            if (currentExponent === 0 && currentMantissa === 0) type = 'Zero';
-            else if (currentExponent === 0) type = 'Subnormal';
-            else if (currentExponent === format.maxExponent) {
-                if (format.hasInfinity && currentMantissa === 0) type = 'Infinity';
-                else if (format.hasNaN) {
-                    const maxMant = Math.pow(2, format.mantissaBits) - 1;
-                    if (format.hasInfinity ? currentMantissa !== 0 : currentMantissa === maxMant) type = 'NaN';
-                    else type = 'Normal';
-                } else type = 'Normal';
-            }
+            const type = format.classify(currentSign, currentExponent, currentMantissa);
 
             componentsContainer.innerHTML = `
                 <div class="viz-component"><span class="viz-comp-label">Sign:</span> <span class="viz-comp-value">${currentSign} (${currentSign ? '-' : '+'})</span></div>
@@ -1364,7 +1354,10 @@ function initValueDistribution(config) {
         // Log scale for y
         var minVal = normData[0].value;
         var maxVal = normData[normData.length - 1].value;
-        if (minVal <= 0) minVal = normData.find(function(d) { return d.value > 0; }).value;
+        if (minVal <= 0) {
+            var firstPositive = normData.find(function(d) { return d.value > 0; });
+            minVal = firstPositive ? firstPositive.value : 1;
+        }
         if (maxVal <= 0) maxVal = 1;
         var logMin = Math.log10(minVal);
         var logMax = Math.log10(maxVal);
@@ -1720,11 +1713,36 @@ function initValueDistribution(config) {
         },
     };
 
-    // Initial render + sync - start at zero (slider center)
-    slider.value = SLIDER_MID;
-    render();
-    updateReadout();
-    syncToVisualizer();
+    // Initial render + sync. Position the cursor to match the visualizer's
+    // current state (set from the page's initialValue) instead of resetting the
+    // visualizer to zero by pushing index 0 into it.
+    if (window._vizApi && window._vizApi.getState) {
+        var vs = window._vizApi.getState();
+        currentSign = vs.sign;
+        var gi = vs.exponent * mantCount + vs.mantissa;
+        var best = 0;
+        var bestDist = Infinity;
+        for (var vi = 0; vi < data.length; vi++) {
+            if (data[vi].exponent === vs.exponent && data[vi].mantissa === vs.mantissa) {
+                best = vi;
+                break;
+            }
+            var vdist = Math.abs(data[vi].globalIndex - gi);
+            if (vdist < bestDist) {
+                bestDist = vdist;
+                best = vi;
+            }
+        }
+        currentIndex = best;
+        slider.value = signedStateToSlider(currentSign, currentIndex);
+        render();
+        updateReadout();
+    } else {
+        slider.value = SLIDER_MID;
+        render();
+        updateReadout();
+        syncToVisualizer();
+    }
 }
 
 // ── Auto-init on DOMContentLoaded ────────────────────────────

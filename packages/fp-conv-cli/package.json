@@ -6,7 +6,6 @@
   "bin": {
     "fp-conv": "dist/index.js"
   },
-  "main": "dist/index.js",
   "files": [
     "dist/",
     "README.md",

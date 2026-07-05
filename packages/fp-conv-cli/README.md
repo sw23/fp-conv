@@ -62,6 +62,10 @@ Values accept a number, hex (e.g. `0xFF`), or keyword (`infinity`, `-infinity`,
 # Encode a decimal into FP32
 fp-conv encode 3.14 --format fp32
 
+# Negative values work directly; use `--` if a value is mistaken for an option
+fp-conv encode -1.5 --format fp16
+fp-conv encode --format fp16 -- -1.5
+
 # Decode a hex bit-pattern as FP16
 fp-conv decode 0x4048 --format fp16
 

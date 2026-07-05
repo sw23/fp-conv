@@ -1,6 +1,7 @@
 {
   "name": "fp-conv",
   "version": "1.0.0",
+  "private": true,
   "description": "Interactive tool for converting and visualizing floating-point numbers across standard and custom formats. Convert between FP32, FP16, BF16, TF32, FP8, etc. while inspecting binary representations and precision loss.",
   "main": "lib/floating-point.js",
   "exports": {

@@ -78,6 +78,19 @@ describe('parseFormatParam', () => {
         expect(parseFormatParam('s1e20m5')).toBeNull();  // exponent > 15
         expect(parseFormatParam('s1e5m200')).toBeNull(); // mantissa > 112
     });
+
+    test('supports custom integer widths up to 64 bits', () => {
+        expect(parseFormatParam('i64')).toEqual({ kind: 'int', bits: 64, signed: true });
+        expect(parseFormatParam('u64')).toEqual({ kind: 'int', bits: 64, signed: false });
+        expect(parseFormatParam('i65')).toBeNull();
+    });
+
+    test('supports custom mantissa widths up to 112 bits', () => {
+        expect(parseFormatParam('s1e5m112')).toEqual({
+            kind: 'fp', signBits: 1, exponentBits: 5, mantissaBits: 112, hasInfinity: true, hasNaN: true,
+        });
+        expect(parseFormatParam('s1e5m113')).toBeNull();
+    });
 });
 
 describe('descriptorToFormat', () => {
@@ -129,12 +142,20 @@ describe('decimalToString / parseDecimal', () => {
         expect(decimalToString(3.14)).toBe('3.14');
     });
 
+    test('preserves negative zero through a share link', () => {
+        expect(decimalToString(-0)).toBe('-0');
+        expect(decimalToString(0)).toBe('0');
+        expect(Object.is(parseDecimal('-0'), -0)).toBe(true);
+    });
+
     test('parses keywords and numbers', () => {
         expect(parseDecimal('inf')).toBe(Infinity);
         expect(parseDecimal('+inf')).toBe(Infinity);
         expect(parseDecimal('-inf')).toBe(-Infinity);
         expect(parseDecimal('infinity')).toBe(Infinity);
         expect(parseDecimal('nan')).toBeNaN();
+        expect(parseDecimal('-nan')).toBeNaN();
+        expect(parseDecimal('+nan')).toBeNaN();
         expect(parseDecimal('3.14')).toBe(3.14);
         expect(parseDecimal('-0.5')).toBe(-0.5);
     });

@@ -37,12 +37,12 @@ function readJsonBody(req) {
     });
 }
 
-function writeJsonError(res, statusCode, message, id = null) {
+function writeJsonError(res, statusCode, message, { code = -32000, id = null } = {}) {
     res.writeHead(statusCode, { "Content-Type": "application/json" });
     res.end(
         JSON.stringify({
             jsonrpc: "2.0",
-            error: { code: -32000, message },
+            error: { code, message },
             id,
         })
     );
@@ -75,7 +75,16 @@ export function startHttpServer({ host = "127.0.0.1", port = 3001 } = {}) {
 
         try {
             if (req.method === "POST") {
-                const body = await readJsonBody(req);
+                let body;
+                try {
+                    body = await readJsonBody(req);
+                } catch {
+                    // Malformed JSON is a JSON-RPC parse error, not a server fault.
+                    writeJsonError(res, 400, "Parse error: request body is not valid JSON.", {
+                        code: -32700,
+                    });
+                    return;
+                }
                 let transport = sessionId ? transports.get(sessionId) : undefined;
 
                 if (!transport && isInitializeRequest(body)) {
@@ -127,7 +136,9 @@ export function startHttpServer({ host = "127.0.0.1", port = 3001 } = {}) {
 
     return new Promise((resolve) => {
         httpServer.listen(port, host, () => {
-            log(`fp-conv-mcp Streamable HTTP server listening on http://${host}:${port}${MCP_PATH}`);
+            const addr = httpServer.address();
+            const boundPort = addr && typeof addr === "object" ? addr.port : port;
+            log(`fp-conv-mcp Streamable HTTP server listening on http://${host}:${boundPort}${MCP_PATH}`);
             resolve(httpServer);
         });
     });

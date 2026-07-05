@@ -26,6 +26,9 @@ All tools accept either a **preset key** (string) or a **custom format object**.
 
 ### Preset keys
 
+<!-- Keep this table in sync with the FORMATS catalog in lib/floating-point.js
+     (the source of truth); list_formats returns the same keys and categories. -->
+
 | Category | Keys |
 | --- | --- |
 | IEEE 754 | `"fp64"`, `"fp32"`, `"fp16"` |
@@ -58,8 +61,12 @@ For integers:
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `bits` | yes | Total bit width |
+| `bits` | yes | Total bit width (1–64) |
 | `signed` | yes | `true` for signed two's-complement, `false` for unsigned |
+
+> **Precision note:** values are computed with JavaScript doubles, so formats
+> wider than 53 significant bits (e.g. 64-bit integers or mantissas above 52)
+> are supported but may round at the extremes of their range.
 
 ## Client configuration
 
