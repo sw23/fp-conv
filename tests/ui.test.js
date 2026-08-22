@@ -285,6 +285,36 @@ describe('ui.js — the typed decimal survives later re-encodes', () => {
         setRoundingMode('towardZero');
         expect(text('input-comp-value')).toBe('1');
     });
+
+    test('typing a hex bit pattern drops the literal', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp64');
+        typeDecimal('0.1');
+
+        // Hex names a bit pattern outright, so the typed decimal no longer
+        // describes the value and must not be re-applied on the next re-encode.
+        const hex = $('input-hex-input');
+        hex.value = '0x4000000000000000'; // 2.0
+        hex.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(text('input-comp-value')).toBe('2');
+
+        setRoundingMode('towardZero');
+        expect(text('input-comp-value')).toBe('2');
+    });
+
+    test('an integer format hex pattern also drops the literal', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('int8');
+        typeDecimal('100');
+
+        const hex = $('input-hex-input');
+        hex.value = '0x7F';
+        hex.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(text('input-comp-value')).toBe('127');
+
+        setRoundingMode('towardZero');
+        expect(text('input-comp-value')).toBe('127');
+    });
 });
 
 describe('ui.js — binary checkbox toggling', () => {

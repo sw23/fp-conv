@@ -255,7 +255,11 @@ describe('FloatingPoint Format Tests', () => {
       const encoded = fixed.encode(0.5);
       expect(encoded.exponent).toBe(0);
       expect(encoded.mantissa).toBe(128); // 0.5 * 2^8
-      expect(encoded.isNormal).toBe(false);
+      // A fixed-point format has no subnormals or special values, so every
+      // nonzero value is an ordinary one - which is what classify() reports.
+      // The flag used to be hard-coded false here and so contradicted it.
+      expect(encoded.isNormal).toBe(true);
+      expect(fixed.classify(encoded.sign, encoded.exponent, encoded.mantissa)).toBe('Normal');
     });
 
     test('decodes fractional values', () => {

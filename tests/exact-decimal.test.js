@@ -522,3 +522,59 @@ describe('Integer.encodeString', () => {
         expect(int32.encodeString('Infinity').intValue).toBe(2147483647);
     });
 });
+
+describe('encode() routes strings to the exact path', () => {
+    // A string handed to encode() still carries its digits. Letting JS coerce it
+    // would round decimal -> double -> format, i.e. the very double rounding
+    // encodeString() exists to avoid, and silently: the caller gets a plausible
+    // wrong answer with no signal. encode() therefore delegates.
+    const fp4 = makeFormat('fp4_e2m1');
+    const fp32 = makeFormat('fp32');
+    const int32 = new Integer(32, true);
+    const dec = (format, encoded) =>
+        format.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+
+    test('a decimal string is rounded exactly, not via the double', () => {
+        // Number('0.74999999999999999') is exactly the fp4 0.5/1.0 midpoint.
+        expect(Number('0.74999999999999999')).toBe(0.75);
+        expect(dec(fp4, fp4.encode('0.74999999999999999'))).toBe(0.5);
+        expect(int32.encode('2.5000000000000001').intValue).toBe(3);
+    });
+
+    test('encode(string) agrees with encodeString(string)', () => {
+        for (const input of ['0.74999999999999999', '2.5', '-2.5', '0.1', '1e-3']) {
+            expect(fp32.encode(input)).toEqual(fp32.encodeString(input));
+            expect(int32.encode(input)).toEqual(int32.encodeString(input));
+        }
+    });
+
+    test('the rounding mode is carried through', () => {
+        const up = { roundingMode: ROUNDING_MODES.towardPositive };
+        expect(fp32.encode('0.1', up)).toEqual(fp32.encodeString('0.1', up));
+        expect(int32.encode('1.0000000000000001', up).intValue).toBe(2);
+    });
+
+    test('signed zero survives', () => {
+        expect(fp32.encode('-0').sign).toBe(1);
+        expect(fp32.encode('-0').isZero).toBe(true);
+        expect(fp32.encode('0').sign).toBe(0);
+    });
+
+    test('non-decimal strings keep their previous meaning', () => {
+        // encodeString() hands these back through Number(), so behaviour is
+        // unchanged from the old implicit coercion - and cannot recurse.
+        expect(fp32.encode('Infinity').isInfinite).toBe(true);
+        expect(fp32.encode('-Infinity').sign).toBe(1);
+        expect(fp32.encode('nan').isNaN).toBe(true);
+        expect(fp32.encode('abc').isNaN).toBe(true);
+        expect(dec(fp32, fp32.encode('0x10'))).toBe(16);
+        expect(fp32.encode('').isZero).toBe(true);
+        expect(dec(fp32, fp32.encode('  2.5  '))).toBe(2.5);
+    });
+
+    test('numbers are untouched by the delegation', () => {
+        expect(fp32.encode(2.5)).toEqual(fp32.encode(2.5));
+        expect(dec(fp4, fp4.encode(0.75))).toBe(1);   // genuine midpoint, ties-to-even
+        expect(int32.encode(2.5).intValue).toBe(2);
+    });
+});

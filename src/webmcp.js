@@ -276,18 +276,19 @@ function listFormats() {
 }
 
 /**
- * Encode a caller-supplied value, preferring the exact decimal path.
+ * Normalize a caller-supplied value into something the encoders can round exactly.
  *
- * Rounding the original decimal string straight to the target format avoids the
- * double rounding of decimal -> fp64 -> format, which can pick the wrong
- * neighbour when the decimal sits just off a target-format midpoint. Keyword and
- * hex inputs have no exact decimal form, so they keep the numeric path.
+ * A plain decimal literal is handed on as a STRING on purpose: the encoders
+ * round a decimal string straight to the target format, avoiding the double
+ * rounding of decimal -> fp64 -> format that can pick the wrong neighbour when
+ * the decimal sits just off a target-format midpoint.
+ *
+ * Everything else (keywords like "inf", hex bit patterns, plain numbers) has no
+ * exact decimal form and has to be normalized to a number first - Number("inf")
+ * is NaN, so the encoders cannot be left to parse those themselves.
  */
-function encodeInput(format, rawValue, numericValue, encodeOptions) {
-    if (typeof rawValue === 'string' && _FloatingPoint.isDecimalLiteral(rawValue)) {
-        return format.encodeString(rawValue, encodeOptions);
-    }
-    return format.encode(numericValue, encodeOptions);
+function encodeInput(value, numericValue) {
+    return _FloatingPoint.isDecimalLiteral(value) ? value : numericValue;
 }
 
 /**
@@ -304,7 +305,7 @@ function encodeNumber({ value, format: formatSpec, roundingMode }) {
     const format = resolveFormat(formatSpec);
     const numericValue = parseValueInput(value);
     const encodeOptions = roundingMode ? { roundingMode } : {};
-    const encoded = encodeInput(format, value, numericValue, encodeOptions);
+    const encoded = format.encode(encodeInput(value, numericValue), encodeOptions);
     const stats = buildStats(format, encoded);
 
     return { content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }] };
@@ -401,7 +402,7 @@ function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec
     const encodeOptions = roundingMode ? { roundingMode } : {};
 
     // Encode in input format, decode to get actual representable value
-    const inputEncoded = encodeInput(inFmt, value, numericValue, encodeOptions);
+    const inputEncoded = inFmt.encode(encodeInput(value, numericValue), encodeOptions);
     const inputActual = inFmt.decode(inputEncoded.sign, inputEncoded.exponent, inputEncoded.mantissa);
 
     // Re-encode in output format
