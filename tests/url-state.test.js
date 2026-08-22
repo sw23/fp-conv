@@ -223,7 +223,7 @@ describe('parseSearchParams', () => {
         const parsed = parseSearchParams('?' + qs);
         expect(parsed.input).toEqual({ presetKey: 'fp32' });
         expect(parsed.output).toEqual({ presetKey: 'fp16' });
-        expect(parsed.value).toEqual({ decimal: 2.5 });
+        expect(parsed.value).toEqual({ decimal: 2.5, text: '2.5' });
         expect(parsed.roundingMode).toBe('towardNegative');
     });
 
@@ -252,7 +252,7 @@ describe('parseSearchParams', () => {
 
     test('supports partial state (value only)', () => {
         const parsed = parseSearchParams('?val=-inf');
-        expect(parsed.value).toEqual({ decimal: -Infinity });
+        expect(parsed.value).toEqual({ decimal: -Infinity, text: '-inf' });
         expect(parsed.input).toBeNull();
         expect(parsed.output).toBeNull();
     });

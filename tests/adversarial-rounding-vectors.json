@@ -1,0 +1,3564 @@
+[
+ {
+  "format": "fp64",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -1076,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -1076,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -1076,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -1076,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -1076,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -1076,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -1076,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "36028797018963964",
+  "exp": 969,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2046,
+   "mantissa": 4503599627370495
+  }
+ },
+ {
+  "format": "fp64",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "36028797018963964",
+  "exp": 969,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2046,
+   "mantissa": 4503599627370495
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -151,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "33554436",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "33554440",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "33554448",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "33554456",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "67108828",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 8388599
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "67108836",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 8388601
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "67108844",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 8388603
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "67108852",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 8388605
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "67108856",
+  "exp": -151,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 1,
+   "mantissa": 8388606
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "33554432",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "33554436",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554439",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554439",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554439",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "33554439",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554447",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554447",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554447",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "33554447",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554455",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554455",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554455",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "33554455",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554463",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554463",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "33554463",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "33554463",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "67108831",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 8388599
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "67108831",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 8388599
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "67108831",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 8388599
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "67108831",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 8388599
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "67108839",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 8388601
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "67108839",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 8388601
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "67108839",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 8388601
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "67108839",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 8388601
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "67108847",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 8388603
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "67108847",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 8388603
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "libc-disagrees",
+  "num": "67108852",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 8388605
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "67108855",
+  "exp": -150,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 8388605
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "67108855",
+  "exp": -150,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 8388605
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554439",
+  "exp": -149,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "33554439",
+  "exp": -149,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 3,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554447",
+  "exp": -149,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "33554447",
+  "exp": -149,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 3,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554455",
+  "exp": -149,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "33554463",
+  "exp": -149,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -26,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -26,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -26,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -26,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -26,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -26,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "fp16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -26,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -135,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -135,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -135,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -135,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -135,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -135,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -135,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "535",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "535",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "535",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "535",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "607",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 23
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "607",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 23
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "607",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 23
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "607",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 23
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "679",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 41
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "679",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 41
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "679",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 41
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "679",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 41
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "751",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 59
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "751",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 59
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "751",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 59
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "751",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 59
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "823",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 77
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "823",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 77
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "823",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 77
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "823",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 77
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "895",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 95
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "895",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 95
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "895",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 95
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "895",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 95
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "967",
+  "exp": -134,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 2,
+   "mantissa": 113
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "967",
+  "exp": -134,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 2,
+   "mantissa": 113
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "527",
+  "exp": -133,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "527",
+  "exp": -133,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 3,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "599",
+  "exp": -133,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 21
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "599",
+  "exp": -133,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 3,
+   "mantissa": 21
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "671",
+  "exp": -133,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 39
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "671",
+  "exp": -133,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 3,
+   "mantissa": 39
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "743",
+  "exp": -133,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 57
+  }
+ },
+ {
+  "format": "bf16",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "815",
+  "exp": -133,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 3,
+   "mantissa": 75
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -138,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -138,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -138,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "30",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 8
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -138,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "62",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 16
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -138,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "126",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 32
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -138,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "254",
+  "exp": -138,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 64
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4103",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4103",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4103",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4103",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4111",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4111",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4111",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4111",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4119",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4119",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4119",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4119",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4127",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4127",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4127",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4127",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4135",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 9
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4135",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 9
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4135",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 9
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4135",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 9
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4143",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 11
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4143",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 11
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "4143",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 11
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4143",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 11
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4151",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 13
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4151",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 13
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4159",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 15
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4159",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 15
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4167",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 17
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4167",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 17
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4175",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 19
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "4175",
+  "exp": 114,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 253,
+   "mantissa": 19
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4183",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 21
+  }
+ },
+ {
+  "format": "tf32",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "4191",
+  "exp": 114,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 253,
+   "mantissa": 23
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -18,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -18,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -18,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -18,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -18,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp8_e5m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -18,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -11,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp8_e4m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -11,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -6,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -6,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -6,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "11",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -6,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -6,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp6_e3m2",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "15",
+  "exp": -6,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 3
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "6",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 2
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "tiesToEven",
+  "why": "gdtoa-disagrees",
+  "num": "14",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "19",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 4
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "23",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 5
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "27",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 6
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -5,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp6_e2m3",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "31",
+  "exp": -5,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 7
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -3,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "1",
+  "exp": -3,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "2",
+  "exp": -3,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "3",
+  "exp": -3,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 0
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "7",
+  "exp": -3,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardNegative",
+  "why": "gdtoa-disagrees",
+  "num": "7",
+  "exp": -3,
+  "sign": 0,
+  "expected": {
+   "sign": 0,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardZero",
+  "why": "gdtoa-disagrees",
+  "num": "7",
+  "exp": -3,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ },
+ {
+  "format": "fp4_e2m1",
+  "mode": "towardPositive",
+  "why": "gdtoa-disagrees",
+  "num": "7",
+  "exp": -3,
+  "sign": 1,
+  "expected": {
+   "sign": 1,
+   "exponent": 0,
+   "mantissa": 1
+  }
+ }
+]

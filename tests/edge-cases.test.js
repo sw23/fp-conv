@@ -71,7 +71,9 @@ describe('FloatingPoint Edge Cases and Boundary Conditions', () => {
     const encoded = fp.encode(-0.5);
     expect(encoded.sign).toBe(1);
     expect(encoded.mantissa).toBe(128); // 0.5 * 2^8
-    expect(encoded.isNormal).toBe(false);
+    // Nonzero fixed-point values classify as ordinary numbers; the flag used to
+    // be hard-coded false here and so contradicted classify().
+    expect(encoded.isNormal).toBe(true);
   });
 
   test('fixed-point decodes negative value (sign=1 path)', () => {

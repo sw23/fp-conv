@@ -11,7 +11,7 @@ module.exports = {
   // never lower them.
   coverageThreshold: {
     './lib/floating-point.js': {
-      branches: 96,
+      branches: 99,
       functions: 100,
       lines: 100,
       statements: 100
@@ -29,10 +29,10 @@ module.exports = {
       statements: 97
     },
     './src/ui.js': {
-      branches: 69,
+      branches: 70,
       functions: 80,
-      lines: 81,
-      statements: 80
+      lines: 84,
+      statements: 82
     },
     './formats/format-common.js': {
       branches: 76,

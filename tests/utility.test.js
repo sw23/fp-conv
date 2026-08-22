@@ -152,13 +152,15 @@ describe('FloatingPoint Utility Methods', () => {
       expect(decoded).toBe(6.0); // 2^(3-1) * 1.5 = 4 * 1.5 = 6
     });
 
-    test('format without sign bit still accepts negative parameter', () => {
+    test('format without sign bit ignores a negative request', () => {
       const fp = new FloatingPoint(0, 8, 8);
       const result = fp.getMaxNormal(true); // negative requested
-      // The function sets sign=1 even though format has no sign bit
-      // This is consistent with how other methods work
-      expect(result.sign).toBe(1);
+      // A format with no sign bit has no negative value to hand back. It used to
+      // set sign=1 anyway, which is not a representable field value - the result
+      // could not be decoded or rendered without throwing.
+      expect(result.sign).toBe(0);
       expect(result.isNormal).toBe(true);
+      expect(() => fp.decode(result.sign, result.exponent, result.mantissa)).not.toThrow();
     });
   });
 

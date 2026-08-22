@@ -18,6 +18,16 @@ function clampFieldInt(raw, min, max, fallback) {
 let currentFormat = new FloatingPoint(1, 8, 23);
 let outputFormat = new FloatingPoint(1, 5, 10); // FP16 by default
 let currentValue = 3.140625;
+// The decimal literal currentValue was parsed from, when it came from typed or
+// linked text. Kept so that re-encodes triggered by a rounding-mode or format
+// change can still round the original decimal exactly; null whenever the value
+// came from bits, hex or a preset and so has no literal behind it.
+//
+// The two always move together, so nothing assigns them directly: text goes
+// through setValueFromText() and everything else through setValueFromBits().
+// Leaving a stale literal behind would silently re-encode it in place of what
+// the bits now say.
+let currentValueText = null;
 let currentEncoded = null;
 let currentInputFormatKey = null;  // Track if an integer preset is active
 let currentOutputFormatKey = null; // Track if an integer preset is active
@@ -230,7 +240,7 @@ function applyStateFromUrl() {
         handleHexInput({ target: { value: parsed.value.hex } });
     } else {
         if (parsed.value && parsed.value.decimal !== undefined) {
-            currentValue = parsed.value.decimal;
+            setValueFromText(parsed.value.decimal, parsed.value.text);
             document.getElementById('input-decimal-input').value = decimalToString(currentValue);
         }
         updateValue();
@@ -292,7 +302,7 @@ function setupEventListeners() {
             // keep the last valid value instead of resetting the UI to zero.
             return;
         }
-        currentValue = parsed;
+        setValueFromText(parsed, e.target.value);
         updateValue();
     });
 
@@ -519,8 +529,34 @@ function updateOutputFormat() {
     updateOutput();
 }
 
+// Record a value that came from a bit pattern or a value preset. There is no
+// decimal literal behind such a value, and any literal still on record from
+// earlier typing must be dropped along with it — otherwise the next re-encode
+// would round that stale text instead of the bits the user just set.
+function setValueFromBits(value) {
+    currentValue = value;
+    currentValueText = null;
+}
+
+// Record a value the user typed or that arrived in a link. The literal is kept
+// alongside the parsed number so that a later re-encode can round the original
+// decimal exactly rather than the double it was parsed into. Text that is not a
+// plain decimal ("inf", "nan", hex) has no exact form, so it records no literal.
+function setValueFromText(value, text) {
+    currentValue = value;
+    currentValueText =
+        typeof text === 'string' && FloatingPoint.isDecimalLiteral(text) ? text : null;
+}
+
+// Re-encode whatever value is currently on record. The literal, if there is one,
+// is handed to the encoder as a string: it rounds the exact decimal straight to
+// the format, where going through the parsed double first double-rounds and can
+// land on the wrong neighbour for the narrow formats. That is why a rounding-mode
+// or format change re-encodes through here rather than through the double.
 function updateValue() {
-    currentEncoded = currentFormat.encode(currentValue, { roundingMode: currentRoundingMode });
+    currentEncoded = currentFormat.encode(
+        currentValueText !== null ? currentValueText : currentValue,
+        { roundingMode: currentRoundingMode });
     updateRepresentation();
     updateOutput();
     updateActiveValuePreset();
@@ -656,11 +692,11 @@ function handleBinaryCheckboxChange(e) {
     }
 
     // Decode and update current value
-    currentValue = currentFormat.decode(
+    setValueFromBits(currentFormat.decode(
         currentEncoded.sign,
         currentEncoded.exponent,
         currentEncoded.mantissa
-    );
+    ));
 
     // Update UI (but don't recreate checkboxes to avoid losing focus)
     document.getElementById('input-decimal-input').value = currentValue;
@@ -707,7 +743,7 @@ function handleHexInput(e) {
     if (currentFormat.isInteger) {
         const mantissa = Number(BigInt('0b' + binary));
         currentEncoded = { sign: 0, exponent: 0, mantissa };
-        currentValue = currentFormat.decode(0, 0, mantissa);
+        setValueFromBits(currentFormat.decode(0, 0, mantissa));
         
         // Update UI
         document.getElementById('input-decimal-input').value = currentValue;
@@ -733,7 +769,7 @@ function handleHexInput(e) {
     currentEncoded = { sign, exponent, mantissa };
 
     // Decode to get value
-    currentValue = currentFormat.decode(sign, exponent, mantissa);
+    setValueFromBits(currentFormat.decode(sign, exponent, mantissa));
 
     // Update UI
     document.getElementById('input-decimal-input').value = currentValue;
@@ -855,11 +891,11 @@ function loadValuePreset(valueKey) {
                 mantissa: Math.pow(2, currentFormat.mantissaBits) - 1
             };
         }
-        currentValue = currentFormat.decode(
+        setValueFromBits(currentFormat.decode(
             currentEncoded.sign,
             currentEncoded.exponent,
             currentEncoded.mantissa
-        );
+        ));
         document.getElementById('input-decimal-input').value = currentValue;
         updateRepresentation();
         updateOutput();
@@ -871,16 +907,16 @@ function loadValuePreset(valueKey) {
     if (currentFormat.isInteger) {
         switch (valueKey) {
             case 'zero':
-                currentValue = 0;
+                setValueFromBits(0);
                 break;
             case 'one':
-                currentValue = 1;
+                setValueFromBits(1);
                 break;
             case 'max-norm':
-                currentValue = currentFormat.maxValue;
+                setValueFromBits(currentFormat.maxValue);
                 break;
             case 'min-norm':
-                currentValue = currentFormat.minValue;
+                setValueFromBits(currentFormat.minValue);
                 break;
             default:
                 // Ignore unsupported presets for integers
@@ -889,40 +925,41 @@ function loadValuePreset(valueKey) {
     } else {
         switch (valueKey) {
             case 'zero':
-                currentValue = 0;
+                setValueFromBits(0);
                 break;
             case 'one':
-                currentValue = 1;
+                setValueFromBits(1);
                 break;
             case 'max-norm': {
                 const maxNormal = currentFormat.getMaxNormal(false);
-                currentValue = currentFormat.decode(maxNormal.sign, maxNormal.exponent, maxNormal.mantissa);
+                setValueFromBits(
+                    currentFormat.decode(maxNormal.sign, maxNormal.exponent, maxNormal.mantissa));
                 break;
             }
             case 'min-norm':
                 // Minimum normal number: exponent = 1, mantissa = 0
-                currentValue = currentFormat.decode(0, 1, 0);
+                setValueFromBits(currentFormat.decode(0, 1, 0));
                 break;
             case 'max-subnorm':
                 // Maximum subnormal number: exponent = 0, all mantissa bits = 1
-                currentValue = currentFormat.decode(
+                setValueFromBits(currentFormat.decode(
                     0,
                     0,
                     Math.pow(2, currentFormat.mantissaBits) - 1
-                );
+                ));
                 break;
             case 'min-subnorm':
                 // Minimum subnormal number: exponent = 0, mantissa = 1
-                currentValue = currentFormat.decode(0, 0, 1);
+                setValueFromBits(currentFormat.decode(0, 0, 1));
                 break;
             case 'infinity':
-                currentValue = Infinity;
+                setValueFromBits(Infinity);
                 break;
             case 'neg-infinity':
-                currentValue = -Infinity;
+                setValueFromBits(-Infinity);
                 break;
             case 'nan':
-                currentValue = NaN;
+                setValueFromBits(NaN);
                 break;
         }
     }
