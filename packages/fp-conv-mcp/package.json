@@ -46,9 +46,9 @@
   },
   "homepage": "https://github.com/sw23/fp-conv/tree/main/packages/fp-conv-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.30.0"
   },
   "devDependencies": {
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.2"
   }
 }
