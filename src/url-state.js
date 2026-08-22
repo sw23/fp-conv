@@ -261,9 +261,12 @@ function parseSearchParams(search) {
             result.value = { hex };
         }
     } else if (params.has('val')) {
-        const decimal = parseDecimal(params.get('val'));
+        const raw = params.get('val');
+        const decimal = parseDecimal(raw);
         if (decimal !== null) {
-            result.value = { decimal };
+            // Keep the raw text alongside the number so the encoder can round the
+            // original decimal exactly instead of via the intermediate double.
+            result.value = { decimal, text: raw };
         }
     }
 

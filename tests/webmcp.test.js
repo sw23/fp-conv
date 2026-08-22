@@ -1127,3 +1127,52 @@ describe('WebMCP rounding-mode integration', () => {
         expect(stats.actualValue).toBe(1.5);
     });
 });
+
+// ── exact decimal-string encoding ─────────────────────────────────
+
+describe('encodeInput - exact decimal path', () => {
+    const actualValue = (args) => JSON.parse(encodeNumber(args).content[0].text).actualValue;
+
+    test('string decimals are rounded straight to the target format', () => {
+        // Number('0.74999999999999999') is exactly the fp4 0.5/1.0 midpoint, so
+        // the fp64 detour would tie-to-even up to 1. The decimal is below it.
+        expect(actualValue({ value: '0.74999999999999999', format: 'fp4_e2m1' })).toBe(0.5);
+        expect(actualValue({ value: '0.18749999999999999', format: 'fp6_e2m3' })).toBe(0.125);
+    });
+
+    test('numeric input keeps the numeric path', () => {
+        // A caller passing an already-rounded number cannot recover the decimal.
+        const alreadyRounded = Number('0.74999999999999999');
+        expect(alreadyRounded).toBe(0.75);
+        expect(actualValue({ value: alreadyRounded, format: 'fp4_e2m1' })).toBe(1);
+    });
+
+    test('directed rounding applies to the string, not the parsed double', () => {
+        expect(actualValue({ value: '0.1', format: 'fp64', roundingMode: 'towardZero' }))
+            .toBe(0.09999999999999999);
+        expect(actualValue({ value: '0.1', format: 'fp64', roundingMode: 'towardPositive' }))
+            .toBe(0.1);
+    });
+
+    test('keyword and hex inputs still take the numeric path', () => {
+        expect(actualValue({ value: 'inf', format: 'fp32' })).toBe('Infinity');
+        expect(actualValue({ value: '-inf', format: 'fp32' })).toBe('-Infinity');
+        expect(actualValue({ value: 'nan', format: 'fp32' })).toBe('NaN');
+        expect(actualValue({ value: '0x10', format: 'fp32' })).toBe(16);
+    });
+
+    test('convert_format encodes the input side exactly', () => {
+        const result = convertFormat({
+            value: '0.74999999999999999',
+            inputFormat: 'fp4_e2m1',
+            outputFormat: 'fp32',
+        });
+        const payload = JSON.parse(result.content[0].text);
+        expect(payload.input.actualValue).toBe(0.5);
+    });
+
+    test('integer formats round the string exactly', () => {
+        expect(actualValue({ value: '2.5000000000000001', format: 'int32' })).toBe(3);
+        expect(actualValue({ value: '2.5', format: 'int32' })).toBe(2);
+    });
+});

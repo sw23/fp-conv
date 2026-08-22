@@ -218,6 +218,75 @@ describe('ui.js — custom formats and rounding', () => {
     });
 });
 
+// The typed decimal must keep being rounded exactly for as long as it is the
+// value on screen. Re-encoding it through the parsed double instead double-
+// rounds, which lands on the wrong neighbour for the cases below.
+describe('ui.js — the typed decimal survives later re-encodes', () => {
+    const typeDecimal = (value) => {
+        const dec = $('input-decimal-input');
+        dec.value = value;
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+
+    const setRoundingMode = (mode) => {
+        const rm = $('rounding-mode');
+        rm.value = mode;
+        rm.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    test('changing the rounding mode still rounds the original decimal', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp64');
+        typeDecimal('0.1');
+
+        // Number('0.1') is already the nearest double, so a directed mode can
+        // only reach the neighbour by rounding the decimal itself.
+        setRoundingMode('towardZero');
+        expect(text('input-comp-value')).toBe('0.09999999999999999');
+
+        setRoundingMode('towardPositive');
+        expect(text('input-comp-value')).toBe('0.1');
+    });
+
+    test('changing the input format still rounds the original decimal', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp32');
+        // Number() collapses this onto the fp4 0.5/1.0 midpoint, where
+        // ties-to-even would pick 1; the decimal is below it, so 0.5 is correct.
+        typeDecimal('0.74999999999999999');
+
+        ui.loadInputPreset('fp4_e2m1');
+        expect(text('input-comp-value')).toBe('0.5');
+    });
+
+    test('editing bits drops the literal instead of re-applying it', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp64');
+        typeDecimal('0.1');
+
+        // Toggling a bit makes the value come from the bit pattern, so a later
+        // rounding-mode change must re-encode those bits, not the stale text.
+        const cb = document.querySelector('#input-binary-mantissa-checks input[type="checkbox"]');
+        cb.checked = !cb.checked;
+        cb.dispatchEvent(new Event('change', { bubbles: true }));
+        const afterEdit = $('input-decimal-input').value;
+
+        setRoundingMode('towardZero');
+        expect(text('input-comp-value')).toBe(afterEdit);
+    });
+
+    test('a value preset drops the literal', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp4_e2m1');
+        typeDecimal('0.74999999999999999');
+        expect(text('input-comp-value')).toBe('0.5');
+
+        ui.loadValuePreset('one');
+        setRoundingMode('towardZero');
+        expect(text('input-comp-value')).toBe('1');
+    });
+});
+
 describe('ui.js — binary checkbox toggling', () => {
     test('toggling a mantissa bit updates the decoded value', () => {
         const ui = freshUi();

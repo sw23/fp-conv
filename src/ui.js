@@ -18,6 +18,11 @@ function clampFieldInt(raw, min, max, fallback) {
 let currentFormat = new FloatingPoint(1, 8, 23);
 let outputFormat = new FloatingPoint(1, 5, 10); // FP16 by default
 let currentValue = 3.140625;
+// The decimal literal currentValue was parsed from, when it came from typed or
+// linked text. Kept so that re-encodes triggered by a rounding-mode or format
+// change can still round the original decimal exactly; null whenever the value
+// came from bits, hex or a preset and so has no literal behind it.
+let currentValueText = null;
 let currentEncoded = null;
 let currentInputFormatKey = null;  // Track if an integer preset is active
 let currentOutputFormatKey = null; // Track if an integer preset is active
@@ -233,7 +238,7 @@ function applyStateFromUrl() {
             currentValue = parsed.value.decimal;
             document.getElementById('input-decimal-input').value = decimalToString(currentValue);
         }
-        updateValue();
+        updateValue(parsed.value && parsed.value.text);
     }
 
     return true;
@@ -293,7 +298,7 @@ function setupEventListeners() {
             return;
         }
         currentValue = parsed;
-        updateValue();
+        updateValue(e.target.value);
     });
 
     // Hex input
@@ -519,8 +524,23 @@ function updateOutputFormat() {
     updateOutput();
 }
 
-function updateValue() {
-    currentEncoded = currentFormat.encode(currentValue, { roundingMode: currentRoundingMode });
+function updateValue(sourceText) {
+    // When the value came from typed/linked text, round that exact decimal to the
+    // format directly. Going through the parsed double first double-rounds and
+    // can land on the wrong neighbour for the narrow formats.
+    //
+    // Callers that are merely re-encoding the existing value (a rounding-mode or
+    // format change) pass nothing and keep whatever literal is on record, so the
+    // exact path survives those transitions.
+    if (sourceText !== undefined) {
+        currentValueText =
+            typeof sourceText === 'string' && FloatingPoint.isDecimalLiteral(sourceText)
+                ? sourceText
+                : null;
+    }
+    currentEncoded = currentValueText !== null
+        ? currentFormat.encodeString(currentValueText, { roundingMode: currentRoundingMode })
+        : currentFormat.encode(currentValue, { roundingMode: currentRoundingMode });
     updateRepresentation();
     updateOutput();
     updateActiveValuePreset();
@@ -656,6 +676,7 @@ function handleBinaryCheckboxChange(e) {
     }
 
     // Decode and update current value
+    currentValueText = null;
     currentValue = currentFormat.decode(
         currentEncoded.sign,
         currentEncoded.exponent,
@@ -702,6 +723,8 @@ function handleHexInput(e) {
         return; // Overlong even after accounting for a partial leading nibble.
     }
     const binary = rawBinary.padStart(currentFormat.totalBits, '0');
+
+    currentValueText = null;
 
     // Handle integer formats
     if (currentFormat.isInteger) {
@@ -839,6 +862,8 @@ function updateComponents() {
 }
 
 function loadValuePreset(valueKey) {
+    currentValueText = null;
+
     // Special handling for all-ones - set bits directly
     if (valueKey === 'all-ones') {
         if (currentFormat.isInteger) {

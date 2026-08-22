@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 // Import the FloatingPoint class from the pure math module
-const { FloatingPoint } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, FORMATS } = require('../lib/floating-point.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -300,5 +300,87 @@ describe('Oracle Validation - IEEE 754 Hardware Compliance', () => {
       expect(result.mantissa).toBe(1);
       expect(result.isSubnormal).toBe(true);
     });
+  });
+});
+
+// The vectors above all reach the library through JavaScript numbers, so they
+// share the library's old blind spot: decimal -> fp64 -> format rounds twice.
+// The sections below are generated with fractions.Fraction instead, so the
+// decimal is never approximated and the expected value is the single correctly
+// rounded result. They were cross-checked against David M. Gay's dtoa.c.
+describe('Oracle Validation - exact decimal strings', () => {
+  let oracleVectors;
+
+  beforeAll(() => {
+    const vectorPath = path.join(__dirname, 'oracle-vectors.json');
+    oracleVectors = JSON.parse(fs.readFileSync(vectorPath, 'utf8'));
+  });
+
+  const buildFormat = (key) => {
+    const preset = FORMATS[key];
+    return preset.isInteger
+      ? new Integer(preset.bits, preset.signed)
+      : new FloatingPoint(preset.sign, preset.exponent, preset.mantissa, preset);
+  };
+
+  test('every float format matches the exact string oracle', () => {
+    const failures = [];
+    oracleVectors.string_encode.forEach((vector) => {
+      const format = buildFormat(vector.format);
+      const result = format.encodeString(vector.input, { roundingMode: vector.roundingMode });
+      const { sign, exponent, mantissa } = vector.expected;
+      if (result.sign !== sign || result.exponent !== exponent || result.mantissa !== mantissa) {
+        failures.push(`${vector.format} ${vector.roundingMode} "${vector.input}": ` +
+          `expected ${sign}/${exponent}/${mantissa}, ` +
+          `got ${result.sign}/${result.exponent}/${result.mantissa}`);
+      }
+    });
+    expect(failures).toEqual([]);
+    expect(oracleVectors.string_encode.length).toBeGreaterThan(0);
+  });
+
+  test('decimals straddling a format midpoint round to the correct neighbour', () => {
+    const failures = [];
+    oracleVectors.midpoint_straddle.forEach((vector) => {
+      const format = buildFormat(vector.format);
+      const result = format.encodeString(vector.input);
+      const { exponent, mantissa } = vector.expected;
+      if (result.exponent !== exponent || result.mantissa !== mantissa) {
+        failures.push(`${vector.format} "${vector.input}": ` +
+          `expected ${exponent}/${mantissa}, got ${result.exponent}/${result.mantissa}`);
+      }
+    });
+    expect(failures).toEqual([]);
+    expect(oracleVectors.midpoint_straddle.length).toBeGreaterThan(0);
+  });
+
+  test('integer formats match the exact string oracle', () => {
+    const failures = [];
+    oracleVectors.integer_string_encode.forEach((vector) => {
+      const format = buildFormat(vector.format);
+      const result = format.encodeString(vector.input, { roundingMode: vector.roundingMode });
+      if (result.intValue !== vector.expected) {
+        failures.push(`${vector.format} ${vector.roundingMode} "${vector.input}": ` +
+          `expected ${vector.expected}, got ${result.intValue}`);
+      }
+    });
+    expect(failures).toEqual([]);
+    expect(oracleVectors.integer_string_encode.length).toBeGreaterThan(0);
+  });
+
+  test('the midpoint vectors really do defeat the fp64 detour', () => {
+    // Guards the guard: if these stopped collapsing onto the midpoint as
+    // doubles they would no longer exercise double rounding at all.
+    const narrow = oracleVectors.midpoint_straddle.filter((v) => v.format === 'fp4_e2m1');
+    expect(narrow.length).toBeGreaterThan(0);
+
+    const collapsed = narrow.filter((vector) => {
+      const format = buildFormat(vector.format);
+      const viaDouble = format.encode(Number(vector.input));
+      return viaDouble.exponent !== vector.expected.exponent ||
+        viaDouble.mantissa !== vector.expected.mantissa;
+    });
+    // Exactly one of each below/above pair is misrounded by the fp64 detour.
+    expect(collapsed.length).toBe(narrow.length / 2);
   });
 });

@@ -276,6 +276,21 @@ function listFormats() {
 }
 
 /**
+ * Encode a caller-supplied value, preferring the exact decimal path.
+ *
+ * Rounding the original decimal string straight to the target format avoids the
+ * double rounding of decimal -> fp64 -> format, which can pick the wrong
+ * neighbour when the decimal sits just off a target-format midpoint. Keyword and
+ * hex inputs have no exact decimal form, so they keep the numeric path.
+ */
+function encodeInput(format, rawValue, numericValue, encodeOptions) {
+    if (typeof rawValue === 'string' && _FloatingPoint.isDecimalLiteral(rawValue)) {
+        return format.encodeString(rawValue, encodeOptions);
+    }
+    return format.encode(numericValue, encodeOptions);
+}
+
+/**
  * encode_number – Encode a decimal/keyword value into a format.
  */
 function encodeNumber({ value, format: formatSpec, roundingMode }) {
@@ -289,7 +304,7 @@ function encodeNumber({ value, format: formatSpec, roundingMode }) {
     const format = resolveFormat(formatSpec);
     const numericValue = parseValueInput(value);
     const encodeOptions = roundingMode ? { roundingMode } : {};
-    const encoded = format.encode(numericValue, encodeOptions);
+    const encoded = encodeInput(format, value, numericValue, encodeOptions);
     const stats = buildStats(format, encoded);
 
     return { content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }] };
@@ -386,7 +401,7 @@ function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec
     const encodeOptions = roundingMode ? { roundingMode } : {};
 
     // Encode in input format, decode to get actual representable value
-    const inputEncoded = inFmt.encode(numericValue, encodeOptions);
+    const inputEncoded = encodeInput(inFmt, value, numericValue, encodeOptions);
     const inputActual = inFmt.decode(inputEncoded.sign, inputEncoded.exponent, inputEncoded.mantissa);
 
     // Re-encode in output format
@@ -641,6 +656,7 @@ if (typeof module !== 'undefined' && module.exports) {
         mantissaDecimal,
         exponentActual,
         parseValueInput,
+        encodeInput,
         jsonSafeNumber,
         buildStats,
         extractComponents,
