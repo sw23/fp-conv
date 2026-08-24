@@ -88,6 +88,7 @@
     </script>
 
     <link rel="stylesheet" href="style.css">
+    <script src="src/theme.js"></script>
     <script src="lib/floating-point.js" defer></script>
 </head>
 <body>
@@ -101,7 +102,10 @@
         <div class="main-content">
             <!-- Input Format -->
             <section class="format-config" aria-labelledby="input-format-heading">
-                <h2 id="input-format-heading">Input Format</h2>
+                <div class="section-head">
+                    <h2 id="input-format-heading">Input Format</h2>
+                    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>
+                </div>
 
                 <div class="preset-section">
                     <div class="format-groups-container">
@@ -260,24 +264,26 @@
                     </div>
                 </div>
 
-                <div class="input-group rounding-mode-group">
-                    <label for="rounding-mode">Rounding Mode:</label>
-                    <select id="rounding-mode" autocomplete="off">
-                        <option value="tiesToEven" selected>Nearest, Ties to Even</option>
-                        <option value="tiesToAway">Nearest, Ties Away from Zero</option>
-                        <option value="towardZero">Toward Zero (truncate)</option>
-                        <option value="towardPositive">Toward +Infinity (ceiling)</option>
-                        <option value="towardNegative">Toward -Infinity (floor)</option>
-                    </select>
-                </div>
+                <div class="mode-row">
+                    <div class="input-group rounding-mode-group">
+                        <label for="rounding-mode">Rounding Mode:</label>
+                        <select id="rounding-mode" autocomplete="off">
+                            <option value="tiesToEven" selected>Nearest, Ties to Even</option>
+                            <option value="tiesToAway">Nearest, Ties Away from Zero</option>
+                            <option value="towardZero">Toward Zero (truncate)</option>
+                            <option value="towardPositive">Toward +Infinity (ceiling)</option>
+                            <option value="towardNegative">Toward -Infinity (floor)</option>
+                        </select>
+                    </div>
 
-                <div class="input-group overflow-mode-group">
-                    <label for="overflow-mode">On Overflow:</label>
-                    <select id="overflow-mode" autocomplete="off">
-                        <option value="" selected id="overflow-mode-default">Output's default</option>
-                        <option value="overflow">Overflow to Infinity / NaN</option>
-                        <option value="saturate">Saturate to largest finite value</option>
-                    </select>
+                    <div class="input-group overflow-mode-group">
+                        <label for="overflow-mode">On Overflow:</label>
+                        <select id="overflow-mode" autocomplete="off">
+                            <option value="" selected id="overflow-mode-default">Output's default</option>
+                            <option value="overflow">Overflow to Infinity / NaN</option>
+                            <option value="saturate">Saturate to largest finite value</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 

@@ -17,19 +17,137 @@ html {
 }
 
 :root {
+    color-scheme: light;
+
     --primary-color: #2563eb;
     --secondary-color: #3b82f6;
-    --background: #f8fafc;
+    --background: #f1f4f9;
     --surface: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --border: #e2e8f0;
-    --sign-color: #ef4444;
-    --exponent-color: #3b82f6;
-    --mantissa-color: #10b981;
-    --integer-color: #8b5cf6;
+    --surface-alt: #eef2f8;
+    --text-primary: #16202e;
+    --text-secondary: #5f6d80;
+    --border: #dde3ec;
+    /* Outline for interactive chips. --border is tuned for hairline dividers and
+       is too faint to define a button, which made filled buttons look larger
+       than their unfilled neighbours. */
+    --border-strong: #c3cede;
+    --sign-color: #dc2626;
+    --exponent-color: #2563eb;
+    --mantissa-color: #0d9488;
+    --integer-color: #7c3aed;
+    --warning-color: #d97706;
+    /* Text drawn on top of an accent-colored fill. Light mode fills are dark, so
+       this is white; the dark palette flips it because its fills are pastel. */
+    --on-accent: #ffffff;
+    --sign-tint: rgba(220, 38, 38, 0.12);
+    --exponent-tint: rgba(37, 99, 235, 0.12);
+    --mantissa-tint: rgba(13, 148, 136, 0.12);
+    --integer-tint: rgba(124, 58, 237, 0.12);
+    --warning-tint: rgba(217, 119, 6, 0.12);
+    --primary-tint: rgba(37, 99, 235, 0.08);
+    --primary-tint-strong: rgba(37, 99, 235, 0.16);
     --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    /* Canvas chart colors. format-common.js reads these at paint time, so each
+       one has to be a plain resolvable color - no var() chains. */
+    --chart-grid: #e2e8f0;
+    --chart-grid-strong: #cbd5e1;
+    --chart-axis: #94a3b8;
+    --chart-label: #5f6d80;
+    --chart-cursor: #dc2626;
+    --chart-cursor-positive: #f97316;
+    --chart-dot-ring: #ffffff;
+    --chart-sub-fill: rgba(13, 148, 136, 0.07);
+    --chart-norm-fill: rgba(37, 99, 235, 0.07);
+    --slider-neg-strong: rgba(220, 38, 38, 0.15);
+    --slider-neg-soft: rgba(220, 38, 38, 0.08);
+    --slider-sub: rgba(13, 148, 136, 0.25);
+}
+
+/* Dark palette. Applies when the OS asks for it, unless the reader has picked a
+   theme explicitly - src/theme.js records that as data-theme on <html>. The two
+   selectors below carry identical values; keep them in sync. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --primary-color: #818cf8;
+        --secondary-color: #a5b4fc;
+        --background: #0f1520;
+        --surface: #171e2b;
+        --surface-alt: #232d40;
+        --text-primary: #e6ebf3;
+        --text-secondary: #97a3b6;
+        --border: #2a3444;
+        --border-strong: #3d4a63;
+        --sign-color: #fb7185;
+        --exponent-color: #818cf8;
+        --mantissa-color: #2dd4bf;
+        --integer-color: #c4b5fd;
+        --warning-color: #fbbf24;
+        --on-accent: #0f1520;
+        --sign-tint: rgba(251, 113, 133, 0.14);
+        --exponent-tint: rgba(129, 140, 248, 0.14);
+        --mantissa-tint: rgba(45, 212, 191, 0.14);
+        --integer-tint: rgba(196, 181, 253, 0.14);
+        --warning-tint: rgba(251, 191, 36, 0.14);
+        --primary-tint: rgba(129, 140, 248, 0.12);
+        --primary-tint-strong: rgba(129, 140, 248, 0.2);
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        --chart-grid: #2a3444;
+        --chart-grid-strong: #3a475c;
+        --chart-axis: #64748b;
+        --chart-label: #97a3b6;
+        --chart-cursor: #fb7185;
+        --chart-cursor-positive: #fb923c;
+        --chart-dot-ring: #171e2b;
+        --chart-sub-fill: rgba(45, 212, 191, 0.10);
+        --chart-norm-fill: rgba(129, 140, 248, 0.10);
+        --slider-neg-strong: rgba(251, 113, 133, 0.2);
+        --slider-neg-soft: rgba(251, 113, 133, 0.1);
+        --slider-sub: rgba(45, 212, 191, 0.28);
+    }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --primary-color: #818cf8;
+    --secondary-color: #a5b4fc;
+    --background: #0f1520;
+    --surface: #171e2b;
+    --surface-alt: #232d40;
+    --text-primary: #e6ebf3;
+    --text-secondary: #97a3b6;
+    --border: #2a3444;
+    --border-strong: #3d4a63;
+    --sign-color: #fb7185;
+    --exponent-color: #818cf8;
+    --mantissa-color: #2dd4bf;
+    --integer-color: #c4b5fd;
+    --warning-color: #fbbf24;
+    --on-accent: #0f1520;
+    --sign-tint: rgba(251, 113, 133, 0.14);
+    --exponent-tint: rgba(129, 140, 248, 0.14);
+    --mantissa-tint: rgba(45, 212, 191, 0.14);
+    --integer-tint: rgba(196, 181, 253, 0.14);
+    --warning-tint: rgba(251, 191, 36, 0.14);
+    --primary-tint: rgba(129, 140, 248, 0.12);
+    --primary-tint-strong: rgba(129, 140, 248, 0.2);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --chart-grid: #2a3444;
+    --chart-grid-strong: #3a475c;
+    --chart-axis: #64748b;
+    --chart-label: #97a3b6;
+    --chart-cursor: #fb7185;
+    --chart-cursor-positive: #fb923c;
+    --chart-dot-ring: #171e2b;
+    --chart-sub-fill: rgba(45, 212, 191, 0.10);
+    --chart-norm-fill: rgba(129, 140, 248, 0.10);
+    --slider-neg-strong: rgba(251, 113, 133, 0.2);
+    --slider-neg-soft: rgba(251, 113, 133, 0.1);
+    --slider-sub: rgba(45, 212, 191, 0.28);
 }
 
 body {
@@ -56,9 +174,16 @@ body {
     margin-bottom: 20px;
 }
 
+.nav-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
 .format-nav .back-link {
     display: inline-block;
-    margin-bottom: 8px;
     color: var(--primary-color);
     text-decoration: none;
     font-weight: 600;
@@ -67,6 +192,25 @@ body {
 
 .format-nav .back-link:hover {
     text-decoration: underline;
+}
+
+.theme-toggle {
+    padding: 3px 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    min-width: 56px;
+    flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 .nav-groups {
@@ -102,7 +246,8 @@ body {
     font-family: 'Courier New', monospace;
     text-decoration: none;
     color: var(--text-primary);
-    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    border: 1px solid var(--border-strong);
     transition: all 0.15s ease;
     white-space: nowrap;
 }
@@ -110,12 +255,12 @@ body {
 .nav-link:hover {
     border-color: var(--primary-color);
     background: var(--primary-color);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .nav-link.active {
     background: var(--primary-color);
-    color: #fff;
+    color: var(--on-accent);
     border-color: var(--primary-color);
     box-shadow: var(--shadow);
 }
@@ -188,7 +333,7 @@ header .subtitle {
 
 .doc-section code {
     font-family: 'Courier New', monospace;
-    background: #f1f5f9;
+    background: var(--surface-alt);
     padding: 2px 6px;
     border-radius: 4px;
     font-size: 0.9em;
@@ -234,7 +379,7 @@ header .subtitle {
     font-family: 'Courier New', monospace;
     font-size: 0.75rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .bit-field.sign .bit-field-label { color: var(--sign-color); }
@@ -281,7 +426,7 @@ header .subtitle {
     font-family: 'Courier New', monospace;
     font-size: 0.8rem;
     font-weight: 700;
-    color: #fff;
+    color: var(--on-accent);
     padding: 0 12px;
     white-space: nowrap;
 }
@@ -326,7 +471,7 @@ header .subtitle {
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    background: #f8fafc;
+    background: var(--surface-alt);
 }
 
 .info-table td {
@@ -344,11 +489,11 @@ header .subtitle {
 }
 
 .info-table tr:hover {
-    background: #f8fafc;
+    background: var(--surface-alt);
 }
 
 .info-table .highlight-row td {
-    background: rgba(37, 99, 235, 0.05);
+    background: var(--primary-tint);
 }
 
 /* ── Special Values Table ──────────────────────────────────── */
@@ -393,6 +538,8 @@ header .subtitle {
     flex: 1;
     min-width: 0;
     padding: 8px 12px;
+    background: var(--surface-alt);
+    color: var(--text-primary);
     border: 2px solid var(--border);
     border-radius: 8px;
     font-family: 'Courier New', monospace;
@@ -415,9 +562,9 @@ header .subtitle {
 
 .viz-preset-btn {
     padding: 6px 10px;
-    border: 2px solid var(--border);
+    border: 2px solid var(--border-strong);
     border-radius: 6px;
-    background: var(--surface);
+    background: var(--surface-alt);
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
@@ -428,13 +575,13 @@ header .subtitle {
 .viz-preset-btn:hover {
     border-color: var(--primary-color);
     background: var(--primary-color);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .viz-preset-btn.active {
     border-color: var(--primary-color);
     background: var(--primary-color);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 /* Binary display for visualizer */
@@ -457,22 +604,22 @@ header .subtitle {
 }
 
 .viz-bit-section.sign-section {
-    background: rgba(239, 68, 68, 0.08);
+    background: var(--sign-tint);
     border-color: var(--sign-color);
 }
 
 .viz-bit-section.exponent-section {
-    background: rgba(59, 130, 246, 0.08);
+    background: var(--exponent-tint);
     border-color: var(--exponent-color);
 }
 
 .viz-bit-section.mantissa-section {
-    background: rgba(16, 185, 129, 0.08);
+    background: var(--mantissa-tint);
     border-color: var(--mantissa-color);
 }
 
 .viz-bit-section.integer-section {
-    background: rgba(139, 92, 246, 0.08);
+    background: var(--integer-tint);
     border-color: var(--integer-color);
 }
 
@@ -522,7 +669,7 @@ header .subtitle {
 .viz-bit.checked {
     background: var(--primary-color);
     border-color: var(--primary-color);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .sign-section .viz-bit.checked { background: var(--sign-color); border-color: var(--sign-color); }
@@ -537,7 +684,7 @@ header .subtitle {
     gap: 8px;
     margin-top: 12px;
     padding: 12px;
-    background: #f8fafc;
+    background: var(--surface-alt);
     border-radius: 8px;
 }
 
@@ -565,12 +712,12 @@ header .subtitle {
 }
 
 .comparison-table .info-table td.current-format {
-    background: rgba(37, 99, 235, 0.08);
+    background: var(--primary-tint);
     font-weight: 700;
 }
 
 .comparison-table .info-table th.current-format {
-    background: rgba(37, 99, 235, 0.12);
+    background: var(--primary-tint-strong);
     color: var(--primary-color);
 }
 
@@ -583,18 +730,18 @@ header .subtitle {
 }
 
 .callout-tip {
-    background: rgba(16, 185, 129, 0.08);
+    background: var(--mantissa-tint);
     border-left: 4px solid var(--mantissa-color);
 }
 
 .callout-note {
-    background: rgba(59, 130, 246, 0.08);
+    background: var(--exponent-tint);
     border-left: 4px solid var(--exponent-color);
 }
 
 .callout-warning {
-    background: rgba(245, 158, 11, 0.08);
-    border-left: 4px solid #f59e0b;
+    background: var(--warning-tint);
+    border-left: 4px solid var(--warning-color);
 }
 
 .callout strong {
@@ -607,7 +754,7 @@ header .subtitle {
     text-align: center;
     padding: 16px;
     margin: 16px 0;
-    background: #f8fafc;
+    background: var(--surface-alt);
     border-radius: 8px;
     font-family: 'Courier New', monospace;
     font-size: 1rem;
@@ -743,7 +890,7 @@ footer a:hover {
 
 .vd-chart-col.vd-active .vd-chart-wrap {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+    box-shadow: 0 0 0 1px var(--primary-tint-strong);
 }
 
 .vd-canvas {
@@ -776,7 +923,7 @@ footer a:hover {
     background: var(--primary-color);
     border-radius: 50%;
     cursor: pointer;
-    border: 2px solid white;
+    border: 2px solid var(--surface);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -786,16 +933,16 @@ footer a:hover {
     background: var(--primary-color);
     border-radius: 50%;
     cursor: pointer;
-    border: 2px solid white;
+    border: 2px solid var(--surface);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .vd-step-btn {
     width: 32px;
     height: 32px;
-    border: 2px solid var(--border);
+    border: 2px solid var(--border-strong);
     border-radius: 6px;
-    background: var(--surface);
+    background: var(--surface-alt);
     cursor: pointer;
     font-size: 0.9rem;
     display: flex;
@@ -809,7 +956,7 @@ footer a:hover {
 .vd-step-btn:hover {
     border-color: var(--primary-color);
     background: var(--primary-color);
-    color: #fff;
+    color: var(--on-accent);
 }
 
 .vd-readout {
@@ -818,7 +965,7 @@ footer a:hover {
     gap: 8px;
     margin-top: 12px;
     padding: 12px;
-    background: #f8fafc;
+    background: var(--surface-alt);
     border-radius: 8px;
 }
 
@@ -858,7 +1005,7 @@ footer a:hover {
 
 .vd-legend-sub { color: var(--mantissa-color); }
 .vd-legend-norm { color: var(--exponent-color); }
-.vd-legend-cursor { color: #ef4444; }
+.vd-legend-cursor { color: var(--chart-cursor); }
 
 @media (max-width: 768px) {
     .vd-charts-row {

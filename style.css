@@ -15,65 +15,164 @@ html {
 }
 
 :root {
+    color-scheme: light;
+
+    /* Cool neutral base, one blue accent */
     --primary-color: #2563eb;
     --secondary-color: #3b82f6;
-    --background: #f8fafc;
+    --background: #f1f4f9;
     --surface: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --border: #e2e8f0;
-    --sign-color: #ef4444;
-    --exponent-color: #3b82f6;
-    --mantissa-color: #10b981;
-    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --surface-alt: #eef2f8;
+    --text-primary: #16202e;
+    --text-secondary: #5f6d80;
+    --border: #dde3ec;
+    /* Outline for interactive chips. --border is tuned for hairline dividers and
+       is too faint to define a button, which made filled buttons look larger
+       than their unfilled neighbours. */
+    --border-strong: #c3cede;
+    --sign-color: #dc2626;
+    --exponent-color: #2563eb;
+    --mantissa-color: #0d9488;
+    --sign-tint: rgba(220, 38, 38, 0.16);
+    --exponent-tint: rgba(37, 99, 235, 0.16);
+    --mantissa-tint: rgba(13, 148, 136, 0.16);
+    --success-color: #0d9488;
+    /* Text drawn on top of an accent-colored fill. Light mode fills are dark, so
+       this is white; the dark palette flips it because its fills are pastel. */
+    --on-accent: #ffffff;
+    --radius: 6px;
+    --radius-sm: 4px;
+
+    /* Compact spacing scale */
+    --gap-1: 3px;
+    --gap-2: 5px;
+    --gap-3: 8px;
+    --gap-4: 12px;
+
+    /* Type scale - headings sit close to body text on purpose */
+    --fs-body: 0.85rem;
+    --fs-small: 0.75rem;
+    --fs-h1: 1.05rem;
+    --fs-h2: 0.85rem;
+    --fs-h3: 0.85rem;
+}
+
+/* Dark palette. Applies when the OS asks for it, unless the reader has picked a
+   theme explicitly - src/theme.js records that as data-theme on <html>. The two
+   selectors below carry identical values; keep them in sync. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --primary-color: #818cf8;
+        --secondary-color: #a5b4fc;
+        --background: #0f1520;
+        --surface: #171e2b;
+        --surface-alt: #232d40;
+        --text-primary: #e6ebf3;
+        --text-secondary: #97a3b6;
+        --border: #2a3444;
+        --border-strong: #3d4a63;
+        --sign-color: #fb7185;
+        --exponent-color: #818cf8;
+        --mantissa-color: #2dd4bf;
+        --sign-tint: rgba(251, 113, 133, 0.12);
+        --exponent-tint: rgba(129, 140, 248, 0.12);
+        --mantissa-tint: rgba(45, 212, 191, 0.12);
+        --success-color: #14b8a6;
+        --on-accent: #0f1520;
+    }
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --primary-color: #818cf8;
+    --secondary-color: #a5b4fc;
+    --background: #0f1520;
+    --surface: #171e2b;
+    --surface-alt: #232d40;
+    --text-primary: #e6ebf3;
+    --text-secondary: #97a3b6;
+    --border: #2a3444;
+    --border-strong: #3d4a63;
+    --sign-color: #fb7185;
+    --exponent-color: #818cf8;
+    --mantissa-color: #2dd4bf;
+    --sign-tint: rgba(251, 113, 133, 0.12);
+    --exponent-tint: rgba(129, 140, 248, 0.12);
+    --mantissa-tint: rgba(45, 212, 191, 0.12);
+    --success-color: #14b8a6;
+    --on-accent: #0f1520;
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-size: var(--fs-body);
+    line-height: 1.35;
     background: var(--background);
     color: var(--text-primary);
-    padding: 5px 20px;
+    padding: var(--gap-2) var(--gap-4);
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
 }
 
 header {
-    text-align: center;
-    padding-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    column-gap: var(--gap-4);
+    row-gap: 2px;
+    padding: var(--gap-2) 0 var(--gap-3);
 }
 
 header h1 {
-    font-size: 2rem;
-    color: var(--primary-color);
-    margin-top: 6px;
-    margin-bottom: 6px;
+    font-size: var(--fs-h1);
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
 }
 
 .subtitle {
     color: var(--text-secondary);
-    font-size: 1.1rem;
-    margin-bottom: 5px;
+    font-size: var(--fs-small);
+    margin: 0;
 }
 
 .help-link {
-    margin-top: 5px;
+    margin: 0;
 }
 
 .help-link a {
     color: var(--primary-color);
     text-decoration: none;
-    font-size: 0.95rem;
+    font-size: var(--fs-small);
     font-weight: 500;
-    transition: color 0.2s;
 }
 
 .help-link a:hover {
-    color: var(--secondary-color);
     text-decoration: underline;
+}
+
+.theme-toggle {
+    padding: 1px 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--fs-small);
+    line-height: 1.5;
+    min-width: 52px;
+    flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 .main-content {
@@ -81,7 +180,7 @@ header h1 {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
     grid-auto-flow: column;
-    gap: 8px;
+    gap: var(--gap-3);
 }
 
 @media (max-width: 1120px) {
@@ -93,35 +192,63 @@ header h1 {
 
 section {
     background: var(--surface);
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--gap-3) var(--gap-4) var(--gap-4);
 }
 
 section h2 {
     color: var(--text-primary);
-    font-size: 1.5em;
+    font-size: var(--fs-h2);
     font-weight: 600;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 8px;
+    padding-bottom: var(--gap-2);
+    margin-bottom: var(--gap-2);
+}
+
+/* Heading row that also carries the theme toggle. The rule below moves the
+   underline onto the row so it still spans the full section width. */
+.section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap-3);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--gap-2);
+    margin-bottom: var(--gap-2);
+}
+
+.section-head h2 {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+/* The button is taller than the heading's line box. Left alone it would make
+   the Input Format head 3.6px taller than the other three, knocking the two
+   side-by-side cards out of alignment, so let it bleed into the row's padding
+   instead of growing it. */
+.section-head .theme-toggle {
+    margin-top: -2px;
+    margin-bottom: -2px;
 }
 
 section h3 {
     color: var(--text-primary);
-    margin-bottom: 12px;
-    font-size: 1.25em;
+    margin: var(--gap-4) 0 var(--gap-2);
+    font-size: var(--fs-h3);
     font-weight: 600;
 }
 
 /* Introduction Section */
 .about-section {
-    margin-top: 10px;
+    margin-top: var(--gap-3);
 }
 
 .about-section p {
-    line-height: 1.6;
+    line-height: 1.5;
     color: var(--text-primary);
-    margin-bottom: 16px;
+    margin-bottom: var(--gap-3);
 }
 
 .about-section a {
@@ -133,23 +260,24 @@ section h3 {
 }
 
 .bullets {
-    margin: 0 0 16px 0;
+    margin: 0 0 var(--gap-3) 0;
 }
 
 .bullets ul {
-    padding-left: 24px;
+    padding-left: 20px;
     margin: 0;
     list-style-type: disc;
 }
 
 .bullets ol {
-    padding-left: 24px;
+    padding-left: 20px;
     margin: 0;
 }
 
 .bullets li {
-    padding: 0px;
-    line-height: 1.6;
+    padding: 0;
+    line-height: 1.5;
+    margin-bottom: 2px;
 }
 
 .bullets a {
@@ -162,7 +290,7 @@ section h3 {
 
 /* Format Configuration */
 .preset-section {
-    margin-bottom: 20px;
+    margin-bottom: var(--gap-2);
 }
 
 .preset-section label,
@@ -170,23 +298,21 @@ section h3 {
     display: block;
     font-weight: 600;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-top: 10px;
-    margin-bottom: 10px;
+    font-size: var(--fs-small);
+    margin: var(--gap-2) 0 var(--gap-1);
 }
 
 .preset-label {
     display: block;
     font-weight: 600;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-top: 10px;
-    margin-bottom: 8px;
+    font-size: var(--fs-small);
+    margin: var(--gap-2) 0 var(--gap-1);
 }
 
 .format-groups-container {
     display: flex;
-    gap: 10px;
+    gap: var(--gap-3);
     flex-wrap: wrap;
 }
 
@@ -199,58 +325,59 @@ section h3 {
 .preset-buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--gap-1);
 }
 
+/* Unselected buttons carry their own fill on purpose. With `--surface` they
+   matched the section card exactly and read as hollow outlines, which made the
+   filled active button look several pixels larger than its neighbours even
+   though every button is the same size. */
 .preset-btn {
-    padding: 10px;
-    border: 2px solid var(--border);
-    background: var(--surface);
+    padding: 4px 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
     color: var(--text-primary);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: var(--fs-small);
     font-weight: 500;
-    transition: all 0.2s;
+    line-height: 1.4;
 }
 
 .preset-btn:hover {
     border-color: var(--primary-color);
-    background: var(--primary-color);
-    color: white;
+    color: var(--primary-color);
 }
 
 .preset-btn.active {
     border-color: var(--primary-color);
     background: var(--primary-color);
-    color: white;
-    box-shadow: var(--shadow-lg);
+    color: var(--on-accent);
 }
 
 .preset-btn:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: not-allowed;
-    border-color: var(--border);
-    background: var(--surface);
+    border-color: var(--border-strong);
+    background: var(--surface-alt);
     color: var(--text-secondary);
 }
 
 .preset-btn:disabled:hover {
-    border-color: var(--border);
-    background: var(--surface);
+    border-color: var(--border-strong);
+    background: var(--surface-alt);
     color: var(--text-secondary);
 }
 
 .copy-link-btn {
-    padding: 8px 14px;
+    padding: 4px 10px;
     border: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-alt);
     color: var(--text-primary);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: var(--fs-small);
     font-weight: 500;
-    transition: all 0.2s;
 }
 
 .copy-link-btn:hover {
@@ -259,42 +386,44 @@ section h3 {
 }
 
 .copy-link-btn.copied {
-    background: var(--success-color, #16a34a);
-    border-color: var(--success-color, #16a34a);
-    color: white;
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: var(--on-accent);
 }
 
 /* Output value presets - read-only indicators */
 .output-value-preset {
     cursor: default;
     opacity: 1;
-    background: var(--surface);
-    border-color: var(--border);
+    background: var(--surface-alt);
+    border-color: var(--border-strong);
     color: var(--text-secondary);
 }
 
 .output-value-preset:hover {
-    background: var(--surface);
-    border-color: var(--border);
+    background: var(--surface-alt);
+    border-color: var(--border-strong);
+    color: var(--text-secondary);
 }
 
 .output-value-preset.active {
     border-color: var(--primary-color);
     background: var(--primary-color);
-    color: white;
+    color: var(--on-accent);
 }
 
 .format-inputs {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    row-gap: var(--gap-1);
+    column-gap: var(--gap-4);
     align-items: stretch;
 }
 
 .input-group {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: var(--gap-1);
     min-width: fit-content;
     justify-content: space-between;
 }
@@ -305,61 +434,88 @@ section h3 {
     display: block;
     font-weight: 600;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 5px;
+    font-size: var(--fs-small);
+    margin-bottom: var(--gap-1);
 }
 
 .input-group input[type="number"],
 .input-group input[type="text"],
 .input-group select {
-    padding: 10px 4px;
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-family: 'Courier New', monospace;
-    font-weight: 600;
-    transition: border-color 0.2s;
+    padding: 5px 6px;
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-small);
+    font-family: ui-monospace, 'SF Mono', 'Courier New', monospace;
+    font-weight: 500;
 }
 
 .input-group input[type="number"]:focus,
 .input-group input[type="text"]:focus,
 .input-group select:focus {
-    outline: none;
+    outline: 1px solid var(--primary-color);
     border-color: var(--primary-color);
 }
 
+/* A <select> is intrinsically as wide as its longest <option>, and ui.js
+   rewrites the overflow-mode option text per output format ("Saturate (Ints
+   always clamp)", "Saturate (OCP OFP8 "SAT")", ...). Left alone that intrinsic
+   width becomes the section's min-content, which widens the whole .main-content
+   column and pushes the page into horizontal overflow - picking INT4 made every
+   section 6.5px wider than the viewport. Let the select follow its container
+   instead; the dropdown popup is not constrained by this. */
+.input-group select {
+    width: 100%;
+    min-width: 0;
+}
+
+.rounding-mode-group,
+.overflow-mode-group {
+    min-width: 0;
+}
+
 .input-group input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary-color);
     cursor: pointer;
     align-self: center;
     margin: auto;
 }
 
-.rounding-mode-group {
-    margin-top: 10px;
-    padding-top: 15px;
+/* The two mode selects pair up whenever the row is wide enough for both to hold
+   their flex-basis, and stack once it is not. Basis rather than a media query,
+   because this section is a column of a responsive grid - its width does not
+   track the viewport. */
+.mode-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap-3);
+    margin-top: var(--gap-3);
+    padding-top: var(--gap-3);
     border-top: 1px solid var(--border);
 }
 
-.overflow-mode-group {
-    margin-top: 10px;
+.mode-row .input-group {
+    flex: 1 1 230px;
 }
 
 .total-bits-display {
-    padding: 10px 4px;
-    background: var(--background);
-    border: 2px solid var(--border);
-    border-radius: 8px;
+    padding: 5px 8px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-small);
     font-weight: 600;
-    color: var(--primary-color);
+    color: var(--text-primary);
     text-align: center;
 }
 
 /* Representation Display */
 .rep-group {
-    margin-top: 20px;
-    margin-bottom: 20px;
+    margin-top: var(--gap-2);
+    margin-bottom: var(--gap-2);
 }
 
 .rep-group label,
@@ -367,45 +523,44 @@ section h3 {
     display: block;
     font-weight: 600;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 10px;
+    font-size: var(--fs-small);
+    margin-bottom: var(--gap-1);
 }
 
 .binary-display {
-    font-family: 'Courier New', monospace;
-    padding: 0px;
-    background: var(--background);
-    border-radius: 8px;
+    font-family: ui-monospace, 'SF Mono', 'Courier New', monospace;
+    padding: 0;
+    border-radius: var(--radius-sm);
     display: flex;
-    gap: 2px;
+    gap: var(--gap-1);
     flex-wrap: wrap;
 }
 
 .bit-section-container {
-    padding: 8px;
-    border-radius: 6px;
+    padding: 4px 5px;
+    border-radius: var(--radius-sm);
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 1px;
     max-width: 100%;
     overflow-x: auto;
 }
 
 .bit-section-container.sign-section {
-    background: rgba(239, 68, 68, 0.1);
+    background: var(--sign-tint);
     border: 2px solid var(--sign-color);
     flex-shrink: 0;
 }
 
 .bit-section-container.exponent-section {
-    background: rgba(59, 130, 246, 0.1);
+    background: var(--exponent-tint);
     border: 2px solid var(--exponent-color);
     flex-shrink: 1;
     min-width: 0;
 }
 
 .bit-section-container.mantissa-section {
-    background: rgba(16, 185, 129, 0.1);
+    background: var(--mantissa-tint);
     border: 2px solid var(--mantissa-color);
     flex-shrink: 1;
     min-width: 0;
@@ -424,36 +579,35 @@ section h3 {
 }
 
 .bit-position {
-    width: 20px;
-    height: 16px;
+    width: 18px;
+    height: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
+    font-size: 0.62rem;
     color: var(--text-secondary);
-    font-family: monospace;
+    font-family: ui-monospace, monospace;
 }
 
 .bit {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 500;
     background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: 4px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
     color: var(--text-secondary);
-    transition: all 0.2s;
 }
 
 .bit.checked,
 input.bit:checked {
     background: var(--primary-color);
     border-color: var(--primary-color);
-    color: white;
+    color: var(--on-accent);
 }
 
 /* Interactive bit (checkbox input) */
@@ -469,9 +623,8 @@ input.bit:checked::after {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: white;
-    font-weight: bold;
-    font-size: 0.9rem;
+    color: var(--on-accent);
+    font-size: 0.8rem;
 }
 
 input.bit:not(:checked)::after {
@@ -481,83 +634,89 @@ input.bit:not(:checked)::after {
     left: 50%;
     transform: translate(-50%, -50%);
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 input.bit:hover {
     border-color: var(--primary-color);
-    transform: scale(1.1);
 }
 
 .components {
-    margin-top: 20px;
+    margin-top: var(--gap-2);
 }
 
 .components-label {
     display: block;
     font-weight: 600;
     color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-bottom: 10px;
+    font-size: var(--fs-small);
+    margin-bottom: var(--gap-1);
 }
 
 .component-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    column-gap: var(--gap-4);
 }
 
 .component {
-    padding: 12px;
-    background: var(--background);
-    border-radius: 8px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border);
     display: flex;
+    gap: var(--gap-2);
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
 }
 
 .component label,
 .component-label {
-    font-weight: 600;
+    font-weight: 400;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--fs-small);
     font-family: inherit;
+    white-space: nowrap;
 }
 
 .component span:not(.component-label) {
-    font-family: 'Courier New', monospace;
+    font-family: ui-monospace, 'SF Mono', 'Courier New', monospace;
+    font-size: var(--fs-small);
     color: var(--text-primary);
-    font-weight: 600;
+    overflow-wrap: anywhere;
+    text-align: right;
 }
 
 /* Value Display Boxes */
 .input-display,
 .output-display {
     width: 100%;
-    font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
-    padding: 10px 4px;
+    font-family: ui-monospace, 'SF Mono', 'Courier New', monospace;
+    font-size: var(--fs-small);
+    /* An <input> does not inherit the body line-height, so it built a shorter
+       box than the <div> the output side uses. Pinning both to the same value
+       keeps the two columns level - otherwise each of the decimal and hex rows
+       drifted 2.2px and the Components blocks ended up 4.4px apart. */
+    line-height: 1.35;
+    padding: 5px 8px;
     background: var(--surface);
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    font-weight: 600;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
     box-sizing: border-box;
+    min-height: 28px;
+    overflow-wrap: anywhere;
+}
+
+.output-display {
+    background: var(--surface-alt);
 }
 
 .input-display:focus {
-    outline: none;
+    outline: 1px solid var(--primary-color);
     border-color: var(--primary-color);
-}
-
-.output-binary .bit-section-container {
-    opacity: 0.9;
 }
 
 .precision-loss {
     grid-column: 1 / -1;
-    background: rgba(239, 68, 68, 0.05);
-    border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .precision-loss label,
@@ -567,33 +726,35 @@ input.bit:hover {
 
 /* Footer */
 footer {
-    margin-top: 5px;
-    padding: 12px;
+    margin-top: var(--gap-2);
+    padding: var(--gap-3);
     text-align: center;
     color: var(--text-secondary);
-    font-size: 0.9rem;
+    font-size: var(--fs-small);
+}
+
+footer a {
+    color: var(--primary-color);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
     body {
-        padding: 5px 4px;
+        padding: var(--gap-2) var(--gap-1);
     }
 
-    header h1 {
-        font-size: 1.5rem;
+    header {
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .subtitle::before {
+        content: none;
     }
 
     section {
-        padding: 16px 10px;
-    }
-
-    section h2 {
-        font-size: 1.2rem;
-    }
-
-    section h3 {
-        font-size: 1.05rem;
+        padding: var(--gap-3) var(--gap-3) var(--gap-4);
     }
 
     .format-groups-container {
@@ -607,19 +768,19 @@ footer {
 
     .preset-buttons {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--gap-1);
     }
 
     .preset-btn {
         width: 100%;
-        padding: 10px 8px;
-        font-size: 0.9rem;
+        padding: 7px 4px;
+        font-size: var(--fs-small);
     }
 
     .format-inputs {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         align-items: stretch;
     }
 
@@ -627,12 +788,18 @@ footer {
         min-width: auto;
     }
 
-    .binary-display {
-        font-size: 0.9rem;
+    .component-grid {
+        grid-template-columns: 1fr;
     }
 
     footer {
-        margin-top: 5px;
-        padding: 12px;
+        margin-top: var(--gap-2);
+        padding: var(--gap-3);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
     }
 }
