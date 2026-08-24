@@ -11,6 +11,8 @@ require('jest-canvas-mock');
 const {
     FORMAT_PAGES,
     renderNav,
+    _fcThemeColor,
+    _fcChartPalette,
     renderBitLayout,
     renderRangeTable,
     renderSpecialValues,
@@ -34,6 +36,41 @@ afterEach(() => {
     delete window.FORMAT_CONFIG;
     delete window._vizApi;
     delete window._vdApi;
+    delete global.setupThemeToggle;
+});
+
+// ── Canvas theming ───────────────────────────────────────────
+
+describe('_fcThemeColor', () => {
+    test('reads a custom property off <html>', () => {
+        document.documentElement.style.setProperty('--chart-grid', '#123456');
+        expect(_fcThemeColor('--chart-grid', '#fallback')).toBe('#123456');
+        document.documentElement.style.removeProperty('--chart-grid');
+    });
+
+    test('falls back when the property is not set', () => {
+        expect(_fcThemeColor('--not-a-real-token', '#fallback')).toBe('#fallback');
+    });
+
+    test('falls back when there is no getComputedStyle at all', () => {
+        const original = global.getComputedStyle;
+        global.getComputedStyle = undefined;
+        try {
+            expect(_fcThemeColor('--chart-grid', '#fallback')).toBe('#fallback');
+        } finally {
+            global.getComputedStyle = original;
+        }
+    });
+
+    test('_fcChartPalette resolves every color the charts paint with', () => {
+        const palette = _fcChartPalette();
+        const keys = ['grid', 'gridMinor', 'axis', 'label', 'sub', 'norm',
+            'subFill', 'normFill', 'cursor', 'cursorPositive', 'dotRing'];
+        for (const key of keys) {
+            expect(typeof palette[key]).toBe('string');
+            expect(palette[key].length).toBeGreaterThan(0);
+        }
+    });
 });
 
 // ── renderNav ────────────────────────────────────────────────
@@ -51,6 +88,16 @@ describe('renderNav', () => {
 
         expect(nav.querySelector('.back-link')).toBeTruthy();
         expect(nav.querySelector('.back-link').getAttribute('href')).toBe('../index.html');
+    });
+
+    test('renders the theme toggle button', () => {
+        createContainer('format-nav');
+        renderNav('fp32');
+        const btn = document.getElementById('theme-toggle');
+
+        expect(btn).toBeTruthy();
+        expect(btn.tagName).toBe('BUTTON');
+        expect(btn.getAttribute('aria-label')).toBe('Switch to dark theme');
     });
 
     test('renders all format links', () => {
@@ -797,6 +844,21 @@ describe('initPage', () => {
     test('does nothing if FORMAT_CONFIG is not set', () => {
         initPage();
         expect(document.body.innerHTML).toBe('');
+    });
+
+    test('wires the theme button that renderNav just created', () => {
+        createContainer('format-nav');
+        global.setupThemeToggle = jest.fn();
+        window.FORMAT_CONFIG = { navKey: 'fp16' };
+        initPage();
+
+        expect(global.setupThemeToggle).toHaveBeenCalledTimes(1);
+    });
+
+    test('runs fine when theme.js was never loaded', () => {
+        createContainer('format-nav');
+        window.FORMAT_CONFIG = { navKey: 'fp16' };
+        expect(() => initPage()).not.toThrow();
     });
 
     test('calls renderNav when navKey is set', () => {

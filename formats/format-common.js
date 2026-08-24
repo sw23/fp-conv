@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS */
+/* global FloatingPoint, Integer, FORMATS, setupThemeToggle */
 // Shared JavaScript for format documentation pages.
 // Requires floating-point.js to be loaded first.
 
@@ -85,7 +85,14 @@ function renderNav(currentKey) {
     const nav = document.getElementById('format-nav');
     if (!nav) return;
 
-    let html = '<a class="back-link" href="../index.html">← Back to Converter</a>';
+    let html = '<div class="nav-top">';
+    html += '<a class="back-link" href="../index.html">← Back to Converter</a>';
+    // Rendered here rather than in each page's markup so all 18 pages pick it up.
+    // initPage() wires it afterwards - src/theme.js has already run its own
+    // DOMContentLoaded setup by then, when the button did not yet exist.
+    html += '<button type="button" id="theme-toggle" class="theme-toggle"' +
+        ' aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>';
+    html += '</div>';
     html += '<div class="nav-groups">';
 
     const groups = {};
@@ -106,6 +113,32 @@ function renderNav(currentKey) {
 
     html += '</div>';
     nav.innerHTML = html;
+}
+
+// ── Canvas theming ───────────────────────────────────────────
+// A <canvas> paints pixels, so it cannot inherit CSS custom properties the way
+// the rest of the page does. The charts therefore resolve the theme tokens
+// themselves on every render, and repaint when the theme flips.
+function _fcThemeColor(name, fallback) {
+    if (typeof getComputedStyle !== 'function') return fallback;
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return value.trim() || fallback;
+}
+
+function _fcChartPalette() {
+    return {
+        grid: _fcThemeColor('--chart-grid', '#e2e8f0'),
+        gridMinor: _fcThemeColor('--chart-grid-strong', '#cbd5e1'),
+        axis: _fcThemeColor('--chart-axis', '#94a3b8'),
+        label: _fcThemeColor('--chart-label', '#64748b'),
+        sub: _fcThemeColor('--mantissa-color', '#10b981'),
+        norm: _fcThemeColor('--primary-color', '#2563eb'),
+        subFill: _fcThemeColor('--chart-sub-fill', 'rgba(16, 185, 129, 0.06)'),
+        normFill: _fcThemeColor('--chart-norm-fill', 'rgba(59, 130, 246, 0.08)'),
+        cursor: _fcThemeColor('--chart-cursor', '#ef4444'),
+        cursorPositive: _fcThemeColor('--chart-cursor-positive', '#f97316'),
+        dotRing: _fcThemeColor('--chart-dot-ring', '#ffffff'),
+    };
 }
 
 // ── Bit layout diagram renderer ──────────────────────────────
@@ -1183,16 +1216,16 @@ function initValueDistribution(config) {
         var stops = [];
         var subPct = (halfSubEnd / SLIDER_MID * 50).toFixed(1);
         // Negative half (mirrored: normal then subnormal approaching center)
-        stops.push('rgba(239,68,68,0.15) 0%');
-        stops.push('rgba(239,68,68,0.15) ' + (50 - parseFloat(subPct)).toFixed(1) + '%');
+        stops.push('var(--slider-neg-strong) 0%');
+        stops.push('var(--slider-neg-strong) ' + (50 - parseFloat(subPct)).toFixed(1) + '%');
         if (hasSubnormals && halfSubEnd > 0) {
-            stops.push('rgba(239,68,68,0.08) ' + (50 - parseFloat(subPct)).toFixed(1) + '%');
-            stops.push('rgba(239,68,68,0.08) 50%');
+            stops.push('var(--slider-neg-soft) ' + (50 - parseFloat(subPct)).toFixed(1) + '%');
+            stops.push('var(--slider-neg-soft) 50%');
         }
         // Positive half (subnormal then normal)
         if (hasSubnormals && halfSubEnd > 0) {
-            stops.push('rgba(16,185,129,0.25) 50%');
-            stops.push('rgba(16,185,129,0.25) ' + (50 + parseFloat(subPct)).toFixed(1) + '%');
+            stops.push('var(--slider-sub) 50%');
+            stops.push('var(--slider-sub) ' + (50 + parseFloat(subPct)).toFixed(1) + '%');
             stops.push('var(--border) ' + (50 + parseFloat(subPct)).toFixed(1) + '%');
         } else {
             stops.push('var(--border) 50%');
@@ -1257,13 +1290,15 @@ function initValueDistribution(config) {
 
         subCtx.clearRect(0, 0, w, CHART_H);
 
+        var C = _fcChartPalette();
+
         // Background
-        subCtx.fillStyle = 'rgba(16, 185, 129, 0.06)';
+        subCtx.fillStyle = C.subFill;
         subCtx.fillRect(MARGIN.left, MARGIN.top, pw, ph);
 
         // Y grid
         var yTicks = computeNiceTicks(maxVal, 4);
-        subCtx.strokeStyle = '#e2e8f0';
+        subCtx.strokeStyle = C.grid;
         subCtx.lineWidth = 1;
         for (var ti = 0; ti < yTicks.length; ti++) {
             var y = yScale(yTicks[ti]);
@@ -1275,7 +1310,7 @@ function initValueDistribution(config) {
 
         // Value line
         subCtx.beginPath();
-        subCtx.strokeStyle = '#10b981';
+        subCtx.strokeStyle = C.sub;
         subCtx.lineWidth = 2;
         for (var i = 0; i < subData.length; i++) {
             var px = xScale(i);
@@ -1291,7 +1326,7 @@ function initValueDistribution(config) {
             for (var j = 0; j < subData.length; j++) {
                 subCtx.beginPath();
                 subCtx.arc(xScale(j), yScale(subData[j].value), dotR, 0, Math.PI * 2);
-                subCtx.fillStyle = '#10b981';
+                subCtx.fillStyle = C.sub;
                 subCtx.fill();
             }
         }
@@ -1301,19 +1336,18 @@ function initValueDistribution(config) {
             var ci = currentIndex;
             var cx = xScale(ci);
             var cy = yScale(subData[ci].value);
-            var cursorColor = currentSign === 1 ? '#f97316' : '#ef4444';
-            var cursorAlpha = currentSign === 1 ? '0.4' : '0.4';
-            var cursorAlpha2 = currentSign === 1 ? '0.25' : '0.25';
+            var cursorColor = currentSign === 1 ? C.cursorPositive : C.cursor;
 
             subCtx.save();
-            subCtx.strokeStyle = currentSign === 1 ? 'rgba(249,115,22,' + cursorAlpha + ')' : 'rgba(239, 68, 68, 0.4)';
+            subCtx.strokeStyle = cursorColor;
+            subCtx.globalAlpha = 0.4;
             subCtx.lineWidth = 1.5;
             subCtx.setLineDash([4, 4]);
             subCtx.beginPath();
             subCtx.moveTo(cx, MARGIN.top);
             subCtx.lineTo(cx, MARGIN.top + ph);
             subCtx.stroke();
-            subCtx.strokeStyle = currentSign === 1 ? 'rgba(249,115,22,' + cursorAlpha2 + ')' : 'rgba(239, 68, 68, 0.25)';
+            subCtx.globalAlpha = 0.25;
             subCtx.beginPath();
             subCtx.moveTo(MARGIN.left, cy);
             subCtx.lineTo(cx, cy);
@@ -1324,13 +1358,13 @@ function initValueDistribution(config) {
             subCtx.arc(cx, cy, 6, 0, Math.PI * 2);
             subCtx.fillStyle = cursorColor;
             subCtx.fill();
-            subCtx.strokeStyle = '#fff';
+            subCtx.strokeStyle = C.dotRing;
             subCtx.lineWidth = 2;
             subCtx.stroke();
         }
 
         // Y-axis labels
-        subCtx.fillStyle = '#64748b';
+        subCtx.fillStyle = C.label;
         subCtx.font = FONT;
         subCtx.textAlign = 'right';
         subCtx.textBaseline = 'middle';
@@ -1376,7 +1410,7 @@ function initValueDistribution(config) {
         }
 
         // Axes
-        subCtx.strokeStyle = '#94a3b8';
+        subCtx.strokeStyle = C.axis;
         subCtx.lineWidth = 1;
         subCtx.beginPath();
         subCtx.moveTo(MARGIN.left, MARGIN.top);
@@ -1386,7 +1420,7 @@ function initValueDistribution(config) {
 
         // Y-axis title
         subCtx.save();
-        subCtx.fillStyle = '#94a3b8';
+        subCtx.fillStyle = C.axis;
         subCtx.font = FONT;
         subCtx.translate(10, MARGIN.top + ph / 2);
         subCtx.rotate(-Math.PI / 2);
@@ -1434,12 +1468,14 @@ function initValueDistribution(config) {
 
         normCtx.clearRect(0, 0, w, CHART_H);
 
+        var C = _fcChartPalette();
+
         // Solid background
-        normCtx.fillStyle = 'rgba(59, 130, 246, 0.08)';
+        normCtx.fillStyle = C.normFill;
         normCtx.fillRect(MARGIN.left, MARGIN.top, pw, ph);
 
         // Y-axis gridlines and labels (log scale)
-        normCtx.fillStyle = '#64748b';
+        normCtx.fillStyle = C.label;
         normCtx.font = FONT;
         normCtx.textAlign = 'right';
         normCtx.textBaseline = 'middle';
@@ -1450,7 +1486,7 @@ function initValueDistribution(config) {
         // Only draw when decades are few enough for lines to be distinguishable
         var totalDecades = endPow - startPow + 1;
         if (totalDecades <= 12) {
-            normCtx.strokeStyle = '#cbd5e1';
+            normCtx.strokeStyle = C.gridMinor;
             normCtx.lineWidth = 0.75;
             for (var mp = Math.floor(logMin) - 1; mp <= endPow; mp++) {
                 for (var mi = 1; mi <= 9; mi++) {
@@ -1472,13 +1508,13 @@ function initValueDistribution(config) {
         for (var p = startPow; p <= endPow; p += powStep) {
             var tickVal = Math.pow(10, p);
             var ty = yLogScale(tickVal);
-            normCtx.strokeStyle = '#94a3b8';
+            normCtx.strokeStyle = C.axis;
             normCtx.lineWidth = 1;
             normCtx.beginPath();
             normCtx.moveTo(MARGIN.left, ty);
             normCtx.lineTo(MARGIN.left + pw, ty);
             normCtx.stroke();
-            normCtx.fillStyle = '#64748b';
+            normCtx.fillStyle = C.label;
             normCtx.fillText(formatAxisLabel(tickVal), MARGIN.left - 6, ty);
             yLabelPositions.push(ty);
         }
@@ -1506,7 +1542,7 @@ function initValueDistribution(config) {
 
         // Value line
         normCtx.beginPath();
-        normCtx.strokeStyle = '#2563eb';
+        normCtx.strokeStyle = C.norm;
         normCtx.lineWidth = 2;
         for (var i = 0; i < normData.length; i++) {
             var px = xScale(i);
@@ -1522,7 +1558,7 @@ function initValueDistribution(config) {
             for (var j = 0; j < normData.length; j++) {
                 normCtx.beginPath();
                 normCtx.arc(xScale(j), yLogScale(normData[j].value), dotR, 0, Math.PI * 2);
-                normCtx.fillStyle = '#2563eb';
+                normCtx.fillStyle = C.norm;
                 normCtx.fill();
             }
         }
@@ -1532,17 +1568,18 @@ function initValueDistribution(config) {
             var ni = currentIndex - normalStartIdx;
             var cx = xScale(ni);
             var cy = yLogScale(normData[ni].value);
-            var cursorColor = currentSign === 1 ? '#f97316' : '#ef4444';
+            var cursorColor = currentSign === 1 ? C.cursorPositive : C.cursor;
 
             normCtx.save();
-            normCtx.strokeStyle = currentSign === 1 ? 'rgba(249,115,22,0.4)' : 'rgba(239, 68, 68, 0.4)';
+            normCtx.strokeStyle = cursorColor;
+            normCtx.globalAlpha = 0.4;
             normCtx.lineWidth = 1.5;
             normCtx.setLineDash([4, 4]);
             normCtx.beginPath();
             normCtx.moveTo(cx, MARGIN.top);
             normCtx.lineTo(cx, MARGIN.top + ph);
             normCtx.stroke();
-            normCtx.strokeStyle = currentSign === 1 ? 'rgba(249,115,22,0.25)' : 'rgba(239, 68, 68, 0.25)';
+            normCtx.globalAlpha = 0.25;
             normCtx.beginPath();
             normCtx.moveTo(MARGIN.left, cy);
             normCtx.lineTo(cx, cy);
@@ -1553,13 +1590,13 @@ function initValueDistribution(config) {
             normCtx.arc(cx, cy, 6, 0, Math.PI * 2);
             normCtx.fillStyle = cursorColor;
             normCtx.fill();
-            normCtx.strokeStyle = '#fff';
+            normCtx.strokeStyle = C.dotRing;
             normCtx.lineWidth = 2;
             normCtx.stroke();
         }
 
         // X-axis ticks – pick nice round globalIndex values
-        normCtx.fillStyle = '#64748b';
+        normCtx.fillStyle = C.label;
         normCtx.textAlign = 'center';
         normCtx.textBaseline = 'top';
         var xTickCount = Math.min(6, Math.floor(pw / 60));
@@ -1597,7 +1634,7 @@ function initValueDistribution(config) {
         drawNormXTick(giMax);
 
         // Axes
-        normCtx.strokeStyle = '#94a3b8';
+        normCtx.strokeStyle = C.axis;
         normCtx.lineWidth = 1;
         normCtx.beginPath();
         normCtx.moveTo(MARGIN.left, MARGIN.top);
@@ -1607,7 +1644,7 @@ function initValueDistribution(config) {
 
         // Y-axis title
         normCtx.save();
-        normCtx.fillStyle = '#94a3b8';
+        normCtx.fillStyle = C.axis;
         normCtx.font = FONT;
         normCtx.translate(10, MARGIN.top + ph / 2);
         normCtx.rotate(-Math.PI / 2);
@@ -1744,6 +1781,10 @@ function initValueDistribution(config) {
         resizeTimer = setTimeout(render, 150);
     });
 
+    // The charts bake the palette into pixels, so they have to be redrawn when
+    // src/theme.js switches themes.
+    window.addEventListener('themechange', function() { render(); });
+
     // Expose API for bidirectional sync from visualizer
     window._vdApi = {
         setEncoding: function(sign, exp, mant) {
@@ -1815,6 +1856,8 @@ function initPage() {
     if (!cfg) return;
 
     if (cfg.navKey) renderNav(cfg.navKey);
+    // renderNav() creates the theme button, so it can only be wired up now.
+    if (typeof setupThemeToggle === 'function') setupThemeToggle();
     if (cfg.bitLayoutId) renderBitLayout(cfg.bitLayoutId, cfg);
     if (cfg.rangeTableId) renderRangeTable(cfg.rangeTableId, cfg);
     if (cfg.specialTableId) renderSpecialValues(cfg.specialTableId, cfg);
@@ -1835,6 +1878,8 @@ if (typeof module !== 'undefined' && module.exports) {
         FORMAT_PAGES,
         GROUP_LABELS,
         renderNav,
+        _fcThemeColor,
+        _fcChartPalette,
         renderBitLayout,
         formatValue,
         renderRangeTable,
