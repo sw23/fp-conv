@@ -19,7 +19,7 @@ describe('FORMAT_PAGES', () => {
     test('contains all expected format keys', () => {
         const expected = [
             'fp64', 'fp32', 'fp16', 'bf16', 'tf32',
-            'fp8_e5m2', 'fp8_e4m3', 'fp6_e3m2', 'fp6_e2m3', 'fp4_e2m1',
+            'fp8_e5m2', 'fp8_e4m3', 'fp6_e3m2', 'fp6_e2m3', 'fp4_e2m1', 'e8m0', 'mxint8',
             'int32', 'uint32', 'int16', 'uint16',
             'int8', 'uint8', 'int4', 'uint4',
         ];

@@ -6,19 +6,24 @@
 // Requires floating-point.js to be loaded first.
 
 // In Node.js (testing), import from the library; in browser, rely on globals.
-let _FloatingPoint, _Integer, _FORMATS;
+//
+// The alias names carry a per-file prefix on purpose: the format pages load this
+// as a CLASSIC script, and every classic script on a page shares one global
+// lexical environment, so duplicate top-level `let`/`const`/`class` names across
+// two of them throw SyntaxError. tests/browser-scripts.test.js enforces it.
+let _fcFloatingPoint, _fcInteger, _fcFORMATS;
 if (typeof require !== 'undefined') {
     const lib = require('../lib/floating-point.js');
-    _FloatingPoint = lib.FloatingPoint;
-    _Integer = lib.Integer;
-    _FORMATS = lib.FORMATS;
+    _fcFloatingPoint = lib.FloatingPoint;
+    _fcInteger = lib.Integer;
+    _fcFORMATS = lib.FORMATS;
 } else {
     /* istanbul ignore next */
-    _FloatingPoint = FloatingPoint;
+    _fcFloatingPoint = FloatingPoint;
     /* istanbul ignore next */
-    _Integer = Integer;
+    _fcInteger = Integer;
     /* istanbul ignore next */
-    _FORMATS = FORMATS;
+    _fcFORMATS = FORMATS;
 }
 
 // ── Format metadata for navigation and pages ─────────────────
@@ -36,6 +41,8 @@ const FORMAT_PAGES = {
     fp6_e3m2:     { file: 'fp6-e3m2.html',  label: 'FP6 E3M2',  group: 'ocp' },
     fp6_e2m3:     { file: 'fp6-e2m3.html',  label: 'FP6 E2M3',  group: 'ocp' },
     fp4_e2m1:     { file: 'fp4-e2m1.html',  label: 'FP4 E2M1',  group: 'ocp' },
+    e8m0:         { file: 'e8m0.html',      label: 'E8M0',      group: 'ocp' },
+    mxint8:       { file: 'mxint8.html',    label: 'MXINT8',    group: 'ocp' },
     // Integer
     int32:        { file: 'int32.html',     label: 'INT32',     group: 'int' },
     uint32:       { file: 'uint32.html',    label: 'UINT32',    group: 'int' },
@@ -53,6 +60,25 @@ const GROUP_LABELS = {
     ocp:  'OCP',
     int:  'Integer',
 };
+
+// Build the format instance a page's FORMAT_CONFIG describes. Every renderer
+// goes through this so a new format option cannot reach one of them and miss
+// another.
+function buildFormat(config, signedOverride) {
+    if (config.isInteger) {
+        const signed = signedOverride !== undefined ? signedOverride : config.signed !== false;
+        return new _fcInteger(config.totalBits, signed, {
+            fractionBits: config.fractionBits,
+            symmetric: config.symmetric,
+        });
+    }
+    return new _fcFloatingPoint(config.signBits, config.exponentBits, config.mantissaBits, {
+        bias: config.bias,
+        hasInfinity: config.hasInfinity,
+        hasNaN: config.hasNaN,
+        hasSubnormals: config.hasSubnormals,
+    });
+}
 
 // ── Navigation renderer ──────────────────────────────────────
 function renderNav(currentKey) {
@@ -90,17 +116,27 @@ function renderBitLayout(containerId, config) {
     const fields = [];
 
     if (config.isInteger) {
-        // Integer: show sign bit separately for signed, then value bits
+        // Integer: show sign bit separately for signed, then value bits. A
+        // format with an implicit scale (MXINT8) splits the remainder into an
+        // integer part and a fraction part.
+        const fractionBits = config.fractionBits || 0;
         if (config.signed) {
-            fields.push({ label: 'Sign', bits: 1, cls: 'sign' });
-            fields.push({ label: 'Value', bits: config.totalBits - 1, cls: 'integer' });
-        } else {
-            fields.push({ label: 'Value', bits: config.totalBits, cls: 'integer' });
+            fields.push({ label: 'Sign', bits: 1, cls: 'sign', char: 'S' });
+        }
+        const valueBits = config.totalBits - (config.signed ? 1 : 0) - fractionBits;
+        if (valueBits > 0) {
+            fields.push({
+                label: fractionBits ? 'Integer' : 'Value',
+                bits: valueBits, cls: 'integer', char: 'V'
+            });
+        }
+        if (fractionBits) {
+            fields.push({ label: 'Fraction', bits: fractionBits, cls: 'mantissa', char: 'F' });
         }
     } else {
-        if (config.signBits) fields.push({ label: 'Sign', bits: 1, cls: 'sign' });
-        if (config.exponentBits) fields.push({ label: 'Exponent', bits: config.exponentBits, cls: 'exponent' });
-        if (config.mantissaBits) fields.push({ label: 'Mantissa', bits: config.mantissaBits, cls: 'mantissa' });
+        if (config.signBits) fields.push({ label: 'Sign', bits: 1, cls: 'sign', char: 'S' });
+        if (config.exponentBits) fields.push({ label: 'Exponent', bits: config.exponentBits, cls: 'exponent', char: 'E' });
+        if (config.mantissaBits) fields.push({ label: 'Mantissa', bits: config.mantissaBits, cls: 'mantissa', char: 'M' });
     }
 
     let html = '';
@@ -117,7 +153,7 @@ function renderBitLayout(containerId, config) {
             html += `<span class="bit-field-label">${field.label}</span>`;
             html += '<div class="bit-field-boxes">';
             for (let i = 0; i < field.bits; i++) {
-                html += `<div class="bit-box">${field.label === 'Sign' ? 'S' : (field.label === 'Exponent' ? 'E' : (field.label === 'Mantissa' ? 'M' : 'V'))}</div>`;
+                html += `<div class="bit-box">${field.char}</div>`;
             }
             html += '</div>';
             html += `<span class="bit-field-width">${field.bits} bit${field.bits > 1 ? 's' : ''}</span>`;
@@ -155,17 +191,13 @@ function renderRangeTable(containerId, config) {
     if (!container) return;
 
     if (config.isInteger) {
-        const fmt = config.signed
-            ? new _Integer(config.totalBits, true)
-            : new _Integer(config.totalBits, false);
-        const fmtU = config.signed
-            ? new _Integer(config.totalBits, false)
-            : null;
+        const fmt = buildFormat(config, !!config.signed);
+        const fmtU = config.signed ? buildFormat(config, false) : null;
 
         let html = '<table class="info-table">';
         html += '<tr><th>Property</th>';
         if (config.signed) {
-            html += `<th>Signed (INT${config.totalBits})</th><th>Unsigned (UINT${config.totalBits})</th>`;
+            html += `<th>${config.label || 'Signed (INT' + config.totalBits + ')'}</th><th>Unsigned (UINT${config.totalBits})</th>`;
         } else {
             html += `<th>Value</th>`;
         }
@@ -173,21 +205,35 @@ function renderRangeTable(containerId, config) {
 
         const rows = config.signed ? [
             ['Total Bits', config.totalBits, config.totalBits],
-            ['Minimum Value', fmt.minValue, fmtU.minValue],
-            ['Maximum Value', fmt.maxValue, fmtU.maxValue],
+            ['Minimum Value', fmt.minRealValue, fmtU.minRealValue],
+            ['Maximum Value', fmt.maxRealValue, fmtU.maxRealValue],
             ['Representable Values', Math.pow(2, config.totalBits), Math.pow(2, config.totalBits)],
         ] : [
             ['Total Bits', config.totalBits],
-            ['Minimum Value', fmt.minValue],
-            ['Maximum Value', fmt.maxValue],
+            ['Minimum Value', fmt.minRealValue],
+            ['Maximum Value', fmt.maxRealValue],
             ['Representable Values', Math.pow(2, config.totalBits)],
         ];
+
+        if (config.fractionBits) {
+            rows.splice(1, 0,
+                ['Fraction Bits', config.fractionBits, 0],
+                ['Implicit Scale', `2^-${config.fractionBits}`, '1']);
+            rows.push(['Step (ULP)', 1 / fmt.scale, 1]);
+            rows.push(['Symmetric Range', fmt.symmetric ? 'Yes' : 'No', 'N/A']);
+        }
 
         for (const row of rows) {
             html += '<tr>';
             html += `<td class="text-cell">${row[0]}</td>`;
             for (let i = 1; i < row.length; i++) {
-                html += `<td>${typeof row[i] === 'number' ? row[i].toLocaleString() : row[i]}</td>`;
+                let cell = row[i];
+                if (typeof cell === 'number') {
+                    // toLocaleString truncates fractions to 3 places, which
+                    // would print MXINT8's -1.984375 as "-1.984".
+                    cell = Number.isInteger(cell) ? cell.toLocaleString() : formatValue(cell);
+                }
+                html += `<td>${cell}</td>`;
             }
             html += '</tr>';
         }
@@ -197,21 +243,19 @@ function renderRangeTable(containerId, config) {
     }
 
     // Floating-point format
-    const fp = new _FloatingPoint(config.signBits, config.exponentBits, config.mantissaBits, {
-        bias: config.bias,
-        hasInfinity: config.hasInfinity,
-        hasNaN: config.hasNaN,
-    });
+    const fp = buildFormat(config);
 
     const maxNorm = fp.getMaxNormal(false);
     const maxNormVal = fp.decode(maxNorm.sign, maxNorm.exponent, maxNorm.mantissa);
 
-    const minNormVal = fp.decode(0, 1, 0);
+    // A format with no subnormals (E8M0) uses exponent field 0 as its smallest
+    // normal binade rather than reserving it.
+    const minNormVal = fp.decode(0, fp.hasSubnormals ? 1 : 0, 0);
 
     const maxSubMant = fp.mantissaBits > 0 ? Math.pow(2, fp.mantissaBits) - 1 : 0;
-    const maxSubVal = fp.decode(0, 0, maxSubMant);
+    const maxSubVal = fp.hasSubnormals ? fp.decode(0, 0, maxSubMant) : null;
 
-    const minSubVal = fp.mantissaBits > 0 ? fp.decode(0, 0, 1) : 0;
+    const minSubVal = (fp.hasSubnormals && fp.mantissaBits > 0) ? fp.decode(0, 0, 1) : 0;
 
     const epsilon = fp.mantissaBits > 0 ? Math.pow(2, -fp.mantissaBits) : 1;
 
@@ -225,16 +269,24 @@ function renderRangeTable(containerId, config) {
     const rows = [
         ['Max Positive (Normal)', formatValue(maxNormVal)],
         ['Min Positive (Normal)', formatValue(minNormVal)],
-        ['Max Subnormal', formatValue(maxSubVal)],
-        ['Min Positive (Subnormal)', formatValue(minSubVal)],
+    ];
+    if (fp.hasSubnormals) {
+        rows.push(['Max Subnormal', formatValue(maxSubVal)]);
+        rows.push(['Min Positive (Subnormal)', formatValue(minSubVal)]);
+    } else {
+        rows.push(['Subnormals', 'N/A (no subnormal encodings)']);
+        rows.push(['Zero', 'N/A (no zero encoding)']);
+    }
+    rows.push(
         ['Machine Epsilon (at 1.0)', formatValue(epsilon)],
         ['Approx. Decimal Digits', '~' + decimalDigits.toFixed(1)],
         ['Exponent Bias', fp.bias.toString()],
-        ['Exponent Range', `2^${1 - fp.bias} to 2^${fp.maxExponent - (fp.hasInfinity ? 1 : 0) - fp.bias}`],
+        ['Exponent Range',
+            `2^${(fp.hasSubnormals ? 1 : 0) - fp.bias} to 2^${maxNorm.exponent - fp.bias}`],
         ['Total Bit Patterns', totalBitPatterns.toLocaleString()],
         ['Supports Infinity', fp.hasInfinity ? 'Yes' : 'No'],
         ['Supports NaN', fp.hasNaN ? 'Yes' : 'No'],
-    ];
+    );
 
     let html = '<table class="info-table">';
     html += '<tr><th>Property</th><th>Value</th></tr>';
@@ -255,35 +307,33 @@ function renderSpecialValues(containerId, config) {
         return;
     }
 
-    const fp = new _FloatingPoint(config.signBits, config.exponentBits, config.mantissaBits, {
-        bias: config.bias,
-        hasInfinity: config.hasInfinity,
-        hasNaN: config.hasNaN,
-    });
+    const fp = buildFormat(config);
 
     const entries = [];
 
-    // +0
-    entries.push({ name: '+0', sign: 0, exp: 0, mant: 0 });
+    if (fp.hasSubnormals) {
+        // +0
+        entries.push({ name: '+0', sign: 0, exp: 0, mant: 0 });
 
-    // -0
-    if (fp.signBits) {
-        entries.push({ name: '-0', sign: 1, exp: 0, mant: 0 });
+        // -0
+        if (fp.signBits) {
+            entries.push({ name: '-0', sign: 1, exp: 0, mant: 0 });
+        }
+
+        // Min subnormal
+        if (fp.mantissaBits > 0) {
+            entries.push({ name: 'Min Subnormal', sign: 0, exp: 0, mant: 1 });
+        }
+
+        // Max subnormal
+        if (fp.mantissaBits > 0) {
+            const maxSub = Math.pow(2, fp.mantissaBits) - 1;
+            entries.push({ name: 'Max Subnormal', sign: 0, exp: 0, mant: maxSub });
+        }
     }
 
-    // Min subnormal
-    if (fp.mantissaBits > 0) {
-        entries.push({ name: 'Min Subnormal', sign: 0, exp: 0, mant: 1 });
-    }
-
-    // Max subnormal
-    if (fp.mantissaBits > 0) {
-        const maxSub = Math.pow(2, fp.mantissaBits) - 1;
-        entries.push({ name: 'Max Subnormal', sign: 0, exp: 0, mant: maxSub });
-    }
-
-    // Min normal
-    entries.push({ name: 'Min Normal', sign: 0, exp: 1, mant: 0 });
+    // Min normal. A format with no subnormals uses exponent field 0 for it.
+    entries.push({ name: 'Min Normal', sign: 0, exp: fp.hasSubnormals ? 1 : 0, mant: 0 });
 
     // Max normal
     const maxN = fp.getMaxNormal(false);
@@ -298,7 +348,7 @@ function renderSpecialValues(containerId, config) {
     }
 
     // NaN
-    if (fp.hasNaN) {
+    if (fp._hasNaNEncoding()) {
         const nan = fp.getNaN();
         entries.push({ name: 'NaN', sign: 0, exp: nan.exponent, mant: nan.mantissa });
     }
@@ -309,7 +359,11 @@ function renderSpecialValues(containerId, config) {
     for (const entry of entries) {
         const signStr = fp.signBits ? entry.sign.toString() : '';
         const expStr = entry.exp.toString(2).padStart(fp.exponentBits, '0');
-        const mantStr = entry.mant.toString(2).padStart(fp.mantissaBits, '0');
+        // (0).toString(2) is "0", so a format with no mantissa field needs an
+        // explicit empty string rather than a padStart(0).
+        const mantStr = fp.mantissaBits > 0
+            ? entry.mant.toString(2).padStart(fp.mantissaBits, '0')
+            : '';
 
         const bitPattern = `<span class="sign-bits">${signStr}</span>` +
             (signStr && expStr ? ' ' : '') +
@@ -331,18 +385,23 @@ function renderSpecialValues(containerId, config) {
 }
 
 function renderIntegerSpecialValues(container, config) {
-    const fmtS = new _Integer(config.totalBits, true);
-    const fmtU = new _Integer(config.totalBits, false);
+    const intOptions = { fractionBits: config.fractionBits, symmetric: config.symmetric };
+    const fmtS = new _fcInteger(config.totalBits, true, intOptions);
+    const fmtU = new _fcInteger(config.totalBits, false, intOptions);
+    const scale = fmtS.scale;
 
     const entries = [
         { name: 'Zero', raw: 0 },
-        { name: 'One', raw: 1 },
+        { name: scale === 1 ? 'One' : `One (${scale} raw)`, raw: scale },
         { name: 'Max Unsigned', raw: Math.pow(2, config.totalBits) - 1 },
     ];
     if (config.totalBits > 1) {
         entries.push({ name: 'Max Signed', raw: Math.pow(2, config.totalBits - 1) - 1 });
-        entries.push({ name: 'All Ones (-1)', raw: Math.pow(2, config.totalBits) - 1 });
-        entries.push({ name: `Min Signed (-${Math.pow(2, config.totalBits - 1)})`, raw: Math.pow(2, config.totalBits - 1) });
+        entries.push({ name: `All Ones (${-1 / scale === -1 ? '-1' : formatValue(-1 / scale)})`, raw: Math.pow(2, config.totalBits) - 1 });
+        entries.push({
+            name: `Min Signed (${formatValue(-Math.pow(2, config.totalBits - 1) / scale)})`,
+            raw: Math.pow(2, config.totalBits - 1)
+        });
     }
 
     let html = '<table class="info-table special-table">';
@@ -372,7 +431,7 @@ function renderComparisonTable(containerId, currentKey, compareKeys) {
 
     const allKeys = [currentKey, ...compareKeys];
     const allConfigs = allKeys.map(key => {
-        const fmt = _FORMATS[key] || _FORMATS[key.replaceAll('-', '_')];
+        const fmt = _fcFORMATS[key] || _fcFORMATS[key.replaceAll('-', '_')];
         return { key, fmt };
     });
 
@@ -389,10 +448,11 @@ function renderComparisonTable(containerId, currentKey, compareKeys) {
     const rows = [];
     const fpInstances = allConfigs.map(({ fmt }) => {
         if (fmt.isInteger) return null;
-        return new _FloatingPoint(fmt.sign, fmt.exponent, fmt.mantissa, {
+        return new _fcFloatingPoint(fmt.sign, fmt.exponent, fmt.mantissa, {
             bias: fmt.bias,
             hasInfinity: fmt.hasInfinity,
             hasNaN: fmt.hasNaN,
+            hasSubnormals: fmt.hasSubnormals,
         });
     });
 
@@ -409,21 +469,23 @@ function renderComparisonTable(containerId, currentKey, compareKeys) {
             const m = fp.getMaxNormal(false);
             return formatValue(fp.decode(m.sign, m.exponent, m.mantissa));
         })]);
-        rows.push(['Min Normal', ...fpInstances.map(fp => formatValue(fp.decode(0, 1, 0)))]);
+        rows.push(['Min Normal', ...fpInstances.map(fp => formatValue(fp.decode(0, fp.hasSubnormals ? 1 : 0, 0)))]);
         rows.push(['Epsilon', ...fpInstances.map(fp => formatValue(Math.pow(2, -fp.mantissaBits)))]);
         rows.push(['~Decimal Digits', ...fpInstances.map(fp => '~' + (fp.mantissaBits * Math.log10(2)).toFixed(1))]);
         rows.push(['Has Infinity', ...fpInstances.map(fp => fp.hasInfinity ? 'Yes' : 'No')]);
         rows.push(['Has NaN', ...fpInstances.map(fp => fp.hasNaN ? 'Yes' : 'No')]);
+        rows.push(['Has Subnormals', ...fpInstances.map(fp => fp.hasSubnormals ? 'Yes' : 'No')]);
     } else if (isAllInt) {
         const intInstances = allConfigs.map(({ fmt }) => ({
-            s: new _Integer(fmt.bits, true),
-            u: new _Integer(fmt.bits, false),
+            s: new _fcInteger(fmt.bits, true, { fractionBits: fmt.fractionBits, symmetric: fmt.symmetric }),
+            u: new _fcInteger(fmt.bits, false, { fractionBits: fmt.fractionBits }),
             bits: fmt.bits,
         }));
         rows.push(['Total Bits', ...intInstances.map(i => i.bits)]);
-        rows.push(['Signed Min', ...intInstances.map(i => i.s.minValue.toLocaleString())]);
-        rows.push(['Signed Max', ...intInstances.map(i => i.s.maxValue.toLocaleString())]);
-        rows.push(['Unsigned Max', ...intInstances.map(i => i.u.maxValue.toLocaleString())]);
+        rows.push(['Signed Min', ...intInstances.map(i => i.s.minRealValue.toLocaleString())]);
+        rows.push(['Signed Max', ...intInstances.map(i => i.s.maxRealValue.toLocaleString())]);
+        rows.push(['Unsigned Max', ...intInstances.map(i => i.u.maxRealValue.toLocaleString())]);
+        rows.push(['Step (ULP)', ...intInstances.map(i => formatValue(1 / i.s.scale))]);
         rows.push(['Values', ...intInstances.map(i => Math.pow(2, i.bits).toLocaleString())]);
     }
 
@@ -451,13 +513,9 @@ function initVisualizer(config) {
 
     if (config.isInteger) {
         isInteger = true;
-        format = new _Integer(config.totalBits, config.signed !== false);
+        format = buildFormat(config);
     } else {
-        format = new _FloatingPoint(config.signBits, config.exponentBits, config.mantissaBits, {
-            bias: config.bias,
-            hasInfinity: config.hasInfinity,
-            hasNaN: config.hasNaN,
-        });
+        format = buildFormat(config);
     }
 
     // State
@@ -638,11 +696,15 @@ function initVisualizer(config) {
 
         // Update components
         if (componentsContainer && !isInteger) {
-            const expActual = currentExponent === 0
+            // A format with no subnormals uses exponent field 0 as an ordinary
+            // normal binade, so it takes neither the 1-bias offset nor the
+            // missing implicit leading bit.
+            const fieldZeroIsSubnormal = currentExponent === 0 && format.hasSubnormals;
+            const expActual = fieldZeroIsSubnormal
                 ? 1 - format.bias
                 : currentExponent - format.bias;
 
-            const mantDec = currentExponent === 0
+            const mantDec = fieldZeroIsSubnormal
                 ? (format.mantissaBits > 0 ? currentMantissa / Math.pow(2, format.mantissaBits) : 0)
                 : (format.mantissaBits > 0 ? 1 + currentMantissa / Math.pow(2, format.mantissaBits) : 1);
 
@@ -657,8 +719,8 @@ function initVisualizer(config) {
                 <div class="viz-component"><span class="viz-comp-label">Decoded Value:</span> <span class="viz-comp-value">${formatValue(decoded)}</span></div>
             `;
         } else if (componentsContainer && isInteger) {
-            const signedFmt = new _Integer(config.totalBits, true);
-            const unsignedFmt = new _Integer(config.totalBits, false);
+            const signedFmt = buildFormat(config, true);
+            const unsignedFmt = buildFormat(config, false);
             const signedVal = signedFmt.decode(0, 0, currentMantissa);
             const unsignedVal = unsignedFmt.decode(0, 0, currentMantissa);
 
@@ -691,14 +753,16 @@ function initVisualizer(config) {
             }
         } else {
             switch (preset) {
-                case 'zero': return format.encode(0);
+                case 'zero': return format.hasSubnormals ? format.encode(0) : null;
                 case 'one': return format.encode(1);
-                case 'neg-one': return format.encode(-1);
+                case 'neg-one': return format.signBits ? format.encode(-1) : null;
                 case 'max': return format.getMaxNormal(false);
-                case 'min-normal': return { sign: 0, exponent: 1, mantissa: 0 };
-                case 'min-sub': return { sign: 0, exponent: 0, mantissa: 1 };
+                case 'min-normal': return { sign: 0, exponent: format.hasSubnormals ? 1 : 0, mantissa: 0 };
+                case 'min-sub':
+                    return (format.hasSubnormals && format.mantissaBits > 0)
+                        ? { sign: 0, exponent: 0, mantissa: 1 } : null;
                 case 'inf': return format.hasInfinity ? format.getInfinity(false) : null;
-                case 'nan': return format.hasNaN ? format.getNaN() : null;
+                case 'nan': return format._hasNaNEncoding() ? format.getNaN() : null;
                 case 'all-ones': return {
                     sign: format.signBits ? 1 : 0,
                     exponent: format.maxExponent,
@@ -809,19 +873,16 @@ function initVisualizer(config) {
                 }
             } else {
                 switch (preset) {
-                    case 'zero': encoded = format.encode(0); break;
-                    case 'one': encoded = format.encode(1); break;
-                    case 'neg-one': encoded = format.encode(-1); break;
-                    case 'max': encoded = format.getMaxNormal(false); break;
-                    case 'min-normal': encoded = { sign: 0, exponent: 1, mantissa: 0 }; break;
-                    case 'min-sub': encoded = { sign: 0, exponent: 0, mantissa: 1 }; break;
+                    case 'zero':
+                    case 'one':
+                    case 'neg-one':
+                    case 'max':
+                    case 'min-normal':
+                    case 'min-sub':
                     case 'inf':
-                        if (format.hasInfinity) encoded = format.getInfinity(false);
-                        else return;
-                        break;
                     case 'nan':
-                        if (format.hasNaN) encoded = format.getNaN();
-                        else return;
+                        encoded = getPresetEncoding(preset);
+                        if (!encoded) return;
                         break;
                     case 'all-ones':
                         currentSign = format.signBits ? 1 : 0;
@@ -872,6 +933,8 @@ function generatePositiveValues(fp) {
     const totalPositive = (maxExp + 1) * mantCount;
     const MAX_POINTS = 2000;
     const data = [];
+    // Exponent field 0 is only a subnormal region when the format has one.
+    const subnormalExp = fp.hasSubnormals ? 0 : -1;
 
     if (totalPositive <= MAX_POINTS) {
         for (let e = 0; e <= maxExp; e++) {
@@ -883,15 +946,18 @@ function generatePositiveValues(fp) {
                     exponent: e,
                     mantissa: m,
                     value: val,
-                    isSubnormal: e === 0,
+                    isSubnormal: e === subnormalExp,
                 });
             }
         }
     } else {
         // Sample with a dedicated subnormal budget so they're always well-represented
-        const subBudget = Math.min(mantCount, Math.max(50, Math.floor(MAX_POINTS * 0.15)));
+        const subBudget = fp.hasSubnormals
+            ? Math.min(mantCount, Math.max(50, Math.floor(MAX_POINTS * 0.15)))
+            : 0;
         const normBudget = MAX_POINTS - subBudget;
-        const normExpCount = maxExp; // exponents 1..maxExp
+        const firstNormExp = fp.hasSubnormals ? 1 : 0;
+        const normExpCount = maxExp + 1 - firstNormExp;
         const perNormExp = Math.max(3, normExpCount > 0 ? Math.floor(normBudget / normExpCount) : 3);
 
         // Subnormals (exponent 0)
@@ -907,8 +973,8 @@ function generatePositiveValues(fp) {
                 isSubnormal: true,
             });
         }
-        // Normals (exponents 1..maxExp)
-        for (let e = 1; e <= maxExp; e++) {
+        // Normals
+        for (let e = firstNormExp; e <= maxExp; e++) {
             for (let s = 0; s < perNormExp; s++) {
                 const m = Math.round(s * (mantCount - 1) / Math.max(1, perNormExp - 1));
                 const val = fp.decode(0, e, m);
@@ -932,7 +998,7 @@ function generatePositiveValues(fp) {
             data[i].step = fp.mantissaBits > 0
                 ? Math.pow(2, 1 - fp.bias - fp.mantissaBits)
                 : Math.pow(2, 1 - fp.bias);
-        } else if (e === 0) {
+        } else if (e === subnormalExp) {
             // Subnormal step
             data[i].step = Math.pow(2, 1 - fp.bias - fp.mantissaBits);
         } else {
@@ -997,11 +1063,7 @@ function initValueDistribution(config) {
     const container = document.getElementById(config.valueDistributionId);
     if (!container || config.isInteger) return;
 
-    const fp = new _FloatingPoint(config.signBits, config.exponentBits, config.mantissaBits, {
-        bias: config.bias,
-        hasInfinity: config.hasInfinity,
-        hasNaN: config.hasNaN,
-    });
+    const fp = buildFormat(config);
 
     const data = generatePositiveValues(fp);
     if (data.length < 2) return;
@@ -1049,7 +1111,7 @@ function initValueDistribution(config) {
             '<div class="vd-readout-item"><span class="vd-readout-label">Type:</span> <span class="vd-readout-value vd-ro-type">Zero</span></div>' +
         '</div>' +
         '<div class="vd-legend">' +
-            '<span class="vd-legend-item vd-legend-sub">\u25A0 Subnormal</span>' +
+            (hasSubnormals ? '<span class="vd-legend-item vd-legend-sub">\u25A0 Subnormal</span>' : '') +
             '<span class="vd-legend-item vd-legend-norm">\u25A0 Normal</span>' +
             '<span class="vd-legend-item vd-legend-cursor">\u25CF Current</span>' +
         '</div>';
@@ -1145,7 +1207,7 @@ function initValueDistribution(config) {
         var displayVal = currentSign === 1 && d.value !== 0 ? -d.value : d.value;
         roVal.textContent = formatValue(displayVal);
 
-        var expActual = d.exponent === 0 ? (1 - fp.bias) : (d.exponent - fp.bias);
+        var expActual = (d.exponent === 0 && fp.hasSubnormals) ? (1 - fp.bias) : (d.exponent - fp.bias);
         roExp.textContent = d.exponent + ' (2^' + expActual + ')';
 
         var typeStr;

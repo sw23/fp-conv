@@ -6,6 +6,7 @@ const { FloatingPoint, Integer } = require('../lib/floating-point.js');
 const {
     ROUNDING_MODE_VALUES,
     DEFAULT_ROUNDING_MODE,
+    OVERFLOW_MODE_VALUES,
     formatToParam,
     parseFormatParam,
     descriptorToFormat,
@@ -261,5 +262,146 @@ describe('parseSearchParams', () => {
         expect(ROUNDING_MODE_VALUES).toContain('tiesToEven');
         expect(ROUNDING_MODE_VALUES).toContain('towardPositive');
         expect(ROUNDING_MODE_VALUES).toHaveLength(5);
+    });
+});
+
+// ── Overflow mode and the new format options ─────────────────
+
+describe('overflow mode in the URL', () => {
+    const baseState = () => {
+        const inputFormat = FloatingPoint.fromFormat('fp32');
+        const currentValue = 1.5;
+        return {
+            inputFormat,
+            outputFormat: FloatingPoint.fromFormat('fp16'),
+            currentValue,
+            currentEncoded: inputFormat.encode(currentValue),
+            roundingMode: 'tiesToEven',
+        };
+    };
+
+    test('exposes the canonical overflow mode list', () => {
+        expect(OVERFLOW_MODE_VALUES).toEqual(['saturate', 'overflow']);
+    });
+
+    test('om is omitted when the state is null (format default)', () => {
+        const query = buildSearchParams({ ...baseState(), overflowMode: null });
+        expect(query).not.toContain('om=');
+    });
+
+    test('om is emitted on an explicit choice', () => {
+        for (const mode of OVERFLOW_MODE_VALUES) {
+            const query = buildSearchParams({ ...baseState(), overflowMode: mode });
+            expect(query).toContain(`om=${mode}`);
+        }
+    });
+
+    test('om round-trips through parseSearchParams', () => {
+        for (const mode of OVERFLOW_MODE_VALUES) {
+            expect(parseSearchParams(`?om=${mode}`).overflowMode).toBe(mode);
+        }
+    });
+
+    test('an invalid om is discarded silently', () => {
+        expect(parseSearchParams('?in=fp16&om=bogus').overflowMode).toBeNull();
+    });
+
+    test('om alone is enough to count as state', () => {
+        const parsed = parseSearchParams('?om=saturate');
+        expect(parsed).not.toBeNull();
+        expect(parsed.overflowMode).toBe('saturate');
+        expect(parsed.input).toBeNull();
+    });
+
+    test('an empty search still parses to null', () => {
+        expect(parseSearchParams('')).toBeNull();
+    });
+
+    test('the overflow mode reaches the faithfulness re-encode', () => {
+        const format = FloatingPoint.fromFormat('fp32');
+        const saturated = format.encode(1e40, { overflowMode: 'saturate' });
+        // Under saturate the decimal re-encodes to the same bits, so the link
+        // can carry the decimal; under the default it would not.
+        expect(valueToParam(format, 1e40, saturated, 'tiesToEven', 'saturate').key).toBe('val');
+        expect(valueToParam(format, 1e40, saturated, 'tiesToEven', 'overflow').key).toBe('hex');
+    });
+});
+
+describe('E8M0 and MXINT8 in the URL', () => {
+    test('the e8m0 preset round-trips', () => {
+        const format = descriptorToFormat(parseFormatParam('e8m0'));
+        expect(format.hasSubnormals).toBe(false);
+        expect(format.bias).toBe(127);
+        expect(formatToParam(format)).toBe('e8m0');
+    });
+
+    test('the mxint8 preset round-trips and does not collapse into int8', () => {
+        const format = descriptorToFormat(parseFormatParam('mxint8'));
+        expect(format.fractionBits).toBe(6);
+        expect(format.symmetric).toBe(true);
+        expect(formatToParam(format)).toBe('mxint8');
+        // ... and the reverse: a plain INT8 must not become MXINT8.
+        expect(formatToParam(new Integer(8, true))).toBe('int8');
+        expect(formatToParam(descriptorToFormat(parseFormatParam('int8')))).toBe('int8');
+    });
+
+    test('a custom s0e8m0i0 WITH subnormals stays custom', () => {
+        const desc = parseFormatParam('s0e8m0i0');
+        expect(desc.hasSubnormals).toBeUndefined();
+        const format = descriptorToFormat(desc);
+        expect(format.hasSubnormals).toBe(true);
+        expect(formatToParam(format)).toBe('s0e8m0i0');
+    });
+
+    test('the d0 token disables subnormals and round-trips', () => {
+        const desc = parseFormatParam('s0e8m0i0d0');
+        expect(desc.hasSubnormals).toBe(false);
+        const format = descriptorToFormat(desc);
+        expect(format.hasSubnormals).toBe(false);
+        // The bit signature now matches the e8m0 preset, so it serializes to it.
+        expect(formatToParam(format)).toBe('e8m0');
+    });
+
+    test('d1 is accepted as the explicit positive form', () => {
+        expect(parseFormatParam('s1e5m10d1').hasSubnormals).toBeUndefined();
+        expect(descriptorToFormat(parseFormatParam('s1e5m10d1')).hasSubnormals).toBe(true);
+    });
+
+    test('the q token carries an implicit integer scale', () => {
+        const desc = parseFormatParam('i8q6');
+        expect(desc).toEqual({ kind: 'int', bits: 8, signed: true, fractionBits: 6 });
+        const format = descriptorToFormat(desc);
+        expect(format.fractionBits).toBe(6);
+        expect(format.symmetric).toBe(false);
+        // Not the mxint8 preset: that one is symmetric.
+        expect(formatToParam(format)).toBe('i8q6');
+    });
+
+    test('a custom scaled integer is NOT symmetric, before or after a round trip', () => {
+        // The grammar has no slot for symmetry, so a custom integer must be
+        // non-symmetric on both sides of the link. A live format that claimed
+        // otherwise would serialize to a token describing a different range.
+        const custom = descriptorToFormat(parseFormatParam('i9q6'));
+        expect(custom.symmetric).toBe(false);
+        expect(custom.minRealValue).toBe(-4);
+        expect(custom.maxRealValue).toBe(3.984375);
+        expect(formatToParam(custom)).toBe('i9q6');
+
+        // Symmetry survives only under the named preset.
+        const mxint8 = descriptorToFormat(parseFormatParam('mxint8'));
+        expect(mxint8.symmetric).toBe(true);
+        expect(mxint8.minRealValue).toBe(-1.984375);
+        expect(formatToParam(mxint8)).toBe('mxint8');
+    });
+
+    test('a q token wider than the format is rejected', () => {
+        expect(parseFormatParam('i8q8')).toBeNull();
+        expect(parseFormatParam('i8q9')).toBeNull();
+    });
+
+    test('an unsigned scaled integer round-trips', () => {
+        const format = descriptorToFormat(parseFormatParam('u8q4'));
+        expect(format.signed).toBe(false);
+        expect(formatToParam(format)).toBe('u8q4');
     });
 });

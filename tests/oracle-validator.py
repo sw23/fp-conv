@@ -130,6 +130,7 @@ FLOAT_FORMATS = {
     'fp6_e3m2': {'exponent': 3,  'mantissa': 2,  'bias': 3,    'has_inf': False, 'has_nan': False},
     'fp6_e2m3': {'exponent': 2,  'mantissa': 3,  'bias': 1,    'has_inf': False, 'has_nan': False},
     'fp4_e2m1': {'exponent': 2,  'mantissa': 1,  'bias': 1,    'has_inf': False, 'has_nan': False},
+    'e8m0':     {'exponent': 8,  'mantissa': 0,  'bias': 127,  'has_inf': False, 'has_nan': True, 'has_subnormals': False, 'unsigned': True},
 }
 
 INTEGER_FORMATS = {
@@ -138,48 +139,75 @@ INTEGER_FORMATS = {
     'uint8':  {'bits': 8,  'signed': False},
     'int4':   {'bits': 4,  'signed': True},
     'uint4':  {'bits': 4,  'signed': False},
+    'mxint8': {'bits': 8,  'signed': True, 'fraction_bits': 6, 'symmetric': True},
 }
 
 ROUNDING_MODES = ['tiesToEven', 'tiesToAway', 'towardZero',
                   'towardPositive', 'towardNegative']
 
+OVERFLOW_MODES = ['saturate', 'overflow']
+
 TWO = Fraction(2)
+
+
+def has_subnormals(spec):
+    return spec.get('has_subnormals', True)
 
 
 def max_exponent_field(spec):
     return (1 << spec['exponent']) - 1
 
 
+def mantissa_span(spec):
+    return 1 << spec['mantissa']
+
+
+def full_mantissa_field(spec):
+    return mantissa_span(spec) - 1
+
+
 def min_exponent(spec):
-    """Unbiased exponent of the smallest normal."""
-    return 1 - spec['bias']
+    """Unbiased exponent of the smallest normal.
+
+    A format with no subnormals uses exponent field 0 as an ordinary normal
+    binade rather than reserving it, so its smallest normal is one binade lower.
+    """
+    return (1 if has_subnormals(spec) else 0) - spec['bias']
+
+
+def max_normal_fields(spec):
+    """(exponent, mantissa) fields of the largest finite magnitude."""
+    top = max_exponent_field(spec)
+    full = full_mantissa_field(spec)
+    if spec['has_inf']:
+        return (top - 1, full)  # all-ones exponent is Infinity and NaN
+    if spec['has_nan']:
+        if spec['mantissa'] > 0:
+            return (top, full - 1)  # OCP E4M3: all-ones mantissa is NaN
+        # No mantissa field to step back through: NaN claims the whole slot.
+        return (top - 1, full)
+    return (top, full)
 
 
 def max_exponent(spec):
     """Unbiased exponent of the largest normal."""
+    return max_normal_fields(spec)[0] - spec['bias']
+
+
+def has_nan_encoding(spec):
+    """True when the format actually has a bit pattern to spare for NaN."""
+    return spec['has_nan'] and (spec['mantissa'] > 0 or not spec['has_inf'])
+
+
+def nan_fields(spec):
     top = max_exponent_field(spec)
-    if spec['has_inf']:
-        top -= 1  # all-ones is reserved for infinity and NaN
-    return top - spec['bias']
-
-
-def max_mantissa_field(spec):
-    full = (1 << spec['mantissa']) - 1
-    if spec['has_inf']:
-        return full
-    if spec['has_nan']:
-        return full - 1  # OCP E4M3 reserves all-ones for NaN
-    return full
-
-
-def max_normal_fields(spec):
-    return (max_exponent(spec) + spec['bias'], max_mantissa_field(spec))
+    return (top, mantissa_span(spec) // 2) if spec['has_inf'] else (top, full_mantissa_field(spec))
 
 
 def fields_to_fraction(spec, exponent_field, mantissa_field):
     """Exact value of a (exponent, mantissa) field pair, as a Fraction."""
     scale = spec['mantissa']
-    if exponent_field == 0:
+    if exponent_field == 0 and has_subnormals(spec):
         return Fraction(mantissa_field) * TWO ** (min_exponent(spec) - scale)
     significand = (1 << scale) | mantissa_field
     return Fraction(significand) * TWO ** (exponent_field - spec['bias'] - scale)
@@ -214,32 +242,66 @@ def round_fraction(value, sign, mode):
     raise ValueError('unknown rounding mode: %s' % mode)
 
 
-def finalize_fields(spec, sign, exponent_field, mantissa_field, mode):
+def overflow_fields(spec, sign, overflow_mode):
+    """(sign, exponent, mantissa) for a magnitude that ran out of range.
+
+    `saturate` always clamps. `overflow` produces Infinity when the format has
+    one, else NaN when it has a pattern to spare for one, else it clamps too.
+    A produced NaN carries sign 0, matching the library.
+    """
+    if overflow_mode == 'overflow':
+        if spec['has_inf']:
+            return (sign, max_exponent_field(spec), 0)
+        if has_nan_encoding(spec):
+            return (0,) + nan_fields(spec)
+    return (sign,) + max_normal_fields(spec)
+
+
+def finalize_fields(spec, sign, exponent_field, mantissa_field, mode,
+                    overflow_mode='__default__'):
     """Apply mantissa carry, overflow and OCP special-value rules."""
-    if mantissa_field >= (1 << spec['mantissa']):
+    if overflow_mode == '__default__':
+        overflow_mode = default_overflow_mode(spec)
+
+    if mantissa_field >= mantissa_span(spec):
         mantissa_field = 0
         exponent_field += 1
 
     top = max_exponent_field(spec)
-    if exponent_field > top or (exponent_field == top and spec['has_inf']):
+    # Rounding INTO the reserved all-ones-mantissa NaN slot at maxExponent is
+    # an overflow too: that slot is not a representable finite value.
+    reserved_nan_slot = (spec['has_nan'] and not spec['has_inf']
+                         and exponent_field == top
+                         and mantissa_field >= full_mantissa_field(spec))
+
+    if (exponent_field > top
+            or (exponent_field == top and spec['has_inf'])
+            or reserved_nan_slot):
+        # IEEE 754 §7.4 outranks the saturation mode: a directed mode pointing
+        # toward zero may never produce an infinity.
         should_clamp = (mode == 'towardZero'
                         or (mode == 'towardNegative' and sign == 0)
                         or (mode == 'towardPositive' and sign == 1))
-        if should_clamp or not spec['has_inf']:
-            return max_normal_fields(spec)
-        return (top, 0)  # infinity
+        if should_clamp:
+            return (sign,) + max_normal_fields(spec)
+        return overflow_fields(spec, sign, overflow_mode)
 
-    if (exponent_field == top and spec['has_nan'] and not spec['has_inf']
-            and mantissa_field >= max_mantissa_field(spec)):
-        return max_normal_fields(spec)
-
-    return (exponent_field, mantissa_field)
+    return (sign, exponent_field, mantissa_field)
 
 
-def round_to_format(magnitude, sign, spec, mode):
-    """Correctly round an exact positive Fraction to (exponent, mantissa)."""
+def default_overflow_mode(spec):
+    return 'overflow' if spec['has_inf'] else 'saturate'
+
+
+def round_to_format(magnitude, sign, spec, mode, overflow_mode='__default__'):
+    """Correctly round an exact positive Fraction to (sign, exponent, mantissa)."""
+    # An unsigned format clamps every negative magnitude to its smallest
+    # representable value, which is exponent field 0 either way.
+    if spec.get('unsigned') and sign == 1:
+        return (0, 0, 0)
+
     if magnitude == 0:
-        return (0, 0)
+        return (sign, 0, 0)
 
     # Unique e with 2^e <= magnitude < 2^(e+1). The bit-length difference is
     # either e or e+1, so verify and correct.
@@ -248,18 +310,24 @@ def round_to_format(magnitude, sign, spec, mode):
         exponent -= 1
 
     if exponent + spec['bias'] > max_exponent_field(spec):
-        return finalize_fields(spec, sign, max_exponent_field(spec) + 1, 0, mode)
+        return finalize_fields(spec, sign, max_exponent_field(spec) + 1, 0, mode,
+                               overflow_mode)
+
+    # A format with no subnormals has nothing below exponent field 0, so
+    # anything under it saturates to the minimum representable magnitude.
+    if not has_subnormals(spec) and exponent + spec['bias'] < 0:
+        return (sign, 0, 0)
 
     # Subnormals share the fixed exponent 2^(1-bias); normals use their binade.
-    subnormal = exponent < min_exponent(spec)
+    subnormal = has_subnormals(spec) and exponent < min_exponent(spec)
     effective = min_exponent(spec) if subnormal else exponent
     scaled = magnitude * TWO ** (spec['mantissa'] - effective)
     significand = round_fraction(scaled, sign, mode)
 
     if subnormal:
-        return finalize_fields(spec, sign, 0, significand, mode)
+        return finalize_fields(spec, sign, 0, significand, mode, overflow_mode)
     return finalize_fields(spec, sign, exponent + spec['bias'],
-                           significand - (1 << spec['mantissa']), mode)
+                           significand - mantissa_span(spec), mode, overflow_mode)
 
 
 def decimal_to_fraction(text):
@@ -358,11 +426,11 @@ def generate_midpoint_vectors():
                     continue
                 seen.add(text)
                 sign, magnitude = decimal_to_fraction(text)
-                exponent, mantissa = round_to_format(magnitude, sign, spec, 'tiesToEven')
+                sign, exponent, mantissa = round_to_format(magnitude, sign, spec, 'tiesToEven')
                 vectors.append({
                     'format': name,
                     'input': text,
-                    'expected': {'sign': 0, 'exponent': exponent, 'mantissa': mantissa},
+                    'expected': {'sign': sign, 'exponent': exponent, 'mantissa': mantissa},
                 })
     return vectors
 
@@ -417,7 +485,7 @@ def generate_string_encode_vectors():
 
         for text, mode in cases:
             sign, magnitude = decimal_to_fraction(text)
-            exponent, mantissa = round_to_format(magnitude, sign, spec, mode)
+            sign, exponent, mantissa = round_to_format(magnitude, sign, spec, mode)
             vectors.append({
                 'format': name,
                 'input': text,
@@ -438,16 +506,21 @@ def generate_integer_string_vectors():
     vectors = []
     for name in sorted(INTEGER_FORMATS):
         spec = INTEGER_FORMATS[name]
+        scale = 1 << spec.get('fraction_bits', 0)
         if spec['signed']:
-            low = -(1 << (spec['bits'] - 1))
             high = (1 << (spec['bits'] - 1)) - 1
+            # MX §5.3.4 lets the most-negative encoding go unused so the range
+            # stays symmetric.
+            low = -high if spec.get('symmetric') else -(1 << (spec['bits'] - 1))
         else:
             low, high = 0, (1 << spec['bits']) - 1
 
         for text in inputs:
             sign, magnitude = decimal_to_fraction(text)
             for mode in ROUNDING_MODES:
-                value = round_fraction(magnitude, sign, mode)
+                # Round on the SCALED magnitude so a fixed-point format rounds
+                # at its own 1/2^fraction_bits grid, in a single step.
+                value = round_fraction(magnitude * scale, sign, mode)
                 if sign:
                     value = -value
                 value = max(low, min(high, value))
@@ -460,8 +533,133 @@ def generate_integer_string_vectors():
     return vectors
 
 
+# ---------------------------------------------------------------------------
+# Overflow behavior (OCP OFP8 Table 3 / MX Table 3).
+#
+# The interesting probes sit AROUND the top of the range, not far above it: the
+# round-then-check ordering of OFP8 §5.2.1 means a value below max normal that
+# rounds UP past it must still take the overflow path.
+# ---------------------------------------------------------------------------
+
+OVERFLOW_PROBE_FORMATS = [
+    'fp32', 'fp16', 'fp8_e5m2', 'fp8_e4m3',
+    'fp6_e3m2', 'fp6_e2m3', 'fp4_e2m1', 'e8m0',
+]
+
+
+def dyadic_to_decimal(value):
+    """Exact decimal string for a positive dyadic Fraction."""
+    if value.denominator == 1:
+        return str(value.numerator)
+    numerator, places = dyadic_to_scaled_int(value)
+    return scaled_int_to_decimal(numerator, places)
+
+
+def overflow_probe_magnitudes(spec):
+    """Exact magnitudes straddling the top of the format's range."""
+    exponent_field, mantissa_field = max_normal_fields(spec)
+    max_value = fields_to_fraction(spec, exponent_field, mantissa_field)
+    ulp = TWO ** (max_exponent(spec) - spec['mantissa'])
+    midpoint = max_value + ulp / 2
+    return [
+        max_value,                 # exactly representable
+        midpoint - ulp / 4,        # rounds back down to max normal
+        midpoint,                  # the tie at the edge of the range
+        midpoint + ulp / 4,        # rounds up out of range
+        max_value * 2,             # unambiguously out of range
+    ]
+
+
+def generate_overflow_mode_vectors():
+    """Every Table 3 cell, at every rounding mode, for both signs."""
+    vectors = []
+    for name in OVERFLOW_PROBE_FORMATS:
+        spec = FLOAT_FORMATS[name]
+        signs = [0] if spec.get('unsigned') else [0, 1]
+        probes = [dyadic_to_decimal(m) for m in overflow_probe_magnitudes(spec)]
+        probes.append('1e400')  # takes the out-of-range shortcut path
+
+        for text in probes:
+            for sign in signs:
+                literal = ('-' + text) if sign else text
+                _, magnitude = decimal_to_fraction(literal)
+                for mode in ROUNDING_MODES:
+                    for overflow_mode in OVERFLOW_MODES:
+                        s, e, m = round_to_format(magnitude, sign, spec, mode, overflow_mode)
+                        vectors.append({
+                            'format': name,
+                            'input': literal,
+                            'roundingMode': mode,
+                            'overflowMode': overflow_mode,
+                            'expected': {'sign': s, 'exponent': e, 'mantissa': m},
+                        })
+    return vectors
+
+
+def generate_e8m0_vectors():
+    """Every E8M0 encoding, and a spread of decimals encoded into it."""
+    spec = FLOAT_FORMATS['e8m0']
+    decode_vectors = []
+    for field in range(256):
+        if field == max_exponent_field(spec):
+            decode_vectors.append({'exponent': field, 'expected': 'NaN'})
+            continue
+        decode_vectors.append({
+            'exponent': field,
+            'expected': float(Fraction(1) * TWO ** (field - spec['bias'])),
+        })
+
+    encode_inputs = ['0', '1', '2', '4', '0.5', '1.5', '1.25', '3', '1e-60', '1e40',
+                     '-4', '340282366920938463463374607431768211456']
+    encode_vectors = []
+    for text in encode_inputs:
+        sign, magnitude = decimal_to_fraction(text)
+        for mode in ROUNDING_MODES:
+            s, e, m = round_to_format(magnitude, sign, spec, mode)
+            encode_vectors.append({
+                'input': text,
+                'roundingMode': mode,
+                'expected': {'sign': s, 'exponent': e, 'mantissa': m},
+            })
+
+    return decode_vectors, encode_vectors
+
+
+def generate_mxint8_vectors():
+    """Every MXINT8 encoding, and a spread of decimals encoded into it."""
+    spec = INTEGER_FORMATS['mxint8']
+    scale = 1 << spec['fraction_bits']
+    span = 1 << spec['bits']
+
+    decode_vectors = []
+    for raw in range(span):
+        value = raw - span if raw >= span // 2 else raw
+        decode_vectors.append({'raw': raw, 'expected': value / scale})
+
+    encode_inputs = ['0', '1', '-1', '1.5', '-1.5', '0.015625', '-0.015625',
+                     '1.984375', '-1.984375', '-2', '2', '10', '-10',
+                     '0.0078125', '-0.0078125', '0.0234375', '1e30000', '1e-30000',
+                     '-1e-30000']
+    encode_vectors = []
+    for text in encode_inputs:
+        sign, magnitude = decimal_to_fraction(text)
+        for mode in ROUNDING_MODES:
+            value = round_fraction(magnitude * scale, sign, mode)
+            if sign:
+                value = -value
+            high = (span // 2) - 1
+            low = -high if spec['symmetric'] else -(span // 2)
+            value = max(low, min(high, value))
+            encode_vectors.append({
+                'input': text,
+                'roundingMode': mode,
+                'expected': value,
+            })
+
+    return decode_vectors, encode_vectors
+
+
 def generate_test_vectors():
-    """Generate comprehensive test vectors."""
     vectors = {
         'fp32_encode': [],
         'fp32_decode': [],
@@ -568,6 +766,15 @@ def generate_test_vectors():
     vectors['string_encode'] = generate_string_encode_vectors()
     vectors['midpoint_straddle'] = generate_midpoint_vectors()
     vectors['integer_string_encode'] = generate_integer_string_vectors()
+
+    # OCP conformance: overflow behavior and the two MX scalar types.
+    vectors['overflow_mode_encode'] = generate_overflow_mode_vectors()
+    e8m0_decode, e8m0_encode = generate_e8m0_vectors()
+    vectors['e8m0_decode'] = e8m0_decode
+    vectors['e8m0_encode'] = e8m0_encode
+    mxint8_decode, mxint8_encode = generate_mxint8_vectors()
+    vectors['mxint8_decode'] = mxint8_decode
+    vectors['mxint8_string_encode'] = mxint8_encode
 
     return vectors
 

@@ -37,6 +37,7 @@ Options:
       --to <fmt>       Target format for convert.
   -r, --rounding <m>   Rounding mode: tiesToEven (default), tiesToAway,
                        towardZero, towardPositive, towardNegative.
+      --overflow <m>   Overflow behavior: overflow or saturate.
       --json           Emit machine-readable JSON instead of formatted text.
   -h, --help           Show this help.
   -v, --version        Show version.
@@ -49,6 +50,7 @@ ever mistaken for an option, place it after "--" (e.g. "encode --format fp16 -- 
 Examples:
   fp-conv encode 3.14 --format fp32
   fp-conv encode -1.5 --format fp16
+  fp-conv encode 1e40 --format fp32 --overflow saturate
   fp-conv decode 0x4048 --format fp16
   fp-conv convert 3.14 --from fp32 --to fp16
   fp-conv info bf16
@@ -60,6 +62,7 @@ const OPTIONS = {
     from: { type: "string" },
     to: { type: "string" },
     rounding: { type: "string", short: "r" },
+    overflow: { type: "string" },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
@@ -168,7 +171,12 @@ function dispatch({ command, positionals, values }) {
         case "encode": {
             const value = requirePositional(positionals, 1, "value");
             const format = parseFormatSpec(requireOption(values.format, "--format"));
-            const data = runEncode({ value, format, roundingMode: values.rounding });
+            const data = runEncode({
+                value,
+                format,
+                roundingMode: values.rounding,
+                overflowMode: values.overflow,
+            });
             output(data, values.json, () => renderStats(data));
             break;
         }
@@ -183,7 +191,13 @@ function dispatch({ command, positionals, values }) {
             const value = requirePositional(positionals, 1, "value");
             const from = parseFormatSpec(requireOption(values.from, "--from"));
             const to = parseFormatSpec(requireOption(values.to, "--to"));
-            const data = runConvert({ value, from, to, roundingMode: values.rounding });
+            const data = runConvert({
+                value,
+                from,
+                to,
+                roundingMode: values.rounding,
+                overflowMode: values.overflow,
+            });
             output(data, values.json, () =>
                 renderConvert(data, {
                     from: typeof from === "string" ? from : "custom",

@@ -128,6 +128,8 @@
                         <button class="preset-btn input-preset" data-format="fp6_e3m2">FP6 E3M2</button>
                         <button class="preset-btn input-preset" data-format="fp6_e2m3">FP6 E2M3</button>
                         <button class="preset-btn input-preset" data-format="fp4_e2m1">FP4 E2M1</button>
+                        <button class="preset-btn input-preset" data-format="e8m0">E8M0</button>
+                        <button class="preset-btn input-preset" data-format="mxint8">MXINT8</button>
                     </div>
                     <div class="preset-label">Integer Formats:</div>
                     <div class="preset-buttons">
@@ -163,6 +165,14 @@
                         <div class="input-group">
                             <label for="input-has-nan">Has NaN:</label>
                             <input type="checkbox" id="input-has-nan" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="input-has-subnormals">Has Sub:</label>
+                            <input type="checkbox" id="input-has-subnormals" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="input-fraction-bits">Frac:</label>
+                            <input type="number" id="input-fraction-bits" autocomplete="off" min="0" max="63" value="0">
                         </div>
                         <div class="input-group">
                             <span class="input-label">Total:</span>
@@ -260,6 +270,15 @@
                         <option value="towardNegative">Toward -Infinity (floor)</option>
                     </select>
                 </div>
+
+                <div class="input-group overflow-mode-group">
+                    <label for="overflow-mode">On Overflow:</label>
+                    <select id="overflow-mode" autocomplete="off">
+                        <option value="" selected id="overflow-mode-default">Output's default</option>
+                        <option value="overflow">Overflow to Infinity / NaN</option>
+                        <option value="saturate">Saturate to largest finite value</option>
+                    </select>
+                </div>
             </section>
 
             <!-- Output Format -->
@@ -291,6 +310,8 @@
                         <button class="preset-btn output-preset" data-format="fp6_e3m2">FP6 E3M2</button>
                         <button class="preset-btn output-preset" data-format="fp6_e2m3">FP6 E2M3</button>
                         <button class="preset-btn output-preset" data-format="fp4_e2m1">FP4 E2M1</button>
+                        <button class="preset-btn output-preset" data-format="e8m0">E8M0</button>
+                        <button class="preset-btn output-preset" data-format="mxint8">MXINT8</button>
                     </div>
                     <div class="preset-label">Integer Formats:</div>
                     <div class="preset-buttons">
@@ -326,6 +347,14 @@
                         <div class="input-group">
                             <label for="output-has-nan">Has NaN:</label>
                             <input type="checkbox" id="output-has-nan" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="output-has-subnormals">Has Sub:</label>
+                            <input type="checkbox" id="output-has-subnormals" autocomplete="off" checked>
+                        </div>
+                        <div class="input-group">
+                            <label for="output-fraction-bits">Frac:</label>
+                            <input type="number" id="output-fraction-bits" autocomplete="off" min="0" max="63" value="0">
                         </div>
                         <div class="input-group">
                             <span class="input-label">Total:</span>
@@ -435,6 +464,15 @@
                 round toward &minus;infinity (floor). The default is ties to even, which is the standard IEEE 754 rounding mode.
             </p>
             <p>
+                You can also choose what happens when a value is too large for the target format. <em>Overflow</em> produces
+                &plusmn;Infinity, or NaN in a format that has NaN but no Infinity (such as FP8 E4M3). <em>Saturate</em> clamps to the
+                largest finite value instead, which is the SAT mode required by the
+                <a href="https://www.opencompute.org/documents/ocp-8-bit-floating-point-specification-ofp8-revision-1-0-2023-12-01-pdf" target="_blank" rel="noopener">OCP OFP8 specification</a>.
+                The default is the output format's own standard behavior, which the option text names explicitly. Note that IEEE 754
+                makes overflow rounding-mode dependent: a directed rounding mode pointing toward zero clamps a finite
+                overflow to the largest finite value no matter which overflow behavior is selected.
+            </p>
+            <p>
                 The tool also reports the precision loss of each conversion as the absolute and relative error between the input value
                 and its output representation. Value presets let you explore special cases like zero, infinity, NaN, subnormals, and the
                 smallest and largest representable numbers.
@@ -461,7 +499,7 @@
                     </li>
                     <li>
                         <strong>Bookmark or Share Your Conversion</strong>
-                        The address bar automatically updates to reflect your current input format, output format, value, and rounding mode. Copy the link to share an exact conversion, or bookmark the page to return to it later.
+                        The address bar automatically updates to reflect your current input format, output format, value, rounding mode, and overflow behavior. Copy the link to share an exact conversion, or bookmark the page to return to it later.
                     </li>
                 </ol>
             </div>
@@ -497,7 +535,9 @@
                         <a href="formats/fp8-e5m2.html">FP8 E5M2</a>,
                         <a href="formats/fp6-e3m2.html">FP6 E3M2</a>,
                         <a href="formats/fp6-e2m3.html">FP6 E2M3</a>,
-                        <a href="formats/fp4-e2m1.html">FP4 E2M1</a>
+                        <a href="formats/fp4-e2m1.html">FP4 E2M1</a>,
+                        <a href="formats/e8m0.html">E8M0 (MX Scale)</a>,
+                        <a href="formats/mxint8.html">MXINT8</a>
                     </li>
                     <li>
                         <strong>Integer Formats:</strong>

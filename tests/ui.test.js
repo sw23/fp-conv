@@ -41,8 +41,12 @@ beforeAll(() => {
  * restore the URL state — mirroring what the module's DOMContentLoaded handler
  * does, without dispatching that event (which would also fire stale listeners
  * left on the shared jsdom document by earlier requires).
+ *
+ * Pass `syncUrl: true` to also enter the address-bar-syncing phase, which the
+ * real page enters at the end of that handler. Off by default so the existing
+ * tests keep their original, quieter behavior.
  */
-function freshUi({ search = '' } = {}) {
+function freshUi({ search = '', syncUrl = false } = {}) {
     jest.resetModules();
     document.body.innerHTML = BODY_HTML;
     window.history.replaceState(null, '', '/' + (search ? `?${search}` : ''));
@@ -50,6 +54,10 @@ function freshUi({ search = '' } = {}) {
     ui.setupEventListeners();
     if (search) {
         ui.applyStateFromUrl();
+    }
+    if (syncUrl) {
+        ui.enableUrlSync();
+        ui.updateOutput();
     }
     return ui;
 }
@@ -353,5 +361,145 @@ describe('ui.js — URL state restoration', () => {
     test('restores an exact bit pattern from a hex parameter', () => {
         freshUi({ search: 'in=fp16&out=fp16&hex=0x3c00' });
         expect($('input-decimal-input').value).toBe('1');
+    });
+});
+
+// ── Regressions from the 2026-08-23 local-changes review ─────
+
+describe('ui.js — component metadata follows the subnormal regime', () => {
+    const { FloatingPoint } = floatingPoint;
+
+    test('an ordinary IEEE format still uses the subnormal formulas at field 0', () => {
+        const ui = freshUi();
+        const fp16 = FloatingPoint.fromFormat('fp16');
+        expect(ui.formatExponentActual(fp16, 0, 0)).toBe('1 - 15 = -14');
+        expect(ui.calculateMantissaDecimal(fp16, 0, 0)).toBe(0);
+        expect(ui.calculateMantissaDecimal(fp16, 0, 512)).toBe(0.5);
+        // ... and the normal formulas elsewhere.
+        expect(ui.formatExponentActual(fp16, 15, 0)).toBe('15 - 15 = 0');
+        expect(ui.calculateMantissaDecimal(fp16, 15, 512)).toBe(1.5);
+    });
+
+    test('E8M0 field 0 is a NORMAL binade, not a subnormal', () => {
+        const ui = freshUi();
+        const e8m0 = FloatingPoint.fromFormat('e8m0');
+        expect(e8m0.classify(0, 0, 0)).toBe('Normal');
+        expect(ui.formatExponentActual(e8m0, 0, 0)).toBe('0 - 127 = -127');
+        expect(ui.calculateMantissaDecimal(e8m0, 0, 0)).toBe(1.0);
+        // The rest of the range is unaffected.
+        expect(ui.formatExponentActual(e8m0, 129, 0)).toBe('129 - 127 = 2');
+        expect(ui.calculateMantissaDecimal(e8m0, 129, 0)).toBe(1.0);
+    });
+
+    test('a zero-mantissa format WITH subnormals keeps the 0 significand', () => {
+        const ui = freshUi();
+        const custom = new FloatingPoint(1, 5, 0, { hasInfinity: false, hasNaN: false });
+        expect(custom.classify(0, 0, 0)).toBe('Zero');
+        expect(ui.calculateMantissaDecimal(custom, 0, 0)).toBe(0);
+        expect(ui.formatExponentActual(custom, 0, 0)).toBe('1 - 15 = -14');
+    });
+
+    test('the E8M0 min-normal preset renders consistent components in the DOM', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('e8m0');
+        ui.loadValuePreset('min-norm');
+
+        expect($('input-hex-input').value).toBe('0x00');
+        expect(text('input-comp-type')).toBe('Normal');
+        expect(text('input-comp-exp-actual')).toBe('0 - 127 = -127');
+        expect(text('input-comp-mantissa-dec')).toBe('1.0000000000');
+        expect(text('input-comp-value')).toBe(String(Math.pow(2, -127)));
+    });
+});
+
+describe('ui.js — a customized MXINT8 drops its hidden symmetric range', () => {
+    const editBits = (id, value) => {
+        $(id).value = String(value);
+        $(id).dispatchEvent(new window.Event('input', { bubbles: true }));
+    };
+    const query = () => window.location.search.replace(/^\?/, '');
+
+    // The observable that actually distinguishes the two formats. A 9-bit,
+    // 6-fraction-bit integer saturates -4 to itself when non-symmetric, but to
+    // -255/64 = -3.984375 when the most-negative encoding is left unused. This
+    // is asserted on the DECODED VALUE rather than on any hint text, so it
+    // survives changes to how the UI explains itself.
+    const saturateNegative = () => {
+        editBits('input-decimal-input', -4);
+        return text('input-comp-value');
+    };
+    const NON_SYMMETRIC = '-4';
+    const SYMMETRIC = '-3.984375';
+
+    test('the untouched preset stays symmetric and serializes as mxint8', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('mxint8');
+        expect(document.querySelector('.input-preset[data-format="mxint8"]')
+            .classList.contains('active')).toBe(true);
+        expect(query()).toContain('in=mxint8');
+        // 8-bit symmetric: -2 saturates to -127/64.
+        editBits('input-decimal-input', -2);
+        expect(text('input-comp-value')).toBe('-1.984375');
+    });
+
+    test('editing the width clears the preset AND the symmetry', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('mxint8');
+        editBits('input-mantissa-bits', 9);
+
+        expect(document.querySelector('.input-preset[data-format="mxint8"]')
+            .classList.contains('active')).toBe(false);
+        expect(query()).toContain('in=i9q6');
+        // The live format must be the one the link can reproduce.
+        expect(saturateNegative()).toBe(NON_SYMMETRIC);
+        expect(saturateNegative()).not.toBe(SYMMETRIC);
+    });
+
+    test('the generated link restores the same range it was generated from', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('mxint8');
+        editBits('input-mantissa-bits', 9);
+        const before = saturateNegative();
+        const search = query();
+
+        freshUi({ search });
+        expect($('input-mantissa-bits').value).toBe('9');
+        expect($('input-fraction-bits').value).toBe('6');
+        expect(saturateNegative()).toBe(before);
+    });
+
+    test('editing the scale also drops the symmetry', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('mxint8');
+        editBits('input-fraction-bits', 5);
+
+        expect(document.querySelector('.input-preset[data-format="mxint8"]')
+            .classList.contains('active')).toBe(false);
+        expect(query()).toContain('in=i8q5');
+        // 8-bit, 5 fraction bits, non-symmetric: -128/32 = -4.
+        expect(saturateNegative()).toBe(NON_SYMMETRIC);
+    });
+
+    test('the output path follows the identical rule', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('fp16');
+        ui.loadOutputPreset('mxint8');
+        expect(query()).toContain('out=mxint8');
+        editBits('input-decimal-input', -4);
+        expect(text('output-comp-value')).toBe('-1.984375');
+
+        editBits('output-mantissa-bits', 9);
+        expect(document.querySelector('.output-preset[data-format="mxint8"]')
+            .classList.contains('active')).toBe(false);
+        expect(query()).toContain('out=i9q6');
+        expect(text('output-comp-value')).toBe(NON_SYMMETRIC);
+    });
+
+    test('a plain INT8 width edit is unaffected', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('int8');
+        editBits('input-mantissa-bits', 9);
+        expect(query()).toContain('in=i9');
+        expect(query()).not.toContain('q');
     });
 });
