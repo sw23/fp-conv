@@ -8,7 +8,8 @@ server-side companion to the [fp-conv](https://sw23.github.io/fp-conv/) web app 
 reuses the same conversion library.
 
 Encode, decode, and convert numbers across FP32, FP64, FP16, BF16, TF32, FP8, FP6, FP4,
-signed/unsigned ints, and custom formats. Supports rounding modes and calculates precision loss.
+MX scale/element types, signed/unsigned ints, and custom formats. Supports rounding modes,
+overflow (saturation) behavior, and calculates precision loss.
 
 ## Tools
 
@@ -33,7 +34,7 @@ All tools accept either a **preset key** (string) or a **custom format object**.
 | --- | --- |
 | IEEE 754 | `"fp64"`, `"fp32"`, `"fp16"` |
 | ML | `"bf16"`, `"tf32"` |
-| OCP | `"fp8_e5m2"`, `"fp8_e4m3"`, `"fp6_e3m2"`, `"fp6_e2m3"`, `"fp4_e2m1"` |
+| OCP | `"fp8_e5m2"`, `"fp8_e4m3"`, `"fp6_e3m2"`, `"fp6_e2m3"`, `"fp4_e2m1"`, `"e8m0"`, `"mxint8"` |
 | Integer | `"int32"`, `"uint32"`, `"int16"`, `"uint16"`, `"int8"`, `"uint8"`, `"int4"`, `"uint4"` |
 
 ### Custom formats
@@ -52,6 +53,7 @@ For floating-point:
 | `bias` | no | Exponent bias; defaults to `2^(exponentBits-1) - 1` |
 | `hasInfinity` | no | Whether the format can represent ±Infinity (default `true`) |
 | `hasNaN` | no | Whether the format can represent NaN (default `true`) |
+| `hasSubnormals` | no | Whether exponent field 0 is a subnormal/zero region (default `true`). Set `false` for a scale type such as E8M0. |
 
 For integers:
 
@@ -63,6 +65,8 @@ For integers:
 | --- | --- | --- |
 | `bits` | yes | Total bit width (1–64) |
 | `signed` | yes | `true` for signed two's-complement, `false` for unsigned |
+| `fractionBits` | no | Implicit `2^-fractionBits` scale (default `0`; MXINT8 uses `6`) |
+| `symmetric` | no | Leave the most-negative encoding unused so the range is symmetric (default `false`) |
 
 > **Precision note:** values are computed with JavaScript doubles, so formats
 > wider than 53 significant bits (e.g. 64-bit integers or mantissas above 52)

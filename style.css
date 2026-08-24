@@ -342,6 +342,10 @@ section h3 {
     border-top: 1px solid var(--border);
 }
 
+.overflow-mode-group {
+    margin-top: 10px;
+}
+
 .total-bits-display {
     padding: 10px 4px;
     background: var(--background);

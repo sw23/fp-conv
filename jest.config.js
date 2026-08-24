@@ -23,16 +23,16 @@ module.exports = {
       statements: 97
     },
     './src/webmcp.js': {
-      branches: 92,
+      branches: 94,
       functions: 100,
       lines: 97,
       statements: 97
     },
     './src/ui.js': {
-      branches: 70,
-      functions: 80,
-      lines: 84,
-      statements: 82
+      branches: 77,
+      functions: 83,
+      lines: 88,
+      statements: 87
     },
     './formats/format-common.js': {
       branches: 76,

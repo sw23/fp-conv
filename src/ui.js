@@ -32,6 +32,11 @@ let currentEncoded = null;
 let currentInputFormatKey = null;  // Track if an integer preset is active
 let currentOutputFormatKey = null; // Track if an integer preset is active
 let currentRoundingMode = 'tiesToEven';
+// null means "leave it to the format". That is a distinct third state from the
+// two modes: FP32 defaults to overflow while FP8 E4M3 defaults to saturate, so
+// a two-valued control could not express "whatever this format normally does"
+// without silently changing one of them.
+let currentOverflowMode = null;
 let urlSyncEnabled = false; // Suppress URL writes until initial state is loaded
 
 // Helper functions to show/hide format controls for integer vs floating-point
@@ -40,6 +45,8 @@ function updateInputFormatControlsVisibility(isInteger) {
     const expGroup = document.getElementById('input-exponent-bits').closest('.input-group');
     const infGroup = document.getElementById('input-has-infinity').closest('.input-group');
     const nanGroup = document.getElementById('input-has-nan').closest('.input-group');
+    const subGroup = document.getElementById('input-has-subnormals').closest('.input-group');
+    const fracGroup = document.getElementById('input-fraction-bits').closest('.input-group');
     const mantissaLabel = document.querySelector('label[for="input-mantissa-bits"]');
     
     if (isInteger) {
@@ -47,12 +54,16 @@ function updateInputFormatControlsVisibility(isInteger) {
         expGroup.style.display = 'none';
         infGroup.style.display = 'none';
         nanGroup.style.display = 'none';
+        subGroup.style.display = 'none';
+        fracGroup.style.display = '';
         mantissaLabel.textContent = 'Bits:';
     } else {
         signGroup.style.display = '';
         expGroup.style.display = '';
         infGroup.style.display = '';
         nanGroup.style.display = '';
+        subGroup.style.display = '';
+        fracGroup.style.display = 'none';
         mantissaLabel.textContent = 'Mantissa:';
     }
 }
@@ -62,6 +73,8 @@ function updateOutputFormatControlsVisibility(isInteger) {
     const expGroup = document.getElementById('output-exponent-bits').closest('.input-group');
     const infGroup = document.getElementById('output-has-infinity').closest('.input-group');
     const nanGroup = document.getElementById('output-has-nan').closest('.input-group');
+    const subGroup = document.getElementById('output-has-subnormals').closest('.input-group');
+    const fracGroup = document.getElementById('output-fraction-bits').closest('.input-group');
     const mantissaLabel = document.querySelector('label[for="output-mantissa-bits"]');
     
     if (isInteger) {
@@ -69,12 +82,16 @@ function updateOutputFormatControlsVisibility(isInteger) {
         expGroup.style.display = 'none';
         infGroup.style.display = 'none';
         nanGroup.style.display = 'none';
+        subGroup.style.display = 'none';
+        fracGroup.style.display = '';
         mantissaLabel.textContent = 'Bits:';
     } else {
         signGroup.style.display = '';
         expGroup.style.display = '';
         infGroup.style.display = '';
         nanGroup.style.display = '';
+        subGroup.style.display = '';
+        fracGroup.style.display = 'none';
         mantissaLabel.textContent = 'Mantissa:';
     }
 }
@@ -91,11 +108,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Restore any state encoded in the URL, then start keeping the URL in sync.
     const restored = applyStateFromUrl();
-    urlSyncEnabled = true;
+    enableUrlSync();
     if (restored) {
         syncUrl();
     }
 });
+
+// Start reflecting state in the address bar. Writes are suppressed until this
+// runs so that restoring a link cannot overwrite the link being restored.
+function enableUrlSync() {
+    urlSyncEnabled = true;
+}
 
 // Reflect the current conversion in the URL so it can be bookmarked or shared.
 function syncUrl() {
@@ -108,6 +131,7 @@ function syncUrl() {
             currentValue: currentValue,
             currentEncoded: currentEncoded,
             roundingMode: currentRoundingMode,
+            overflowMode: currentOverflowMode,
         });
         const newUrl = query
             ? `${window.location.pathname}?${query}`
@@ -171,8 +195,8 @@ function applyFormatDescriptor(desc, which) {
     }
 
     const ids = isInput
-        ? { sign: 'input-sign-bits', exp: 'input-exponent-bits', mant: 'input-mantissa-bits', inf: 'input-has-infinity', nan: 'input-has-nan', preset: '.input-preset' }
-        : { sign: 'output-sign-bits', exp: 'output-exponent-bits', mant: 'output-mantissa-bits', inf: 'output-has-infinity', nan: 'output-has-nan', preset: '.output-preset' };
+        ? { sign: 'input-sign-bits', exp: 'input-exponent-bits', mant: 'input-mantissa-bits', inf: 'input-has-infinity', nan: 'input-has-nan', sub: 'input-has-subnormals', frac: 'input-fraction-bits', preset: '.input-preset' }
+        : { sign: 'output-sign-bits', exp: 'output-exponent-bits', mant: 'output-mantissa-bits', inf: 'output-has-infinity', nan: 'output-has-nan', sub: 'output-has-subnormals', frac: 'output-fraction-bits', preset: '.output-preset' };
 
     if (desc.kind === 'int') {
         // Use a matching-signedness integer preset as the signedness carrier so
@@ -188,6 +212,8 @@ function applyFormatDescriptor(desc, which) {
         document.getElementById(ids.mant).value = desc.bits;
         document.getElementById(ids.inf).checked = false;
         document.getElementById(ids.nan).checked = false;
+        document.getElementById(ids.sub).checked = false;
+        document.getElementById(ids.frac).value = desc.fractionBits || 0;
         document.querySelectorAll(ids.preset).forEach(btn => btn.classList.remove('active'));
         if (isInput) {
             updateInputFormatControlsVisibility(true);
@@ -210,6 +236,7 @@ function applyFormatDescriptor(desc, which) {
     document.getElementById(ids.mant).value = desc.mantissaBits;
     document.getElementById(ids.inf).checked = desc.hasInfinity;
     document.getElementById(ids.nan).checked = desc.hasNaN;
+    document.getElementById(ids.sub).checked = desc.hasSubnormals !== false;
     document.querySelectorAll(ids.preset).forEach(btn => btn.classList.remove('active'));
     if (isInput) {
         updateInputFormatControlsVisibility(false);
@@ -229,6 +256,12 @@ function applyStateFromUrl() {
         currentRoundingMode = parsed.roundingMode;
         const select = document.getElementById('rounding-mode');
         if (select) select.value = parsed.roundingMode;
+    }
+
+    if (parsed.overflowMode) {
+        currentOverflowMode = parsed.overflowMode;
+        const select = document.getElementById('overflow-mode');
+        if (select) select.value = parsed.overflowMode;
     }
 
     if (parsed.input) applyFormatDescriptor(parsed.input, 'input');
@@ -286,6 +319,8 @@ function setupEventListeners() {
     document.getElementById('input-mantissa-bits').addEventListener('input', updateFormat);
     document.getElementById('input-has-infinity').addEventListener('change', updateFormat);
     document.getElementById('input-has-nan').addEventListener('change', updateFormat);
+    document.getElementById('input-has-subnormals').addEventListener('change', updateFormat);
+    document.getElementById('input-fraction-bits').addEventListener('input', updateFormat);
 
     // Output format inputs
     document.getElementById('output-sign-bits').addEventListener('change', updateOutputFormat);
@@ -293,6 +328,8 @@ function setupEventListeners() {
     document.getElementById('output-mantissa-bits').addEventListener('input', updateOutputFormat);
     document.getElementById('output-has-infinity').addEventListener('change', updateOutputFormat);
     document.getElementById('output-has-nan').addEventListener('change', updateOutputFormat);
+    document.getElementById('output-has-subnormals').addEventListener('change', updateOutputFormat);
+    document.getElementById('output-fraction-bits').addEventListener('input', updateOutputFormat);
 
     // Value input
     document.getElementById('input-decimal-input').addEventListener('input', (e) => {
@@ -312,6 +349,15 @@ function setupEventListeners() {
     // Rounding mode
     document.getElementById('rounding-mode').addEventListener('change', (e) => {
         currentRoundingMode = e.target.value;
+        updateOverflowModeUi();
+        updateValue();
+    });
+
+    // Overflow behavior. The empty option means "format default", which is a
+    // real third state and must not collapse to one of the two modes.
+    document.getElementById('overflow-mode').addEventListener('change', (e) => {
+        currentOverflowMode = e.target.value || null;
+        updateOverflowModeUi();
         updateValue();
     });
 }
@@ -327,6 +373,8 @@ function loadInputPreset(formatKey) {
         document.getElementById('input-mantissa-bits').value = format.bits;
         document.getElementById('input-has-infinity').checked = false;
         document.getElementById('input-has-nan').checked = false;
+        document.getElementById('input-has-subnormals').checked = false;
+        document.getElementById('input-fraction-bits').value = format.fractionBits || 0;
         
         // Store the integer format key for reference
         currentInputFormatKey = formatKey;
@@ -337,6 +385,7 @@ function loadInputPreset(formatKey) {
         document.getElementById('input-mantissa-bits').value = format.mantissa;
         document.getElementById('input-has-infinity').checked = format.hasInfinity !== false;
         document.getElementById('input-has-nan').checked = format.hasNaN !== false;
+        document.getElementById('input-has-subnormals').checked = format.hasSubnormals !== false;
         
         currentInputFormatKey = null;
         updateInputFormatControlsVisibility(false);
@@ -362,6 +411,8 @@ function loadOutputPreset(formatKey) {
         document.getElementById('output-mantissa-bits').value = format.bits;
         document.getElementById('output-has-infinity').checked = false;
         document.getElementById('output-has-nan').checked = false;
+        document.getElementById('output-has-subnormals').checked = false;
+        document.getElementById('output-fraction-bits').value = format.fractionBits || 0;
         
         // Store the integer format key for reference
         currentOutputFormatKey = formatKey;
@@ -372,6 +423,7 @@ function loadOutputPreset(formatKey) {
         document.getElementById('output-mantissa-bits').value = format.mantissa;
         document.getElementById('output-has-infinity').checked = format.hasInfinity !== false;
         document.getElementById('output-has-nan').checked = format.hasNaN !== false;
+        document.getElementById('output-has-subnormals').checked = format.hasSubnormals !== false;
         
         currentOutputFormatKey = null;
         updateOutputFormatControlsVisibility(false);
@@ -394,6 +446,8 @@ function updateFormat() {
     const mantissaBits = mantissaBitsInput === '' ? 23 : clampFieldInt(mantissaBitsInput, 0, 112, 23);
     const hasInfinity = document.getElementById('input-has-infinity').checked;
     const hasNaN = document.getElementById('input-has-nan').checked;
+    const hasSubnormals = document.getElementById('input-has-subnormals').checked;
+    const fractionBitsInput = document.getElementById('input-fraction-bits').value;
 
     // Check if this matches an integer format
     if (currentInputFormatKey && FORMATS[currentInputFormatKey] && FORMATS[currentInputFormatKey].isInteger) {
@@ -402,10 +456,22 @@ function updateFormat() {
         // Integer widths are clamped to [1, 64] (the Integer/resolveFormat/URL
         // range) rather than the float mantissa's [0, 112].
         const bitsFromUI = clampFieldInt(mantissaBitsInput, 1, 64, intFormat.bits);
-        currentFormat = new Integer(bitsFromUI, intFormat.signed);
-        
-        // Check if bits changed from preset - clear active button if custom
-        if (bitsFromUI !== intFormat.bits) {
+        const presetFractionBits = intFormat.fractionBits || 0;
+        const fractionBits = clampFieldInt(fractionBitsInput, 0, bitsFromUI - 1, 0);
+        // Symmetry is a property of the NAMED preset, not of a bit width, and
+        // the custom integer URL grammar (i{bits}q{frac}) has no slot for it.
+        // Keeping it once the user edits the shape would produce a live format
+        // whose range the generated link cannot reproduce, so it is dropped the
+        // moment the visible shape stops matching the preset exactly.
+        const matchesPresetShape =
+            bitsFromUI === intFormat.bits && fractionBits === presetFractionBits;
+        currentFormat = new Integer(bitsFromUI, intFormat.signed, {
+            fractionBits,
+            symmetric: intFormat.symmetric && matchesPresetShape,
+        });
+
+        // Custom shape: this is no longer the named preset.
+        if (!matchesPresetShape) {
             document.querySelectorAll('.input-preset').forEach(btn => btn.classList.remove('active'));
         }
     } else {
@@ -415,7 +481,8 @@ function updateFormat() {
         // Find matching format to get bias
         let formatOptions = {
             hasInfinity: hasInfinity,
-            hasNaN: hasNaN
+            hasNaN: hasNaN,
+            hasSubnormals: hasSubnormals
         };
         const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
             !f.isInteger && f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
@@ -441,7 +508,29 @@ function updateFormat() {
     }
 
     updateValuePresetButtons();
+    updateOverflowModeUi();
     updateValue();
+}
+
+// Why the format resolves the way it does, so "Output format's default" is
+// legible rather than mysterious.
+function overflowAuthority(format) {
+    if (format.isInteger) return 'Saturate (Ints always clamp)';
+    if (format.hasInfinity) return 'Infinity (IEEE 754)';
+    if (format.overflowTarget('overflow') === 'nan') return 'Saturate (OCP OFP8 "SAT")';
+    return 'Saturate (no Inf/NaN)';
+}
+
+// Refresh the overflow control: the deferral option names the behavior the
+// active OUTPUT format would use on its own, so it reads as a real choice
+// rather than a mystery. The caveats (IEEE 754 §7.4 directed rounding, formats
+// where both modes coincide) live in the About section rather than beside the
+// control.
+function updateOverflowModeUi() {
+    const defaultOption = document.getElementById('overflow-mode-default');
+    if (!defaultOption) return;
+
+    defaultOption.textContent = `Output's default \u2014 ${overflowAuthority(outputFormat)}`;
 }
 
 function updateValuePresetButtons() {
@@ -451,9 +540,13 @@ function updateValuePresetButtons() {
     const nanBtn = document.querySelector('.preset-btn[data-value="nan"]');
     const maxSubnormBtn = document.querySelector('.preset-btn[data-value="max-subnorm"]');
     const minSubnormBtn = document.querySelector('.preset-btn[data-value="min-subnorm"]');
+    const zeroBtn = document.querySelector('.preset-btn[data-value="zero"]');
 
     // Integer formats don't support infinity, NaN, or subnormals
     const isInteger = currentFormat.isInteger;
+    // A format with no subnormal regime (E8M0) has no subnormals and no zero.
+    const hasSubnormals = !isInteger && currentFormat.hasSubnormals &&
+        currentFormat.mantissaBits > 0;
 
     if (infinityBtn) {
         infinityBtn.disabled = isInteger || !currentFormat.hasInfinity;
@@ -465,10 +558,13 @@ function updateValuePresetButtons() {
         nanBtn.disabled = isInteger || !currentFormat.hasNaN;
     }
     if (maxSubnormBtn) {
-        maxSubnormBtn.disabled = isInteger;
+        maxSubnormBtn.disabled = !hasSubnormals;
     }
     if (minSubnormBtn) {
-        minSubnormBtn.disabled = isInteger;
+        minSubnormBtn.disabled = !hasSubnormals;
+    }
+    if (zeroBtn) {
+        zeroBtn.disabled = !isInteger && !currentFormat.hasSubnormals;
     }
 }
 
@@ -480,6 +576,8 @@ function updateOutputFormat() {
     const mantissaBits = mantissaBitsInput === '' ? 10 : clampFieldInt(mantissaBitsInput, 0, 112, 10);
     const hasInfinity = document.getElementById('output-has-infinity').checked;
     const hasNaN = document.getElementById('output-has-nan').checked;
+    const hasSubnormals = document.getElementById('output-has-subnormals').checked;
+    const fractionBitsInput = document.getElementById('output-fraction-bits').value;
 
     // Check if this matches an integer format
     if (currentOutputFormatKey && FORMATS[currentOutputFormatKey] && FORMATS[currentOutputFormatKey].isInteger) {
@@ -488,10 +586,18 @@ function updateOutputFormat() {
         // Integer widths are clamped to [1, 64] (the Integer/resolveFormat/URL
         // range) rather than the float mantissa's [0, 112].
         const bitsFromUI = clampFieldInt(mantissaBitsInput, 1, 64, intFormat.bits);
-        outputFormat = new Integer(bitsFromUI, intFormat.signed);
-        
-        // Check if bits changed from preset - clear active button if custom
-        if (bitsFromUI !== intFormat.bits) {
+        const presetFractionBits = intFormat.fractionBits || 0;
+        const fractionBits = clampFieldInt(fractionBitsInput, 0, bitsFromUI - 1, 0);
+        // Same exact-shape rule as updateFormat(); see the comment there.
+        const matchesPresetShape =
+            bitsFromUI === intFormat.bits && fractionBits === presetFractionBits;
+        outputFormat = new Integer(bitsFromUI, intFormat.signed, {
+            fractionBits,
+            symmetric: intFormat.symmetric && matchesPresetShape,
+        });
+
+        // Custom shape: this is no longer the named preset.
+        if (!matchesPresetShape) {
             document.querySelectorAll('.output-preset').forEach(btn => btn.classList.remove('active'));
         }
     } else {
@@ -501,7 +607,8 @@ function updateOutputFormat() {
         // Find matching format to get bias
         let formatOptions = {
             hasInfinity: hasInfinity,
-            hasNaN: hasNaN
+            hasNaN: hasNaN,
+            hasSubnormals: hasSubnormals
         };
         const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
             !f.isInteger && f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
@@ -526,6 +633,7 @@ function updateOutputFormat() {
         document.querySelectorAll('.output-preset').forEach(btn => btn.classList.remove('active'));
     }
 
+    updateOverflowModeUi();
     updateOutput();
 }
 
@@ -556,7 +664,7 @@ function setValueFromText(value, text) {
 function updateValue() {
     currentEncoded = currentFormat.encode(
         currentValueText !== null ? currentValueText : currentValue,
-        { roundingMode: currentRoundingMode });
+        { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
     updateRepresentation();
     updateOutput();
     updateActiveValuePreset();
@@ -790,11 +898,10 @@ function determineFloatType(format, sign, exponent, mantissa) {
         const value = format.decode(sign, exponent, mantissa);
         if (value === 0) {
             return 'Zero';
-        } else if (value > 0) {
-            return 'Positive Integer';
-        } else {
-            return 'Negative Integer';
         }
+        // A format with an implicit scale (MXINT8) does not hold integers.
+        const noun = format.fractionBits ? 'Fixed-point' : 'Integer';
+        return value > 0 ? `Positive ${noun}` : `Negative ${noun}`;
     }
 
     if (format.exponentBits === 0) {
@@ -820,11 +927,16 @@ function calculateMantissaDecimal(format, exponent, mantissa) {
     if (format.isInteger) {
         return format.decode(0, 0, mantissa);
     }
-    
+
+    // Exponent field 0 only carries the implicit-bit-less "0.x" significand in a
+    // format that HAS a subnormal regime. Where it does not (E8M0), field 0 is
+    // an ordinary normal binade and its significand is 1.x like any other.
+    const subnormalRegime = exponent === 0 && format.hasSubnormals;
+
     if (format.mantissaBits === 0) {
-        return exponent === 0 ? 0 : 1.0;
+        return subnormalRegime ? 0 : 1.0;
     }
-    return exponent === 0 ?
+    return subnormalRegime ?
         mantissa / Math.pow(2, format.mantissaBits) :
         1.0 + mantissa / Math.pow(2, format.mantissaBits);
 }
@@ -838,7 +950,10 @@ function formatExponentActual(format, exponent, mantissa) {
     if (format.exponentBits === 0) {
         return 'N/A';
     }
-    if (exponent === 0) {
+    // Subnormals share the smallest normal's exponent, 1 - bias. A format with
+    // no subnormals uses field 0 as a normal binade of its own, so it falls
+    // through to the ordinary formula and reads 0 - bias.
+    if (exponent === 0 && format.hasSubnormals) {
         return `1 - ${format.bias} = ${1 - format.bias}`;
     } else if (exponent === format.maxExponent) {
         // Only genuine Infinity/NaN encodings are "Special"; a normal value at
@@ -903,66 +1018,12 @@ function loadValuePreset(valueKey) {
         return;
     }
 
-    // Handle integer formats differently
-    if (currentFormat.isInteger) {
-        switch (valueKey) {
-            case 'zero':
-                setValueFromBits(0);
-                break;
-            case 'one':
-                setValueFromBits(1);
-                break;
-            case 'max-norm':
-                setValueFromBits(currentFormat.maxValue);
-                break;
-            case 'min-norm':
-                setValueFromBits(currentFormat.minValue);
-                break;
-            default:
-                // Ignore unsupported presets for integers
-                return;
-        }
-    } else {
-        switch (valueKey) {
-            case 'zero':
-                setValueFromBits(0);
-                break;
-            case 'one':
-                setValueFromBits(1);
-                break;
-            case 'max-norm': {
-                const maxNormal = currentFormat.getMaxNormal(false);
-                setValueFromBits(
-                    currentFormat.decode(maxNormal.sign, maxNormal.exponent, maxNormal.mantissa));
-                break;
-            }
-            case 'min-norm':
-                // Minimum normal number: exponent = 1, mantissa = 0
-                setValueFromBits(currentFormat.decode(0, 1, 0));
-                break;
-            case 'max-subnorm':
-                // Maximum subnormal number: exponent = 0, all mantissa bits = 1
-                setValueFromBits(currentFormat.decode(
-                    0,
-                    0,
-                    Math.pow(2, currentFormat.mantissaBits) - 1
-                ));
-                break;
-            case 'min-subnorm':
-                // Minimum subnormal number: exponent = 0, mantissa = 1
-                setValueFromBits(currentFormat.decode(0, 0, 1));
-                break;
-            case 'infinity':
-                setValueFromBits(Infinity);
-                break;
-            case 'neg-infinity':
-                setValueFromBits(-Infinity);
-                break;
-            case 'nan':
-                setValueFromBits(NaN);
-                break;
-        }
-    }
+    // Every remaining preset is a value the format either has or does not.
+    // getPresetValue() is the single source of truth for which, so the button
+    // and the highlight can never disagree about it.
+    const value = getPresetValue(valueKey, currentFormat);
+    if (value === null) return;
+    setValueFromBits(value);
 
     document.getElementById('input-decimal-input').value = currentValue;
     updateValue();
@@ -977,9 +1038,9 @@ function getPresetValue(valueKey, format) {
             case 'one':
                 return 1;
             case 'max-norm':
-                return format.maxValue;
+                return format.maxRealValue;
             case 'min-norm':
-                return format.minValue;
+                return format.minRealValue;
             default:
                 return null;
         }
@@ -987,7 +1048,8 @@ function getPresetValue(valueKey, format) {
     
     switch (valueKey) {
         case 'zero':
-            return 0;
+            // A format with no zero encoding (E8M0) has no such value to show.
+            return format.hasSubnormals ? 0 : null;
         case 'one':
             return 1;
         case 'max-norm': {
@@ -995,21 +1057,26 @@ function getPresetValue(valueKey, format) {
             return format.decode(maxNormal.sign, maxNormal.exponent, maxNormal.mantissa);
         }
         case 'min-norm':
-            return format.decode(0, 1, 0);
+            // A format with no subnormals uses exponent field 0 as its smallest
+            // normal binade instead of reserving it.
+            return format.decode(0, format.hasSubnormals ? 1 : 0, 0);
         case 'max-subnorm':
+            // Needs both a subnormal regime and a mantissa field to hold one.
+            if (!format.hasSubnormals || format.mantissaBits === 0) return null;
             return format.decode(
                 0,
                 0,
                 Math.pow(2, format.mantissaBits) - 1
             );
         case 'min-subnorm':
+            if (!format.hasSubnormals || format.mantissaBits === 0) return null;
             return format.decode(0, 0, 1);
         case 'infinity':
-            return Infinity;
+            return format.hasInfinity ? Infinity : null;
         case 'neg-infinity':
-            return -Infinity;
+            return format.hasInfinity ? -Infinity : null;
         case 'nan':
-            return NaN;
+            return format.hasNaN ? NaN : null;
         default:
             return null;
     }
@@ -1021,8 +1088,8 @@ function valuesMatch(a, b, format) {
     if (Number.isNaN(a) || Number.isNaN(b)) return false;
     // Compare the encoded representations under the active rounding mode so the
     // preset highlight matches the encoding the user actually sees.
-    const encodedA = format.encode(a, { roundingMode: currentRoundingMode });
-    const encodedB = format.encode(b, { roundingMode: currentRoundingMode });
+    const encodedA = format.encode(a, { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
+    const encodedB = format.encode(b, { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
     return encodedA.sign === encodedB.sign &&
            encodedA.exponent === encodedB.exponent &&
            encodedA.mantissa === encodedB.mantissa;
@@ -1099,7 +1166,7 @@ function updateOutput() {
     );
     
     // Encode the input format's actual value into the output format
-    const outputEncoded = outputFormat.encode(inputValue, { roundingMode: currentRoundingMode });
+    const outputEncoded = outputFormat.encode(inputValue, { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
     const outputValue = outputFormat.decode(
         outputEncoded.sign,
         outputEncoded.exponent,
@@ -1230,6 +1297,7 @@ if (typeof module !== 'undefined' && module.exports) {
         updateOutputFormatControlsVisibility,
         applyFormatDescriptor,
         applyStateFromUrl,
+        enableUrlSync,
         setupEventListeners,
         loadInputPreset,
         loadOutputPreset,

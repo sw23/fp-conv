@@ -10,16 +10,17 @@ while inspecting binary representations and precision loss.
 
 - **Format presets:** FP64, FP32, FP16, BF16, TF32, OCP FP4/FP6/FP8
 - **Integer formats:** INT32, UINT32, INT16, UINT16, INT8, UINT8, INT4, UINT4
-- **OCP format support:** Full support for Open Compute Project microscaling formats
+- **OCP format support:** Full support for Open Compute Project FP8 and microscaling formats
 - **Custom formats:** Define any bit layout (0–15 exponent bits, 0–112 mantissa bits)
 - **Interactive editing:** Toggle individual bits and see decimal/hex updates
 - **Precision analysis:** Calculate absolute and relative error between formats
 - **Special values:** Explore zero, infinity, NaN, subnormals, and boundary cases
 - **Rounding modes:** Implements IEEE 754 rounding modes (ties to even, ties away
   from zero, toward zero, toward +inf, and toward −inf)
+- **Overflow behavior:** Configurable overflow (Infinity/NaN vs. max normal).
 - **Fixed-point mode:** Set exponent bits to 0 for fractional representations
 - **Shareable links:** Bookmark or share a conversion via URL parameters (input/output
-  format, value, and rounding mode)
+  format, value, rounding mode, and overflow behavior)
 - **Mobile-friendly:** Works on screens of all sizes
 - **WebMCP API:** AI agents can perform conversions via [WebMCP](docs/webmcp.md)
 
@@ -50,7 +51,9 @@ created to help explain and visualize each standard format:
   [FP8 E5M2](https://sw23.github.io/fp-conv/formats/fp8-e5m2.html),
   [FP6 E2M3](https://sw23.github.io/fp-conv/formats/fp6-e2m3.html),
   [FP6 E3M2](https://sw23.github.io/fp-conv/formats/fp6-e3m2.html),
-  [FP4 E2M1](https://sw23.github.io/fp-conv/formats/fp4-e2m1.html)
+  [FP4 E2M1](https://sw23.github.io/fp-conv/formats/fp4-e2m1.html),
+  [E8M0 (MX scale)](https://sw23.github.io/fp-conv/formats/e8m0.html),
+  [MXINT8](https://sw23.github.io/fp-conv/formats/mxint8.html)
 - **Custom:** Supports a wide range of user-defined formats
 
 ## MCP Server

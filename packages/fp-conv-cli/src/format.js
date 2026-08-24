@@ -36,7 +36,11 @@ function groupBinary(stats) {
         parts.push(bits.slice(i, i + stats.exponentBits));
         i += stats.exponentBits;
     }
-    parts.push(bits.slice(i));
+    // A format with no mantissa field (E8M0) would otherwise contribute an
+    // empty group and a trailing space.
+    if (stats.mantissaBits) {
+        parts.push(bits.slice(i));
+    }
     return parts.join(" ");
 }
 
@@ -109,7 +113,13 @@ export function renderInfo(info, labels) {
 
     if (info.type === "integer") {
         lines.push(`Signed:    ${info.signed}`);
-        lines.push(`Range:     ${info.minValue} .. ${info.maxValue}`);
+        if (info.fractionBits) {
+            lines.push(`Scale:     implicit ${info.implicitScale} (${info.fractionBits} fraction bits)`);
+            lines.push(`Symmetric: ${info.symmetric}`);
+            lines.push(`Range:     ${info.minValue} .. ${info.maxValue} (raw ${info.rawMinValue} .. ${info.rawMaxValue})`);
+        } else {
+            lines.push(`Range:     ${info.minValue} .. ${info.maxValue}`);
+        }
     } else {
         lines.push(
             `Layout:    ${info.signBits} sign, ${info.exponentBits} exponent, ` +
@@ -117,6 +127,7 @@ export function renderInfo(info, labels) {
         );
         lines.push(`Infinity:  ${info.hasInfinity}`);
         lines.push(`NaN:       ${info.hasNaN}`);
+        lines.push(`Subnormal: ${info.hasSubnormals}`);
         if (info.maxNormal !== undefined) {
             lines.push(`Max normal:    ${info.maxNormal}`);
             lines.push(`Min normal:    ${info.minNormal}`);
@@ -125,10 +136,24 @@ export function renderInfo(info, labels) {
             lines.push(`Max subnormal: ${info.maxSubnormal}`);
             lines.push(`Min subnormal: ${info.minSubnormal}`);
         }
+        if (info.hasSubnormals === false) {
+            lines.push("Note:          no zero and no subnormals (OCP MX scale type)");
+        }
         if (info.maxValue !== undefined) {
             lines.push(`Range:         ${info.minValue} .. ${info.maxValue}`);
         }
     }
+
+    // What an out-of-range magnitude becomes, so the --overflow flag's effect
+    // is discoverable without reading the spec.
+    const TARGET_TEXT = {
+        infinity: "\u00b1Infinity",
+        nan: "NaN",
+        maxNormal: "largest finite value",
+    };
+    lines.push(`Overflow:  default "${info.defaultOverflowMode}" \u2014 ` +
+        `--overflow overflow \u2192 ${TARGET_TEXT[info.overflowTarget.overflow]}, ` +
+        `--overflow saturate \u2192 ${TARGET_TEXT[info.overflowTarget.saturate]}`);
 
     return lines.join("\n");
 }
@@ -152,7 +177,8 @@ export function renderList(formats) {
         lines.push(`${category}:`);
         for (const f of items) {
             const layout = f.isInteger
-                ? `${f.bits}-bit ${f.signed ? "signed" : "unsigned"}`
+                ? `${f.bits}-bit ${f.signed ? "signed" : "unsigned"}` +
+                    (f.fractionBits ? `, implicit ${f.implicitScale} scale` : "")
                 : `${f.totalBits}-bit (${f.exponentBits}e${f.mantissaBits}m)`;
             lines.push(`  ${f.key.padEnd(11, " ")}${f.name} \u2014 ${layout}`);
         }

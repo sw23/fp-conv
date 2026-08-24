@@ -23,6 +23,7 @@ Encode a decimal number (or special value) into a format.
 | `value` | number \| string | Decimal number, hex string (`"0xFF"`), or keyword (`"infinity"`, `"-infinity"`, `"nan"`) |
 | `format` | string \| object | Preset key (e.g. `"fp16"`, `"int8"`) or custom format object |
 | `roundingMode` | string | Optional. One of `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative` |
+| `overflowMode` | string | Optional. `overflow` (produce Infinity, or NaN when the format has NaN but no Infinity) or `saturate` (clamp to the largest finite value). Omit to use the per-format default. IEEE 754 §7.4 directed rounding still clamps finite overflow regardless. |
 
 **Returns:** Binary string, hex string, sign, exponent (biased & actual), mantissa, type classification, and actual value.
 
@@ -47,6 +48,7 @@ Convert a value from one format to another, with precision loss analysis.
 | `inputFormat` | string \| object | Source format |
 | `outputFormat` | string \| object | Target format |
 | `roundingMode` | string | Optional. One of `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative` |
+| `overflowMode` | string | Optional. `overflow` or `saturate`; see `encode_number` above. |
 
 **Returns:** Full encoding stats for both input and output, plus `precisionLoss` with `absolute`, `relativePercent`, and `lossless` flag.
 
@@ -58,7 +60,7 @@ Get detailed information about a format, including value range and special value
 |-----------|------|-------------|
 | `format` | string \| object | Preset key or custom format object |
 
-**Returns:** Total bits, bias, range (max/min normal, max/min subnormal for floats; min/max value for integers), and feature flags.
+**Returns:** Total bits, bias, range (max/min normal, max/min subnormal for floats; min/max value for integers), feature flags, and the format's `defaultOverflowMode` with the resolved `overflowTarget` for each mode.
 
 ## Custom Format Objects
 
@@ -72,17 +74,26 @@ Instead of a preset key, you can pass a custom format descriptor:
   "mantissaBits": 10,
   "bias": 15,
   "hasInfinity": true,
-  "hasNaN": true
+  "hasNaN": true,
+  "hasSubnormals": true
 }
 ```
+
+Set `hasSubnormals` to `false` for a scale type such as E8M0: exponent field 0 then
+denotes the normal value `2^(0 - bias)` and the format has no zero encoding.
 
 **Integer:**
 ```json
 {
   "bits": 12,
-  "signed": true
+  "signed": true,
+  "fractionBits": 0,
+  "symmetric": false
 }
 ```
+
+`fractionBits` gives the format an implicit `2^-fractionBits` scale (MXINT8 uses 6);
+`symmetric` leaves the most-negative encoding unused so the range stays symmetric.
 
 ## Example
 

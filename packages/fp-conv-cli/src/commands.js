@@ -30,11 +30,11 @@ export function runList() {
 
 /**
  * Encode a decimal/keyword value into a format.
- * @param {{value: string, format: string|object, roundingMode?: string}} params
+ * @param {{value: string, format: string|object, roundingMode?: string, overflowMode?: string}} params
  * @returns {object}
  */
-export function runEncode({ value, format, roundingMode }) {
-    return unwrap(encodeNumber({ value, format, roundingMode }));
+export function runEncode({ value, format, roundingMode, overflowMode }) {
+    return unwrap(encodeNumber({ value, format, roundingMode, overflowMode }));
 }
 
 /**
@@ -48,12 +48,18 @@ export function runDecode({ bits, format }) {
 
 /**
  * Convert a value from one format to another.
- * @param {{value: string, from: string|object, to: string|object, roundingMode?: string}} params
+ * @param {{value: string, from: string|object, to: string|object, roundingMode?: string, overflowMode?: string}} params
  * @returns {object}
  */
-export function runConvert({ value, from, to, roundingMode }) {
+export function runConvert({ value, from, to, roundingMode, overflowMode }) {
     return unwrap(
-        convertFormat({ value, inputFormat: from, outputFormat: to, roundingMode })
+        convertFormat({
+            value,
+            inputFormat: from,
+            outputFormat: to,
+            roundingMode,
+            overflowMode,
+        })
     );
 }
 

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<!---------------------------------------------------------------
+ * Copyright 2026 Spencer Williams
+ * Use of this source code is governed by an MIT license:
+ * https://github.com/sw23/fp-conv/blob/main/LICENSE
+ ---------------------------------------------------------------->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E8M0 (OCP MX Scale) | Floating Point Format Guide</title>
+    <meta name="description" content="Learn how E8M0 works. The 8-bit shared block scale of the OCP Microscaling (MX) specification: pure power of two, no sign, no mantissa, no zero.">
+    <meta name="author" content="Spencer Williams">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="canonical" href="https://sw23.github.io/fp-conv/formats/e8m0.html">
+    <meta name="keywords" content="E8M0, MX scale, OCP Microscaling, shared exponent, block scale, MXFP8, MXFP4, power of two scale">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="E8M0 (OCP MX Scale) | Floating Point Format Guide">
+    <meta property="og:description" content="Learn how E8M0 works. The 8-bit shared block scale of the OCP Microscaling (MX) specification: pure power of two, no sign, no mantissa, no zero.">
+    <meta property="og:url" content="https://sw23.github.io/fp-conv/formats/e8m0.html">
+    <meta property="og:site_name" content="Floating Point Conversion Calculator">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="E8M0 (OCP MX Scale) | Floating Point Format Guide">
+    <meta name="twitter:description" content="Learn how E8M0 works. The 8-bit shared block scale of the OCP Microscaling (MX) specification: pure power of two, no sign, no mantissa, no zero.">
+
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+    <link rel="stylesheet" href="format-styles.css">
+    <script src="../lib/floating-point.js" defer></script>
+    <script src="format-common.js" defer></script>
+
+    <!-- Schema.org structured data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "E8M0 - The OCP MX Shared Block Scale",
+      "description": "Learn how E8M0 works. The 8-bit shared block scale of the OCP Microscaling (MX) specification: pure power of two, no sign, no mantissa, no zero.",
+      "url": "https://sw23.github.io/fp-conv/formats/e8m0.html",
+      "author": { "@type": "Person", "name": "Spencer Williams", "url": "https://sw23.github.io/" },
+      "datePublished": "2026-08-23T00:00:00-04:00",
+      "mainEntityOfPage": "https://sw23.github.io/fp-conv/formats/e8m0.html",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Floating Point Conversion Calculator",
+        "url": "https://sw23.github.io/fp-conv/"
+      }
+    }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <nav class="format-nav" id="format-nav"></nav>
+
+        <header>
+            <h1>E8M0 - The OCP MX Shared Block Scale</h1>
+            <p class="subtitle">8 exponent bits, no sign, no mantissa: every value is an exact power of two</p>
+        </header>
+
+        <section class="doc-section">
+            <h2>Bit Layout</h2>
+            <div id="bit-layout" class="bit-layout"></div>
+            <p>E8M0 is all exponent. There is no sign bit and no mantissa field, so the entire 8-bit encoding is a biased exponent and every representable value is exactly 2<sup>k</sup>.</p>
+        </section>
+
+        <section class="doc-section">
+            <h2>Overview</h2>
+            <p>E8M0 is the <strong>shared scale</strong> type of the <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP Microscaling (MX) Specification v1.0</a>. An MX block is 32 elements of a narrow type (<a href="fp8-e4m3.html">FP8 E4M3</a>, <a href="fp8-e5m2.html">FP8 E5M2</a>, <a href="fp6-e3m2.html">FP6</a>, <a href="fp4-e2m1.html">FP4</a> or <a href="mxint8.html">MXINT8</a>) plus one E8M0 scale that multiplies all of them. The narrow element type supplies precision; the shared scale supplies dynamic range.</p>
+            <p>Restricting the scale to an exact power of two is deliberate. Multiplying by 2<sup>k</sup> is an exponent adjustment, not a multiply, so applying a block scale costs nothing in hardware and introduces no rounding error of its own.</p>
+
+            <div class="callout callout-warning">
+                <strong>E8M0 has no zero and no subnormals</strong>
+                MX Table 7 lists Zeros as "N/A". Exponent field 0 is <em>not</em> reserved: it is the ordinary normal value 2<sup>-127</sup>, the smallest magnitude the format can hold. There is also no infinity. The single reserved pattern is <code>11111111</code>, which is NaN.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Encoding Rules</h2>
+            <h3>Every Value</h3>
+            <div class="formula">value = 2<sup>(exponent - 127)</sup></div>
+            <p>Exponent fields 0 through 254 map to 2<sup>-127</sup> through 2<sup>127</sup>, covering 255 binades with no gaps and no duplicates. That is the full supported exponent range MX Table 7 specifies, &minus;127 to 127.</p>
+
+            <h3>Special Values (MX Table 7)</h3>
+            <ul>
+                <li><strong>NaN:</strong> the single pattern <code>11111111</code> (exponent field 255).</li>
+                <li><strong>No Zero:</strong> there is no encoding for zero. A block that needs to be zero encodes that in its elements, not its scale.</li>
+                <li><strong>No Subnormals:</strong> exponent field 0 is a normal value, so there is no gradual-underflow region.</li>
+                <li><strong>No Infinity:</strong> overflow above 2<sup>127</sup> saturates to 2<sup>127</sup>, or produces NaN if you select the non-saturating overflow behavior.</li>
+                <li><strong>No Sign:</strong> a scale is always positive. Signs live in the elements.</li>
+            </ul>
+
+            <div class="callout callout-note">
+                <strong>Rounding acts on the exponent</strong>
+                With no mantissa field there is nothing to round <em>within</em> a binade, so the rounding mode chooses between neighbouring powers of two instead. Encoding 1.5 under ties-to-even gives 2<sup>1</sup>; under toward-zero it gives 2<sup>0</sup>.
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Interactive Value Visualizer</h2>
+            <p>Click any bit to flip it, drag the slider, or enter a decimal or hex value. The graph shows how values are distributed across the encoding space.</p>
+            <div id="value-distribution"></div>
+            <div id="visualizer" class="visualizer">
+                <div class="viz-input-row">
+                    <div class="viz-input-group">
+                        <label for="viz-decimal">Decimal:</label>
+                        <input type="text" id="viz-decimal" class="viz-decimal-input" placeholder="e.g. 4" autocomplete="off">
+                    </div>
+                    <div class="viz-input-group">
+                        <label for="viz-hex">Hex:</label>
+                        <input type="text" id="viz-hex" placeholder="e.g. 0x81" autocomplete="off">
+                    </div>
+                </div>
+                <div class="viz-presets">
+                    <button class="viz-preset-btn" data-preset="one">1</button>
+                    <button class="viz-preset-btn" data-preset="max">Max</button>
+                    <button class="viz-preset-btn" data-preset="min-normal">Min</button>
+                    <button class="viz-preset-btn" data-preset="nan">NaN</button>
+                    <button class="viz-preset-btn" data-preset="all-ones">1s</button>
+                </div>
+                <div class="viz-binary"></div>
+                <div class="viz-components"></div>
+            </div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Dynamic Range &amp; Precision</h2>
+            <div id="range-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Special Values &amp; Bit Patterns</h2>
+            <div id="special-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Format Comparison</h2>
+            <div id="comparison-table"></div>
+        </section>
+
+        <section class="doc-section">
+            <h2>Where E8M0 Is Used</h2>
+            <ul>
+                <li><strong>OCP Microscaling blocks:</strong> the <a href="https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf" target="_blank" rel="noopener">OCP MX Spec v1.0</a> uses one E8M0 scale per 32-element block for MXFP8, MXFP6, MXFP4 and MXINT8.</li>
+                <li><strong>NVIDIA Blackwell:</strong> the <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/" target="_blank" rel="noopener">PTX ISA</a> exposes block-scaled MMA instructions whose scale operand is an E8M0 byte.</li>
+                <li><strong>ML frameworks:</strong> the <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library provides <code>float8_e8m0fnu</code> as a NumPy dtype extension, and PyTorch exposes <code>torch.float8_e8m0fnu</code> for MX scaling.</li>
+                <li><strong>Microscaling research:</strong> the <a href="https://arxiv.org/pdf/2310.10537" target="_blank" rel="noopener">Microscaling Data Formats for Deep Learning</a> paper introduces the shared-scale design that MX standardizes.</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p>© 2026 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
+        </footer>
+    </div>
+
+    <script>
+        window.FORMAT_CONFIG = {
+            navKey: 'e8m0',
+            signBits: 0, exponentBits: 8, mantissaBits: 0,
+            bias: 127, hasInfinity: false, hasNaN: true, hasSubnormals: false,
+            bitLayoutId: 'bit-layout',
+            rangeTableId: 'range-table',
+            specialTableId: 'special-table',
+            comparisonTableId: 'comparison-table',
+            compareWith: ['fp8_e4m3', 'fp8_e5m2', 'fp4_e2m1'],
+            valueDistributionId: 'value-distribution',
+            initialValue: 4,
+        };
+    </script>
+</body>
+</html>

@@ -81,6 +81,7 @@ describe('adversarial rounding vectors (gdtoa / libc differential)', () => {
         const covered = new Set(VECTORS.map(v => v.format));
         for (const key of Object.keys(FORMATS)) {
             if (FORMATS[key].isInteger) continue;
+            if (FORMATS[key].mantissa === 0) continue; // Covered in tests/ocp-conformance.test.js
             expect(covered).toContain(key);
         }
     });

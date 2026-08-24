@@ -1079,7 +1079,12 @@ describe('End-to-end round-trip scenarios', () => {
             // Each format should be able to encode 0 without error
             const result = encodeNumber({ value: 0, format: key });
             const stats = JSON.parse(result.content[0].text);
-            expect(stats.actualValue).toBe(0);
+            // E8M0 (OCP MX Table 7) has no zero encoding, so zero saturates to
+            // its smallest representable magnitude instead.
+            const expected = FORMATS[key].hasSubnormals === false
+                ? Math.pow(2, -FORMATS[key].bias)
+                : 0;
+            expect(stats.actualValue).toBe(expected);
         }
     });
 
@@ -1174,5 +1179,229 @@ describe('encodeInput - exact decimal path', () => {
     test('integer formats round the string exactly', () => {
         expect(actualValue({ value: '2.5000000000000001', format: 'int32' })).toBe(3);
         expect(actualValue({ value: '2.5', format: 'int32' })).toBe(2);
+    });
+});
+
+// ── Overflow mode and the OCP MX scalar types ────────────────────
+
+describe('overflowMode through the tool kernel', () => {
+    const actual = (params) => JSON.parse(encodeNumber(params).content[0].text).actualValue;
+
+    test('encode_number honors overflowMode', () => {
+        expect(actual({ value: 1e40, format: 'fp32' })).toBe('Infinity');
+        expect(actual({ value: 1e40, format: 'fp32', overflowMode: 'saturate' }))
+            .toBe(3.4028234663852886e38);
+        expect(actual({ value: 1000, format: 'fp8_e4m3' })).toBe(448);
+        expect(actual({ value: 1000, format: 'fp8_e4m3', overflowMode: 'overflow' }))
+            .toBe('NaN');
+    });
+
+    test('encode_number rejects an unknown overflowMode', () => {
+        expect(() => encodeNumber({ value: 1, format: 'fp32', overflowMode: 'bogus' }))
+            .toThrow('Unknown overflow mode');
+    });
+
+    test('convert_format honors overflowMode on both sides', () => {
+        const result = convertFormat({
+            value: 1e40,
+            inputFormat: 'fp32',
+            outputFormat: 'fp16',
+            overflowMode: 'saturate',
+        });
+        const payload = JSON.parse(result.content[0].text);
+        expect(payload.input.actualValue).toBe(3.4028234663852886e38);
+        expect(payload.output.actualValue).toBe(65504);
+    });
+
+    test('convert_format without the option keeps the historical behavior', () => {
+        const result = convertFormat({
+            value: 1e40, inputFormat: 'fp32', outputFormat: 'fp16',
+        });
+        const payload = JSON.parse(result.content[0].text);
+        expect(payload.input.actualValue).toBe('Infinity');
+        expect(payload.output.actualValue).toBe('Infinity');
+    });
+
+    test('the tool schemas advertise overflowMode', () => {
+        const tools = buildToolDescriptors();
+        for (const name of ['encode_number', 'convert_format']) {
+            const tool = tools.find(t => t.name === name);
+            expect(tool.inputSchema.properties.overflowMode.enum)
+                .toEqual(['saturate', 'overflow']);
+        }
+    });
+
+    test('list_formats reports the overflow resolution for every preset', () => {
+        const formats = JSON.parse(listFormats().content[0].text);
+        for (const entry of formats) {
+            expect(['saturate', 'overflow']).toContain(entry.defaultOverflowMode);
+            expect(['infinity', 'nan', 'maxNormal'])
+                .toContain(entry.overflowTarget.overflow);
+            expect(entry.overflowTarget.saturate).toBe('maxNormal');
+        }
+        const e4m3 = formats.find(f => f.key === 'fp8_e4m3');
+        expect(e4m3.defaultOverflowMode).toBe('saturate');
+        expect(e4m3.overflowTarget.overflow).toBe('nan');
+        const fp32 = formats.find(f => f.key === 'fp32');
+        expect(fp32.defaultOverflowMode).toBe('overflow');
+        expect(fp32.overflowTarget.overflow).toBe('infinity');
+    });
+
+    test('get_format_info reports the overflow resolution', () => {
+        const info = JSON.parse(getFormatInfo({ format: 'fp8_e5m2' }).content[0].text);
+        expect(info.defaultOverflowMode).toBe('overflow');
+        expect(info.overflowTarget).toEqual({ saturate: 'maxNormal', overflow: 'infinity' });
+    });
+});
+
+describe('E8M0 and MXINT8 through the tool kernel', () => {
+    test('resolveFormat builds E8M0 with hasSubnormals off', () => {
+        const format = resolveFormat('e8m0');
+        expect(format.hasSubnormals).toBe(false);
+        expect(format.bias).toBe(127);
+    });
+
+    test('resolveFormat builds MXINT8 with its implicit scale', () => {
+        const format = resolveFormat('mxint8');
+        expect(format.fractionBits).toBe(6);
+        expect(format.symmetric).toBe(true);
+        expect(format.maxRealValue).toBe(1.984375);
+    });
+
+    test('resolveFormat still builds a plain INT8 for "int8"', () => {
+        const format = resolveFormat('int8');
+        expect(format.fractionBits).toBe(0);
+        expect(format.symmetric).toBe(false);
+        expect(format.maxValue).toBe(127);
+    });
+
+    test('a custom format object carries hasSubnormals and fractionBits', () => {
+        const scale = resolveFormat({
+            signBits: 0, exponentBits: 8, mantissaBits: 0,
+            bias: 127, hasInfinity: false, hasNaN: true, hasSubnormals: false,
+        });
+        expect(scale.hasSubnormals).toBe(false);
+
+        const fixed = resolveFormat({ bits: 8, signed: true, fractionBits: 6 });
+        expect(fixed.fractionBits).toBe(6);
+        expect(fixed.scale).toBe(64);
+
+        const symmetric = resolveFormat({
+            bits: 8, signed: true, fractionBits: 6, symmetric: true,
+        });
+        expect(symmetric.minValue).toBe(-127);
+    });
+
+    test('an out-of-range fractionBits is rejected', () => {
+        expect(() => resolveFormat({ bits: 8, signed: true, fractionBits: 8 }))
+            .toThrow('"fractionBits" must be an integer between 0 and 7');
+        expect(() => resolveFormat({ bits: 8, signed: true, fractionBits: -1 }))
+            .toThrow('"fractionBits" must be an integer between 0 and 7');
+        expect(() => resolveFormat({ bits: 8, signed: true, fractionBits: 1.5 }))
+            .toThrow('"fractionBits" must be an integer between 0 and 7');
+    });
+
+    test('encode_number and decode_bits agree on E8M0', () => {
+        const encoded = JSON.parse(encodeNumber({ value: 4, format: 'e8m0' }).content[0].text);
+        expect(encoded.hex).toBe('0x81');
+        expect(encoded.type).toBe('Normal');
+        expect(encoded.exponentActual).toBe('129 - 127 = 2');
+        expect(encoded.mantissaDecimal).toBe(1);
+        const decoded = JSON.parse(decodeBits({ bits: '0x81', format: 'e8m0' }).content[0].text);
+        expect(decoded.actualValue).toBe(4);
+    });
+
+    test('E8M0 field 0 reports NORMAL metadata, not subnormal metadata', () => {
+        // 0x00 is the smallest E8M0 magnitude and a genuine normal: the
+        // component fields must not describe it with the IEEE subnormal
+        // formulas, which would contradict its own type and actual value.
+        const stats = JSON.parse(encodeNumber({
+            value: Math.pow(2, -127),
+            format: 'e8m0',
+        }).content[0].text);
+
+        expect(stats.hex).toBe('0x00');
+        expect(stats.type).toBe('Normal');
+        expect(stats.actualValue).toBe(Math.pow(2, -127));
+        expect(stats.exponentActual).toBe('0 - 127 = -127');
+        expect(stats.mantissaDecimal).toBe(1);
+    });
+
+    test('the metadata helpers follow the format subnormal regime', () => {
+        const e8m0 = resolveFormat('e8m0');
+        expect(mantissaDecimal(e8m0, 0, 0)).toBe(1.0);
+        expect(exponentActual(e8m0, 0, 0)).toBe('0 - 127 = -127');
+
+        // An ordinary IEEE format keeps the subnormal formulas at field 0.
+        const fp16 = resolveFormat('fp16');
+        expect(mantissaDecimal(fp16, 0, 0)).toBe(0);
+        expect(mantissaDecimal(fp16, 0, 512)).toBe(0.5);
+        expect(exponentActual(fp16, 0, 0)).toBe('1 - 15 = -14');
+
+        // ... and so does a zero-mantissa format that still HAS subnormals.
+        const zeroMantissa = resolveFormat({
+            signBits: 1, exponentBits: 5, mantissaBits: 0,
+            hasInfinity: false, hasNaN: false,
+        });
+        expect(mantissaDecimal(zeroMantissa, 0, 0)).toBe(0);
+        expect(exponentActual(zeroMantissa, 0, 0)).toBe('1 - 15 = -14');
+    });
+
+    test('encode_number and decode_bits agree on MXINT8', () => {
+        const encoded = JSON.parse(encodeNumber({ value: 1.5, format: 'mxint8' }).content[0].text);
+        expect(encoded.hex).toBe('0x60');
+        expect(encoded.type).toBe('Positive Fixed-point');
+        const decoded = JSON.parse(decodeBits({ bits: '0x60', format: 'mxint8' }).content[0].text);
+        expect(decoded.actualValue).toBe(1.5);
+        const negative = JSON.parse(decodeBits({ bits: '0xFF', format: 'mxint8' }).content[0].text);
+        expect(negative.actualValue).toBe(-0.015625);
+        expect(negative.type).toBe('Negative Fixed-point');
+    });
+
+    test('get_format_info describes the new formats', () => {
+        const e8m0 = JSON.parse(getFormatInfo({ format: 'e8m0' }).content[0].text);
+        expect(e8m0.hasSubnormals).toBe(false);
+        expect(e8m0.minNormal).toBe(Math.pow(2, -127));
+        expect(e8m0.maxNormal).toBe(Math.pow(2, 127));
+        expect(e8m0.maxSubnormal).toBeUndefined();
+
+        const mxint8 = JSON.parse(getFormatInfo({ format: 'mxint8' }).content[0].text);
+        expect(mxint8.fractionBits).toBe(6);
+        expect(mxint8.implicitScale).toBe('2^-6');
+        expect(mxint8.symmetric).toBe(true);
+        expect(mxint8.minValue).toBe(-1.984375);
+        expect(mxint8.maxValue).toBe(1.984375);
+        expect(mxint8.rawMinValue).toBe(-127);
+        expect(mxint8.rawMaxValue).toBe(127);
+
+        const int8 = JSON.parse(getFormatInfo({ format: 'int8' }).content[0].text);
+        expect(int8.fractionBits).toBeUndefined();
+        expect(int8.minValue).toBe(-128);
+    });
+
+    test('list_formats surfaces the new format details', () => {
+        const formats = JSON.parse(listFormats().content[0].text);
+        const e8m0 = formats.find(f => f.key === 'e8m0');
+        expect(e8m0.category).toBe('OCP');
+        expect(e8m0.hasSubnormals).toBe(false);
+
+        const mxint8 = formats.find(f => f.key === 'mxint8');
+        expect(mxint8.category).toBe('OCP');
+        expect(mxint8.implicitScale).toBe('2^-6');
+        expect(mxint8.minValue).toBe(-1.984375);
+
+        const int8 = formats.find(f => f.key === 'int8');
+        expect(int8.implicitScale).toBeUndefined();
+        expect(int8.maxValue).toBe(127);
+    });
+
+    test('classifyValue labels a scaled integer as fixed-point', () => {
+        const mxint8 = resolveFormat('mxint8');
+        expect(classifyValue(mxint8, 0, 0, 0)).toBe('Zero');
+        expect(classifyValue(mxint8, 0, 0, 64)).toBe('Positive Fixed-point');
+        expect(classifyValue(mxint8, 0, 0, 192)).toBe('Negative Fixed-point');
+        const int8 = resolveFormat('int8');
+        expect(classifyValue(int8, 0, 0, 1)).toBe('Positive Integer');
+        expect(classifyValue(int8, 0, 0, 255)).toBe('Negative Integer');
     });
 });
