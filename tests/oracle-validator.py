@@ -213,11 +213,17 @@ def fields_to_fraction(spec, exponent_field, mantissa_field):
     return Fraction(significand) * TWO ** (exponent_field - spec['bias'] - scale)
 
 
-def round_fraction(value, sign, mode):
+def round_fraction(value, sign, mode, tie_breaks_away=None):
     """Round a non-negative Fraction to an int under the given mode.
 
     `sign` is 0 for positive and 1 for negative; the directed modes act on the
     magnitude, matching the library's roundMantissa().
+
+    `tie_breaks_away`, when not None, replaces the parity test at an exact tie:
+    pass True when the round-down candidate's ENCODING has an odd least
+    significant bit. Callers need this when the format has no mantissa bits,
+    where the stored field is empty and the encoding's LSB is the biased
+    exponent's.
     """
     quotient, remainder = divmod(value.numerator, value.denominator)
     if remainder == 0:
@@ -230,7 +236,8 @@ def round_fraction(value, sign, mode):
             return quotient + 1
         if twice < denominator:
             return quotient
-        return quotient if quotient % 2 == 0 else quotient + 1
+        away = quotient % 2 != 0 if tie_breaks_away is None else tie_breaks_away
+        return quotient + 1 if away else quotient
     if mode == 'tiesToAway':
         return quotient + 1 if twice >= denominator else quotient
     if mode == 'towardZero':
@@ -322,7 +329,9 @@ def round_to_format(magnitude, sign, spec, mode, overflow_mode='__default__'):
     subnormal = has_subnormals(spec) and exponent < min_exponent(spec)
     effective = min_exponent(spec) if subnormal else exponent
     scaled = magnitude * TWO ** (spec['mantissa'] - effective)
-    significand = round_fraction(scaled, sign, mode)
+    tie_breaks_away = (None if spec['mantissa'] != 0 or subnormal
+                       else (exponent + spec['bias']) % 2 == 1)
+    significand = round_fraction(scaled, sign, mode, tie_breaks_away)
 
     if subnormal:
         return finalize_fields(spec, sign, 0, significand, mode, overflow_mode)

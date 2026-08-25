@@ -325,13 +325,15 @@ describe('zero-mantissa formats round the exponent', () => {
 
     test.each([
         [0.1, 0.125],   // closer to 2^-3 than 2^-4
-        [6, 8],         // closer to 8 than 4
-        [1.5, 2],       // exact tie -> even significand
-        [0.75, 1],      // exact tie -> even significand
+        [5, 4],         // closer to 4 than 8
         [127.5, 128],
         [448, 512],
-        [3, 4],
-        [5, 4],         // closer to 4 than 8
+        // Exact ties. With no mantissa field the encoding's least significant
+        // bit is the biased exponent's, so the tie goes to the even CODE.
+        [1.5, 2],       // between codes 15 and 16; 15 is odd -> up
+        [0.75, 0.5],    // between codes 14 and 15; 14 is even -> down
+        [3, 2],         // between codes 16 and 17; 16 is even -> down
+        [6, 8],         // between codes 17 and 18; 17 is odd  -> up
     ])('encode(%p) -> %p', (input, expected) => {
         expect(decoded(input)).toBe(expected);
     });

@@ -6,9 +6,10 @@
  *
  * Sources (cited so a reviewer can diff this file against the PDFs directly):
  *
- *   [OFP8] OCP 8-bit Floating Point Specification (OFP8), Revision 1.0,
- *          2023-12-01 (the revision that corrected the E4M3/E5M2 biases in
- *          §4.2). Tables 1, 2 and 3; §5.2.1 conversion rules.
+ *   [OFP8] OCP 8-bit Floating Point Specification (OFP8), Revision 1.1,
+ *          2026-01-29 (Revision 1.0, 2023-12-01, corrected the E4M3/E5M2 biases
+ *          in §4.2; Revision 1.1 adds Appendix A). Tables 1, 2 and 3;
+ *          §5.2.1 conversion rules; Appendix A.
  *   [MX]   OCP Microscaling Formats (MX) Specification, Version 1.0,
  *          2023-09-07. Tables 2, 3, 4, 5, 6 and 7; §4.1, §5.3.x, §5.4.1.
  *
@@ -365,6 +366,59 @@ describe('[OFP8] Table 3 / [MX] Table 3 — conversion behavior', () => {
         expect(e5m2.encode(-1e6, { overflowMode: 'overflow' }).sign).toBe(1);
         // NaN sign is implementation-defined; this library always emits 0.
         expect(fp('fp8_e4m3').encode(-1e6, { overflowMode: 'overflow' }).sign).toBe(0);
+    });
+});
+
+// ── [OFP8 1.1] Appendix A — rounding behavior at maximum magnitude ───────
+//
+// This is why the E4M3 and E5M2 overflow thresholds differ, and it is the only
+// place either OCP specification works a tie-break out in bits: the tie is
+// resolved by the parity of the DESTINATION ENCODING's least significant bit,
+// not by anything about the source.
+//
+//   E4M3   max finite 448   = S.1111.110   mantissa LSB 0 (even) -> ties DOWN
+//   E5M2   max finite 57344 = S.11110.11   mantissa LSB 1 (odd)  -> ties UP
+//
+// Read across to a destination with no mantissa field at all, the encoding's
+// LSB is the biased exponent's - which is the E8M0 rule asserted in
+// ocp-formats.test.js. If that override ever leaks into a format that HAS
+// mantissa bits, this block is where it shows up.
+describe('[OFP8 1.1] Appendix A — rounding at maximum magnitude', () => {
+    // [input decimal, expected SAT result, expected OVF result].
+    const CASES = {
+        fp8_e4m3: [
+            ['448', 448, 448],
+            ['456', 448, 448],
+            ['464', 448, 448], // exactly 1/2 ULP above max: ties down, per Appendix A
+            ['465', 448, 'nan'],
+        ],
+        fp8_e5m2: [
+            ['57344', 57344, 57344],
+            ['59392', 57344, 57344],
+            ['61440', 57344, 'inf'], // exactly 1/2 ULP above max: ties up, so it overflows
+        ],
+    };
+
+    for (const [key, rows] of Object.entries(CASES)) {
+        describe(key, () => {
+            for (const [input, sat, ovf] of rows) {
+                for (const [overflowMode, expected] of [['saturate', sat], ['overflow', ovf]]) {
+                    test(`${input} ${overflowMode} \u2192 ${String(expected)}`, () => {
+                        const format = fp(key);
+                        const got = decode(format, format.encodeString(input,
+                            { roundingMode: 'tiesToEven', overflowMode }));
+                        if (expected === 'nan') expect(got).toBeNaN();
+                        else if (expected === 'inf') expect(got).toBe(Infinity);
+                        else expect(got).toBe(expected);
+                    });
+                }
+            }
+        });
+    }
+
+    test('the max finite encodings have the mantissa LSB parity the appendix cites', () => {
+        expect(fp('fp8_e4m3').encodeString('448').mantissa % 2).toBe(0);
+        expect(fp('fp8_e5m2').encodeString('57344').mantissa % 2).toBe(1);
     });
 });
 

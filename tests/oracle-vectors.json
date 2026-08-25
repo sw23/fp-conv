@@ -22657,7 +22657,7 @@
       "overflowMode": "overflow",
       "expected": {
         "sign": 0,
-        "exponent": 255,
+        "exponent": 254,
         "mantissa": 0
       }
     },
@@ -24427,7 +24427,7 @@
       "roundingMode": "tiesToEven",
       "expected": {
         "sign": 0,
-        "exponent": 129,
+        "exponent": 128,
         "mantissa": 0
       }
     },
