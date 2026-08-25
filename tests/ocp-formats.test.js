@@ -823,3 +823,140 @@ describe('OCP Formats - Round-trip Conversions', () => {
     });
   });
 });
+
+// ── E8M0 tie-breaking ────────────────────────────────────────────────────
+//
+// E8M0 has eight exponent bits and NO mantissa bits, so at an exact tie
+// (1.5 * 2^n, the only place ties occur) "ties to even" has no stored
+// significand bit to inspect. The rule the library applies is:
+//
+//   at a tie, deliver the candidate whose ENCODING has an even least
+//   significant bit
+//
+// For a format with mantissa bits that is the stored mantissa's LSB, which is
+// the ordinary test. For a format without them the stored field is empty and
+// the encoding's LSB is the BIASED EXPONENT's, so the tie rounds down when the
+// round-down candidate's code is even and up when it is odd.
+//
+// OCP OFP8 Revision 1.1, Appendix A is the only place either OCP spec works a
+// tie-break out in bits, and it does so by the parity of the destination
+// encoding's LSB - see the Appendix A block in ocp-conformance.test.js, which
+// checks the same rule from the mantissa-bearing side. Read across to a
+// mantissa-less destination it lands on the exponent LSB.
+describe('OCP E8M0 - tie-breaking with no mantissa bits', () => {
+  let e8m0;
+
+  beforeEach(() => {
+    const format = FORMATS.e8m0;
+    e8m0 = new FloatingPoint(format.sign, format.exponent, format.mantissa, {
+      bias: format.bias,
+      hasInfinity: format.hasInfinity,
+      hasNaN: format.hasNaN,
+      hasSubnormals: format.hasSubnormals
+    });
+  });
+
+  // 1.5 * 2^n is exactly halfway between 2^n and 2^(n+1), and every one of
+  // these is exactly representable as a double.
+  const TIES = [
+    { value: '1.5', below: 127, above: 128, expected: 128 },
+    { value: '3', below: 128, above: 129, expected: 128 },
+    { value: '6', below: 129, above: 130, expected: 130 },
+    { value: '0.75', below: 126, above: 127, expected: 126 },
+    { value: '0.375', below: 125, above: 126, expected: 126 }
+  ];
+
+  // The exact decimal of the tie above code `c`, i.e. 3 * 2^(c-128). String()
+  // would give the shortest round-tripping decimal, which is not the midpoint.
+  function exactTieDecimal(code) {
+    const shift = code - 128;
+    if (shift >= 0) return (3n << BigInt(shift)).toString();
+    const places = -shift;
+    const digits = (3n * 5n ** BigInt(places)).toString().padStart(places + 1, '0');
+    const point = digits.length - places;
+    return `${digits.slice(0, point)}.${digits.slice(point)}`;
+  }
+
+  TIES.forEach(({ value, below, above, expected }) => {
+    test(`${value} lies exactly between exponent codes ${below} and ${above}`, () => {
+      expect(e8m0.decode(0, below, 0) * 1.5).toBe(Number(value));
+      expect(e8m0.decode(0, above, 0)).toBe(e8m0.decode(0, below, 0) * 2);
+    });
+
+    test(`${value} rounds to code ${expected}, the even encoding of the pair`, () => {
+      expect(expected % 2).toBe(0);
+      expect(e8m0.encodeString(value, { roundingMode: 'tiesToEven' }).exponent)
+        .toBe(expected);
+      expect(e8m0.encode(Number(value), { roundingMode: 'tiesToEven' }).exponent)
+        .toBe(expected);
+    });
+  });
+
+  test('tiesToEven and tiesToAway differ where the round-down code is even', () => {
+    // The old behaviour made these two modes indistinguishable for E8M0.
+    expect(e8m0.encodeString('3', { roundingMode: 'tiesToEven' }).exponent).toBe(128);
+    expect(e8m0.encodeString('3', { roundingMode: 'tiesToAway' }).exponent).toBe(129);
+  });
+
+  test('every tie in the format resolves to the even code', () => {
+    // Exhaustive: one tie per binade, both overflow modes, both encode paths.
+    for (let code = 0; code <= 253; code++) {
+      const tie = e8m0.decode(0, code, 0) * 1.5;
+      const want = code % 2 === 0 ? code : code + 1;
+      for (const overflowMode of ['saturate', 'overflow']) {
+        const fromNumber = e8m0.encode(tie, { roundingMode: 'tiesToEven', overflowMode });
+        const fromString = e8m0.encodeString(exactTieDecimal(code),
+          { roundingMode: 'tiesToEven', overflowMode });
+        expect([code, overflowMode, fromNumber.exponent])
+          .toEqual([code, overflowMode, want]);
+        expect([code, overflowMode, fromString.exponent])
+          .toEqual([code, overflowMode, want]);
+      }
+    }
+  });
+
+  test('the tie above the largest value rounds down and no longer overflows', () => {
+    // 1.5 * 2^127 sits between code 254 and a value the format cannot hold.
+    // 254 is even, so the tie rounds down and stays in range under both
+    // overflow modes - it never reaches the reserved NaN code 255.
+    const tie = e8m0.decode(0, 254, 0) * 1.5;
+    for (const overflowMode of ['overflow', 'saturate']) {
+      const encoded = e8m0.encode(tie, { roundingMode: 'tiesToEven', overflowMode });
+      expect([overflowMode, encoded.exponent, encoded.isNaN])
+        .toEqual([overflowMode, 254, false]);
+    }
+    // tiesToAway still leaves the range, so the overflow rules still apply.
+    expect(e8m0.encode(tie, { roundingMode: 'tiesToAway', overflowMode: 'overflow' }).isNaN)
+      .toBe(true);
+    expect(e8m0.encode(tie, { roundingMode: 'tiesToAway', overflowMode: 'saturate' }).exponent)
+      .toBe(254);
+  });
+
+  test('a quarter-point is not a tie: it rounds to the nearer code', () => {
+    // The case ml_dtypes gets wrong for fp32-subnormal inputs (1.25 * 2^-127
+    // encodes as code 1 there); nearest is unambiguous.
+    for (const code of [0, 1, 100, 253]) {
+      const value = e8m0.decode(0, code, 0);
+      expect(e8m0.encode(value * 1.25, { roundingMode: 'tiesToEven' }).exponent).toBe(code);
+      expect(e8m0.encode(value * 1.75, { roundingMode: 'tiesToEven' }).exponent).toBe(code + 1);
+    }
+  });
+
+  // The rule is about mantissaBits === 0, not about E8M0, so a custom format of
+  // that shape gets it too - except in the subnormal region, which the override
+  // deliberately leaves alone. Such a format has exactly one subnormal encoding
+  // (zero), so the two tie candidates are code 0 and code 1 and the ordinary
+  // parity test already gives the encoding-even answer.
+  test('a zero-mantissa format WITH subnormals keeps the ordinary tie test', () => {
+    const custom = new FloatingPoint(1, 4, 0, { bias: 7 });
+    // Min normal is 2^-6; the tie below it is 2^-7, halfway to zero.
+    expect(custom.decode(0, 1, 0)).toBe(Math.pow(2, -6));
+    const tie = '0.0078125';
+    const even = custom.encodeString(tie, { roundingMode: 'tiesToEven' });
+    expect([even.exponent, even.mantissa]).toEqual([0, 0]);
+    expect(custom.encodeString(tie, { roundingMode: 'tiesToAway' }).exponent).toBe(1);
+    // Above the subnormal region the encoding-LSB rule applies as usual.
+    expect(custom.encodeString('0.0234375', { roundingMode: 'tiesToEven' }).exponent)
+      .toBe(2);
+  });
+});
