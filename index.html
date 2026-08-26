@@ -89,6 +89,7 @@
 
     <link rel="stylesheet" href="style.css">
     <script src="src/theme.js"></script>
+    <script src="src/mode.js"></script>
     <script src="lib/floating-point.js" defer></script>
 </head>
 <body>
@@ -104,7 +105,10 @@
             <section class="format-config" aria-labelledby="input-format-heading">
                 <div class="section-head">
                     <h2 id="input-format-heading">Input Format</h2>
-                    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>
+                    <div class="head-actions">
+                        <button type="button" id="mode-toggle" class="mode-toggle" aria-label="Switch to advanced mode" title="Switch to advanced mode">Advanced</button>
+                        <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>
+                    </div>
                 </div>
 
                 <div class="preset-section">
@@ -240,7 +244,7 @@
                     <input type="text" id="input-hex-input" class="input-display" autocomplete="off" value="0x00000000" placeholder="0x00000000" pattern="0[xX][0-9a-fA-F]+">
                 </div>
 
-                <div class="components">
+                <div class="components input-components">
                     <span class="components-label">Components:</span>
                     <div class="component-grid">
                         <div class="component">
@@ -424,7 +428,7 @@
                     <div class="output-display" id="output-hex">0x0000</div>
                 </div>
 
-                <div class="components">
+                <div class="components output-components">
                     <span class="components-label">Components:</span>
                     <div class="component-grid">
                         <div class="component">
@@ -489,6 +493,16 @@
                 The tool also reports the precision loss of each conversion as the absolute and relative error between the input value
                 and its output representation. Value presets let you explore special cases like zero, infinity, NaN, subnormals, and the
                 smallest and largest representable numbers.
+            </p>
+            <p>
+                Two buttons at the top of the Input Format panel control how the page looks and how much of it is shown. The first
+                switches between <em>Basic</em> and <em>Advanced</em> mode. Basic keeps things focused on the essentials: the format
+                presets, the value in decimal, binary, and hexadecimal, and the precision loss. Advanced adds everything else, including
+                custom bit layouts, the sign/exponent/mantissa breakdown for both formats, and the rounding and overflow controls. Until
+                you press the button the choice follows your screen, so a wide window starts in Advanced and a phone starts in Basic. The
+                second button switches between light and dark themes; leave it untouched and the page simply follows your operating
+                system's preference. Either choice, once made, is remembered on your next visit, and a chosen view mode travels with a
+                shared link.
             </p>
 
             <h3>How to Use</h3>

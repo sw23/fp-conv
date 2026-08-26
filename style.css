@@ -156,7 +156,8 @@ header h1 {
     text-decoration: underline;
 }
 
-.theme-toggle {
+.theme-toggle,
+.mode-toggle {
     padding: 1px 8px;
     border: 1px solid var(--border-strong);
     background: var(--surface-alt);
@@ -170,7 +171,13 @@ header h1 {
     flex-shrink: 0;
 }
 
-.theme-toggle:hover {
+/* Wide enough for "Advanced" so flipping to "Basic" does not shift the row. */
+.mode-toggle {
+    min-width: 74px;
+}
+
+.theme-toggle:hover,
+.mode-toggle:hover {
     border-color: var(--primary-color);
     color: var(--primary-color);
 }
@@ -228,7 +235,10 @@ section h2 {
    the Input Format head 3.6px taller than the other three, knocking the two
    side-by-side cards out of alignment, so let it bleed into the row's padding
    instead of growing it. */
-.section-head .theme-toggle {
+.section-head .head-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-2);
     margin-top: -2px;
     margin-bottom: -2px;
 }
@@ -770,6 +780,23 @@ input.bit:hover {
 .precision-loss label,
 .precision-loss .component-label {
     color: var(--sign-color);
+}
+
+/* Basic mode. src/mode.js sets data-mode before the first paint; the hiding
+   lives here rather than in ui.js because ui.js already owns the inline
+   display of these .input-group elements and would fight it. */
+:root[data-mode="basic"] .custom-format,
+:root[data-mode="basic"] .mode-row,
+:root[data-mode="basic"] .input-components,
+:root[data-mode="basic"] .output-components .components-label,
+:root[data-mode="basic"] .output-components .component:not(.precision-loss) {
+    display: none;
+}
+
+/* Precision Loss is the only survivor, and ui.js hides even that when there is
+   none, so the block must not reserve space of its own. */
+:root[data-mode="basic"] .output-components {
+    margin-top: 0;
 }
 
 /* Footer */
