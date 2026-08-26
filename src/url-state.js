@@ -234,10 +234,11 @@ function parseDecimal(str) {
  *
  * @returns {{ key: 'val'|'hex', value: string }}
  */
-function valueToParam(format, currentValue, currentEncoded, roundingMode, overflowMode) {
+function valueToParam(format, currentValue, currentEncoded, currentValueText = null) {
     let faithful;
+    const sourceValue = currentValueText !== null ? currentValueText : currentValue;
     try {
-        const reEncoded = format.encode(currentValue, { roundingMode, overflowMode });
+        const reEncoded = format.encode(sourceValue);
         faithful =
             reEncoded.sign === currentEncoded.sign &&
             reEncoded.exponent === currentEncoded.exponent &&
@@ -247,7 +248,12 @@ function valueToParam(format, currentValue, currentEncoded, roundingMode, overfl
     }
 
     if (faithful) {
-        return { key: 'val', value: decimalToString(currentValue) };
+        return {
+            key: 'val',
+            value: currentValueText !== null
+                ? currentValueText
+                : decimalToString(currentValue),
+        };
     }
     return {
         key: 'hex',
@@ -270,8 +276,7 @@ function buildSearchParams(state) {
         state.inputFormat,
         state.currentValue,
         state.currentEncoded,
-        state.roundingMode,
-        state.overflowMode || undefined
+        state.currentValueText
     );
     params.set(value.key, value.value);
 

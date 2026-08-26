@@ -21,6 +21,10 @@ overflow (saturation) behavior, and calculates precision loss.
 | `decode_bits` | Decode a binary or hex bit-pattern into a format. Returns the decimal value and components. |
 | `convert_format` | Convert a value from one format to another. |
 
+For `convert_format`, the source operand is constructed using the input format's
+standard defaults. Its `roundingMode` and `overflowMode` parameters apply only when
+encoding the output format. `encode_number` applies those parameters to its sole format.
+
 ## Formats
 
 All tools accept either a **preset key** (string) or a **custom format object**.

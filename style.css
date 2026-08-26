@@ -715,6 +715,54 @@ input.bit:hover {
     border-color: var(--primary-color);
 }
 
+.decimal-input-label-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--gap-3);
+    min-width: 0;
+}
+
+.decimal-input-label-row label {
+    margin-bottom: var(--gap-1);
+}
+
+.input-representation-message {
+    color: var(--sign-color);
+    font-size: var(--fs-small);
+    font-weight: 700;
+}
+
+.decimal-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: var(--gap-3);
+    min-width: 0;
+}
+
+.decimal-input-row.has-represented-value {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.decimal-input-row .input-display {
+    min-width: 0;
+}
+
+.input-group input[type="text"].input-inexact {
+    color: var(--sign-color);
+}
+
+.represented-input-value {
+    min-width: 0;
+    border-color: var(--border-strong);
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .precision-loss {
     grid-column: 1 / -1;
 }

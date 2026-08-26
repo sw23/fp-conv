@@ -47,8 +47,8 @@ Convert a value from one format to another, with precision loss analysis.
 | `value` | number \| string | The value to convert |
 | `inputFormat` | string \| object | Source format |
 | `outputFormat` | string \| object | Target format |
-| `roundingMode` | string | Optional. One of `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative` |
-| `overflowMode` | string | Optional. `overflow` or `saturate`; see `encode_number` above. |
+| `roundingMode` | string | Optional. Rounding mode for the conversion into `outputFormat`: `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, or `towardNegative`. Source construction uses the input format's defaults. |
+| `overflowMode` | string | Optional. Overflow behavior for the conversion into `outputFormat`: `overflow` or `saturate`; see `encode_number` above. Source construction uses the input format's default. |
 
 **Returns:** Full encoding stats for both input and output, plus `precisionLoss` with `absolute`, `relativePercent`, and `lossless` flag.
 

@@ -48,14 +48,16 @@ fp-conv <command> [options]
 | `-f, --format <fmt>`   | Format preset key (e.g. `fp32`, `int8`) or a JSON object for a custom format. |
 | `--from <fmt>`         | Source format for `convert`.                                                |
 | `--to <fmt>`           | Target format for `convert`.                                                |
-| `-r, --rounding <m>`   | `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative`. |
-| `--overflow <m>`       | `overflow` (Infinity or NaN) or `saturate` (max normal). |
+| `-r, --rounding <m>`   | Rounding for the encoded format, or the destination of `convert`: `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative`. |
+| `--overflow <m>`       | Overflow behavior for the encoded format, or the destination of `convert`: `overflow` (Infinity or NaN) or `saturate` (max normal). |
 | `--json`               | Emit machine-readable JSON instead of formatted text.                       |
 | `-h, --help`           | Show help.                                                                  |
 | `-v, --version`        | Show version.                                                               |
 
 Values accept a number, hex (e.g. `0xFF`), or keyword (`infinity`, `-infinity`,
 `nan`). Bit-patterns accept a binary string (e.g. `0100000`) or hex (e.g. `0x40`).
+For `convert`, the source operand is constructed using the source format's standard
+defaults; `--rounding` and `--overflow` apply only when encoding the destination.
 
 ## Examples
 

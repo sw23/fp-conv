@@ -175,7 +175,7 @@ describe('valueToParam', () => {
     test('uses decimal when re-encoding reproduces the bits', () => {
         const format = new FloatingPoint(1, 5, 10);
         const encoded = format.encode(1.0, { roundingMode: DEFAULT_ROUNDING_MODE });
-        const result = valueToParam(format, 1.0, encoded, DEFAULT_ROUNDING_MODE);
+        const result = valueToParam(format, 1.0, encoded);
         expect(result.key).toBe('val');
         expect(result.value).toBe('1');
     });
@@ -186,7 +186,7 @@ describe('valueToParam', () => {
         const reEncoded = format.encode(NaN, { roundingMode: DEFAULT_ROUNDING_MODE });
         const payload = reEncoded.mantissa + 1; // still NaN (exp=31, mantissa != 0)
         const encoded = { sign: 0, exponent: 31, mantissa: payload };
-        const result = valueToParam(format, NaN, encoded, DEFAULT_ROUNDING_MODE);
+        const result = valueToParam(format, NaN, encoded);
         expect(result.key).toBe('hex');
         expect(result.value).toBe(format.toHexString(0, 31, payload));
     });
@@ -317,13 +317,40 @@ describe('overflow mode in the URL', () => {
         expect(parseSearchParams('')).toBeNull();
     });
 
-    test('the overflow mode reaches the faithfulness re-encode', () => {
+    test('output overflow mode does not affect source-value serialization', () => {
         const format = FloatingPoint.fromFormat('fp32');
+        const canonical = format.encode(1e40);
         const saturated = format.encode(1e40, { overflowMode: 'saturate' });
-        // Under saturate the decimal re-encodes to the same bits, so the link
-        // can carry the decimal; under the default it would not.
-        expect(valueToParam(format, 1e40, saturated, 'tiesToEven', 'saturate').key).toBe('val');
-        expect(valueToParam(format, 1e40, saturated, 'tiesToEven', 'overflow').key).toBe('hex');
+
+        expect(valueToParam(format, 1e40, canonical).key).toBe('val');
+        expect(valueToParam(format, 1e40, saturated).key).toBe('hex');
+
+        for (const overflowMode of OVERFLOW_MODE_VALUES) {
+            const query = buildSearchParams({
+                ...baseState(),
+                currentValue: 1e40,
+                currentEncoded: canonical,
+                overflowMode,
+            });
+            expect(new URLSearchParams(query).get('val')).toBe('1e+40');
+            expect(query).toContain(`om=${overflowMode}`);
+        }
+    });
+
+    test('output rounding mode does not affect source-value serialization', () => {
+        const inputFormat = FloatingPoint.fromFormat('fp64');
+        const query = buildSearchParams({
+            inputFormat,
+            outputFormat: FloatingPoint.fromFormat('fp32'),
+            currentValue: 0.1,
+            currentEncoded: inputFormat.encode('0.1'),
+            roundingMode: 'towardZero',
+            overflowMode: null,
+        });
+
+        expect(query).toContain('val=0.1');
+        expect(query).toContain('rm=towardZero');
+        expect(query).not.toContain('hex=');
     });
 });
 

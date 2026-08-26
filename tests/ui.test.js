@@ -147,6 +147,105 @@ describe('ui.js — value input paths', () => {
         expect(text('input-comp-value')).toBe(before);
     });
 
+    test('inexact decimal input shows the represented source value inline', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp16');
+        const dec = $('input-decimal-input');
+        dec.value = '0.1';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const represented = $('input-represented-value');
+        expect(dec.classList.contains('input-inexact')).toBe(true);
+        expect(represented.hidden).toBe(false);
+        expect(represented.textContent).toBe('0.0999755859375');
+        expect(represented.title).toBe('0.0999755859375');
+        expect(represented.hasAttribute('aria-live')).toBe(false);
+        expect(dec.hasAttribute('aria-describedby')).toBe(false);
+        expect($('input-representation-message').hidden).toBe(false);
+        expect($('input-representation-message').textContent)
+            .toBe('Input not representable; using value:');
+    });
+
+    test('exact decimal input has no representation error', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp16');
+        const dec = $('input-decimal-input');
+        dec.value = '0.5';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(dec.classList.contains('input-inexact')).toBe(false);
+        expect($('input-representation-message').hidden).toBe(true);
+        expect($('input-represented-value').hidden).toBe(true);
+        expect($('input-represented-value').textContent).toBe('');
+    });
+
+    test('out-of-range decimal reports the source format fallback', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp16');
+        const dec = $('input-decimal-input');
+        dec.value = '1e40';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(dec.classList.contains('input-inexact')).toBe(true);
+        expect($('input-represented-value').textContent).toBe('Infinity');
+    });
+
+    test('preset and hex input clear a previous representation error', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp16');
+        const dec = $('input-decimal-input');
+        dec.value = '0.1';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+        expect($('input-represented-value').hidden).toBe(false);
+
+        ui.loadValuePreset('one');
+        expect($('input-represented-value').hidden).toBe(true);
+
+        dec.value = '0.1';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+        ui.handleHexInput({ target: { value: '0x3c00' } });
+        expect($('input-represented-value').hidden).toBe(true);
+    });
+
+    test('clicking the represented value accepts it, restores full width, and updates the URL', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('fp16');
+        const dec = $('input-decimal-input');
+        dec.value = '0.1';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(dec.closest('.decimal-input-row').classList.contains('has-represented-value')).toBe(true);
+
+        $('input-represented-value').click();
+
+        expect(dec.value).toBe('0.0999755859375');
+        expect(dec.classList.contains('input-inexact')).toBe(false);
+        expect($('input-representation-message').hidden).toBe(true);
+        expect($('input-represented-value').hidden).toBe(true);
+        expect(dec.closest('.decimal-input-row').classList.contains('has-represented-value')).toBe(false);
+        expect($('input-hex-input').value).toBe('0x2E66');
+        expect(new URLSearchParams(window.location.search).get('val')).toBe('0.0999755859375');
+
+        const acceptedSearch = window.location.search.replace(/^\?/, '');
+        freshUi({ search: acceptedSearch });
+        expect($('input-decimal-input').value).toBe('0.0999755859375');
+        expect($('input-represented-value').hidden).toBe(true);
+    });
+
+    test('scientific notation input shows a distinguishable represented value', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp64');
+        const dec = $('input-decimal-input');
+        dec.value = '5.5566406259e-44';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const fp64 = floatingPoint.FloatingPoint.fromFormat('fp64');
+        const encoded = fp64.encode('5.5566406259e-44');
+        const exact = fp64.toExactDecimalString(encoded);
+        expect(dec.value).toBe('5.5566406259e-44');
+        expect(text('input-comp-value')).toBe('5.5566406259e-44');
+        expect($('input-represented-value').textContent).toBe(exact);
+    });
+
     test('value preset "one" sets the value to 1', () => {
         const ui = freshUi();
         ui.loadInputPreset('fp16');
@@ -215,6 +314,7 @@ describe('ui.js — custom formats and rounding', () => {
         const dec = $('input-decimal-input');
         dec.value = '1.7';
         dec.dispatchEvent(new Event('input', { bubbles: true }));
+        const inputHex = $('input-hex-input').value;
         const tiesToEven = text('output-decimal');
 
         const rm = $('rounding-mode');
@@ -223,6 +323,50 @@ describe('ui.js — custom formats and rounding', () => {
         const towardZero = text('output-decimal');
 
         expect(towardZero).not.toBe(tiesToEven);
+        expect($('input-hex-input').value).toBe(inputHex);
+    });
+
+    test('overflow mode applies only to the output conversion', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp16');
+        ui.loadOutputPreset('e8m0');
+
+        const dec = $('input-decimal-input');
+        dec.value = 'Infinity';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const overflow = $('overflow-mode');
+        overflow.value = 'saturate';
+        overflow.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect($('input-hex-input').value).toBe('0x7C00');
+        expect(text('input-comp-type')).toBe('+Infinity');
+        expect(text('output-hex')).toBe('0xFE');
+        expect(text('output-comp-type')).toBe('Normal');
+    });
+
+    test('max normal and Infinity never highlight together under saturation', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp16');
+        ui.loadOutputPreset('e8m0');
+
+        const dec = $('input-decimal-input');
+        dec.value = '65504';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+
+        const overflow = $('overflow-mode');
+        overflow.value = 'saturate';
+        overflow.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const maxNormal = document.querySelector('.preset-btn[data-value="max-norm"]:not(.output-value-preset)');
+        const infinity = document.querySelector('.preset-btn[data-value="infinity"]:not(.output-value-preset)');
+        expect(maxNormal.classList.contains('active')).toBe(true);
+        expect(infinity.classList.contains('active')).toBe(false);
+
+        dec.value = 'Infinity';
+        dec.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(maxNormal.classList.contains('active')).toBe(false);
+        expect(infinity.classList.contains('active')).toBe(true);
     });
 });
 
@@ -242,18 +386,20 @@ describe('ui.js — the typed decimal survives later re-encodes', () => {
         rm.dispatchEvent(new Event('change', { bubbles: true }));
     };
 
-    test('changing the rounding mode still rounds the original decimal', () => {
+    test('changing the output rounding mode leaves the input representation unchanged', () => {
         const ui = freshUi();
         ui.loadInputPreset('fp64');
+        ui.loadOutputPreset('fp32');
         typeDecimal('0.1');
+        const inputHex = $('input-hex-input').value;
 
-        // Number('0.1') is already the nearest double, so a directed mode can
-        // only reach the neighbour by rounding the decimal itself.
         setRoundingMode('towardZero');
-        expect(text('input-comp-value')).toBe('0.09999999999999999');
+        expect($('input-hex-input').value).toBe(inputHex);
+        expect(text('output-hex')).toBe('0x3DCCCCCC');
 
         setRoundingMode('towardPositive');
-        expect(text('input-comp-value')).toBe('0.1');
+        expect($('input-hex-input').value).toBe(inputHex);
+        expect(text('output-hex')).toBe('0x3DCCCCCD');
     });
 
     test('changing the input format still rounds the original decimal', () => {
@@ -361,6 +507,52 @@ describe('ui.js — URL state restoration', () => {
     test('restores an exact bit pattern from a hex parameter', () => {
         freshUi({ search: 'in=fp16&out=fp16&hex=0x3c00' });
         expect($('input-decimal-input').value).toBe('1');
+    });
+
+    test('output policies in a shared link do not alter the input or its preset highlight', () => {
+        freshUi({
+            search: 'in=fp16&out=e8m0&val=65504&rm=tiesToAway&om=saturate',
+        });
+
+        const maxNormal = document.querySelector('.preset-btn[data-value="max-norm"]:not(.output-value-preset)');
+        const infinity = document.querySelector('.preset-btn[data-value="infinity"]:not(.output-value-preset)');
+        expect($('input-hex-input').value).toBe('0x7BFF');
+        expect(text('input-comp-type')).toBe('Normal');
+        expect(maxNormal.classList.contains('active')).toBe(true);
+        expect(infinity.classList.contains('active')).toBe(false);
+        expect(text('output-hex')).toBe('0x8F');
+    });
+
+    test('shared decimal links report source quantization', () => {
+        freshUi({ search: 'in=fp16&out=fp32&val=0.1' });
+        expect($('input-decimal-input').classList.contains('input-inexact')).toBe(true);
+        expect($('input-represented-value').hidden).toBe(false);
+        expect($('input-represented-value').textContent).toBe('0.0999755859375');
+    });
+
+    test('shared scientific notation links are accepted', () => {
+        freshUi({ search: 'in=fp64&out=fp32&val=5.5566406259e-44' });
+        const fp64 = floatingPoint.FloatingPoint.fromFormat('fp64');
+        const exact = fp64.toExactDecimalString(fp64.encode('5.5566406259e-44'));
+        expect($('input-decimal-input').value).toBe('5.5566406259e-44');
+        expect($('input-represented-value').textContent).toBe(exact);
+    });
+
+    test('accepting a scientific suggestion survives URL reload verbatim', () => {
+        freshUi({
+            search: 'in=fp64&out=fp32&val=5.5566406259e-44',
+            syncUrl: true,
+        });
+        $('input-represented-value').click();
+        const accepted = $('input-decimal-input').value;
+        const search = window.location.search.replace(/^\?/, '');
+
+        expect(new URLSearchParams(window.location.search).get('val')).toBe(accepted);
+        freshUi({ search });
+        expect($('input-decimal-input').value).toBe(accepted);
+        expect($('input-represented-value').hidden).toBe(true);
+        expect($('input-decimal-input').closest('.decimal-input-row')
+            .classList.contains('has-represented-value')).toBe(false);
     });
 });
 

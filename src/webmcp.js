@@ -449,16 +449,18 @@ function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec
     const inFmt = resolveFormat(inputSpec);
     const outFmt = resolveFormat(outputSpec);
     const numericValue = parseValueInput(value);
-    const encodeOptions = {};
-    if (roundingMode) encodeOptions.roundingMode = roundingMode;
-    if (overflowMode) encodeOptions.overflowMode = overflowMode;
+    const outputEncodeOptions = {};
+    if (roundingMode) outputEncodeOptions.roundingMode = roundingMode;
+    if (overflowMode) outputEncodeOptions.overflowMode = overflowMode;
 
-    // Encode in input format, decode to get actual representable value
-    const inputEncoded = inFmt.encode(encodeInput(value, numericValue), encodeOptions);
+    // Construct the source operand using the input format's standard defaults.
+    // Rounding and overflow options describe the conversion to the destination;
+    // changing them must not mutate the value being converted.
+    const inputEncoded = inFmt.encode(encodeInput(value, numericValue));
     const inputActual = inFmt.decode(inputEncoded.sign, inputEncoded.exponent, inputEncoded.mantissa);
 
     // Re-encode in output format
-    const outputEncoded = outFmt.encode(inputActual, encodeOptions);
+    const outputEncoded = outFmt.encode(inputActual, outputEncodeOptions);
     const outputActual = outFmt.decode(outputEncoded.sign, outputEncoded.exponent, outputEncoded.mantissa);
 
     const inputStats = buildStats(inFmt, inputEncoded);
@@ -596,14 +598,16 @@ function buildToolDescriptors() {
                     roundingMode: {
                         type: 'string',
                         description:
-                            'Rounding mode for encoding. Options: "tiesToEven" (default, IEEE 754), ' +
+                            'Rounding mode for encoding the output format. Source construction uses ' +
+                            'the input format default. Options: "tiesToEven" (default, IEEE 754), ' +
                             '"tiesToAway", "towardZero", "towardPositive", "towardNegative".',
                         enum: ['tiesToEven', 'tiesToAway', 'towardZero', 'towardPositive', 'towardNegative'],
                     },
                     overflowMode: {
                         type: 'string',
                         description:
-                            'What an out-of-range magnitude becomes. "overflow" produces Infinity ' +
+                            'What an out-of-range output magnitude becomes; source construction uses ' +
+                            'the input format default. "overflow" produces Infinity ' +
                             '(or NaN when the format has no Infinity); "saturate" clamps to the ' +
                             'largest finite value. Omit to use the per-format default (overflow for ' +
                             'formats with Infinity, saturate otherwise). IEEE 754 §7.4 directed ' +
