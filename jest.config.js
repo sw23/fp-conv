@@ -40,6 +40,12 @@ module.exports = {
       lines: 100,
       statements: 100
     },
+    './src/mode.js': {
+      branches: 97,
+      functions: 100,
+      lines: 100,
+      statements: 100
+    },
     './formats/format-common.js': {
       branches: 76,
       functions: 91,

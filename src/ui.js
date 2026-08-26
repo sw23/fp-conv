@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, parseDecimal */
+/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, parseDecimal, modeUrlValue */
 // UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
 // and the URL helpers from url-state.js.
 
@@ -125,7 +125,7 @@ function syncUrl() {
     if (!urlSyncEnabled) return;
     if (typeof history === 'undefined' || !history.replaceState) return;
     try {
-        const query = buildSearchParams({
+        const params = new URLSearchParams(buildSearchParams({
             inputFormat: currentFormat,
             outputFormat: outputFormat,
             currentValue: currentValue,
@@ -133,7 +133,16 @@ function syncUrl() {
             currentEncoded: currentEncoded,
             roundingMode: currentRoundingMode,
             overflowMode: currentOverflowMode,
-        });
+        }));
+
+        // A display preference rather than conversion state, so mode.js owns
+        // it - and decides whether it is explicit enough to share at all.
+        const mode = typeof modeUrlValue === 'function' ? modeUrlValue() : null;
+        if (mode) {
+            params.set('mode', mode);
+        }
+
+        const query = params.toString();
         const newUrl = query
             ? `${window.location.pathname}?${query}`
             : window.location.pathname;
@@ -373,6 +382,8 @@ function setupEventListeners() {
         updateOverflowModeUi();
         updateOutput();
     });
+
+    window.addEventListener('modechange', syncUrl);
 }
 
 function loadInputPreset(formatKey) {
