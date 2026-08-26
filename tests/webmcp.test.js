@@ -1201,16 +1201,42 @@ describe('overflowMode through the tool kernel', () => {
             .toThrow('Unknown overflow mode');
     });
 
-    test('convert_format honors overflowMode on both sides', () => {
+    test('convert_format applies overflowMode only to the output', () => {
         const result = convertFormat({
-            value: 1e40,
+            value: 'Infinity',
+            inputFormat: 'fp16',
+            outputFormat: 'e8m0',
+            overflowMode: 'saturate',
+        });
+        const payload = JSON.parse(result.content[0].text);
+        expect(payload.input.hex).toBe('0x7C00');
+        expect(payload.input.actualValue).toBe('Infinity');
+        expect(payload.output.hex).toBe('0xFE');
+        expect(payload.output.actualValue).toBe(Math.pow(2, 127));
+    });
+
+    test('an out-of-range decimal uses the input format default before conversion', () => {
+        const result = convertFormat({
+            value: '1e40',
             inputFormat: 'fp32',
             outputFormat: 'fp16',
             overflowMode: 'saturate',
         });
         const payload = JSON.parse(result.content[0].text);
-        expect(payload.input.actualValue).toBe(3.4028234663852886e38);
+        expect(payload.input.actualValue).toBe('Infinity');
         expect(payload.output.actualValue).toBe(65504);
+    });
+
+    test('convert_format applies roundingMode only to the output', () => {
+        const result = convertFormat({
+            value: '0.1',
+            inputFormat: 'fp64',
+            outputFormat: 'fp32',
+            roundingMode: 'towardZero',
+        });
+        const payload = JSON.parse(result.content[0].text);
+        expect(payload.input.hex).toBe('0x3FB999999999999A');
+        expect(payload.output.hex).toBe('0x3DCCCCCC');
     });
 
     test('convert_format without the option keeps the historical behavior', () => {

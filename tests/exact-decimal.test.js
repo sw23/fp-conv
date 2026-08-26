@@ -316,6 +316,84 @@ describe('encodeString - non-decimal inputs fall back to the numeric path', () =
     });
 });
 
+describe('isExactlyRepresentable', () => {
+    const fp64 = makeFormat('fp64');
+    const fp16 = makeFormat('fp16');
+    const e8m0 = makeFormat('e8m0');
+    const mxint8 = new Integer(8, true, { fractionBits: 6, symmetric: true });
+
+    test.each([
+        [fp64, '0.5', true],
+        [fp64, '0.1', false],
+        [fp64, '9007199254740992', true],
+        [fp64, '9007199254740993', false],
+        [fp16, '65504', true],
+        [fp16, '65505', false],
+        [fp16, '1e40', false],
+        [fp16, '1e-40', false],
+        [e8m0, '65536', true],
+        [e8m0, '65504', false],
+        [mxint8, '1.5', true],
+        [mxint8, '1.51', false],
+        [mxint8, '3', false],
+    ])('%p in %p exact=%p', (format, input, expected) => {
+        const encoded = format.encode(input);
+        expect(format.isExactlyRepresentable(input, encoded)).toBe(expected);
+    });
+
+    test('fixed-point floating formats compare their exact binary fraction', () => {
+        const fixed = new FloatingPoint(1, 0, 4);
+        expect(fixed.isExactlyRepresentable('0.5')).toBe(true);
+        expect(fixed.isExactlyRepresentable('0.1')).toBe(false);
+    });
+
+    test('zero remains exact across alternate decimal spellings', () => {
+        expect(fp16.isExactlyRepresentable('-0.000e100')).toBe(true);
+    });
+
+    test('formats expose the exact decimal represented by their bits', () => {
+        expect(fp16.toExactDecimalString(fp16.encode('0.1'))).toBe('0.0999755859375');
+        expect(fp64.toExactDecimalString(fp64.encode('0.1')))
+            .toBe('0.1000000000000000055511151231257827021181583404541015625');
+        expect(fp16.toExactDecimalString(fp16.encode('65504'))).toBe('65504');
+        expect(fp16.toExactDecimalString(fp16.encode('-1024'))).toBe('-1024');
+        expect(e8m0.toExactDecimalString(e8m0.encode('65536'))).toBe('65536');
+        const fixed = new FloatingPoint(1, 0, 4);
+        expect(fixed.toExactDecimalString(fixed.encode('0.5'))).toBe('0.5');
+        expect(fp16.toExactDecimalString(fp16.encode('0'))).toBe('0');
+        expect(fp16.toExactDecimalString(fp16.encode('-0'))).toBe('-0');
+        const int8 = new Integer(8, true);
+        expect(int8.toExactDecimalString(int8.encode('-5'))).toBe('-5');
+        expect(mxint8.toExactDecimalString(mxint8.encode('1.5'))).toBe('1.5');
+        expect(mxint8.toExactDecimalString(mxint8.encode('-1.5'))).toBe('-1.5');
+        expect(fp16.toExactDecimalString(fp16.encode('1e40'))).toBe('Infinity');
+    });
+
+    test('integer exact-decimal methods accept bare encoded bit shapes', () => {
+        const int8 = new Integer(8, true);
+        const positive = { sign: 0, exponent: 0, mantissa: 5 };
+        const negative = { sign: 0, exponent: 0, mantissa: 251 };
+        expect(int8.isExactlyRepresentable('5', positive)).toBe(true);
+        expect(int8.toExactDecimalString(positive)).toBe('5');
+        expect(int8.isExactlyRepresentable('-5', negative)).toBe(true);
+        expect(int8.toExactDecimalString(negative)).toBe('-5');
+    });
+
+    test('exactness defaults encode the input and reject non-decimal text', () => {
+        const int8 = new Integer(8, true);
+        expect(int8.isExactlyRepresentable('5')).toBe(true);
+        expect(int8.isExactlyRepresentable('not-a-number', int8.encode(0))).toBe(false);
+        expect(fp16.isExactlyRepresentable('0.5')).toBe(true);
+        expect(fp16.isExactlyRepresentable('Infinity')).toBe(false);
+    });
+
+    test('exact formatting covers every special value', () => {
+        expect(fp16.toExactDecimalString(fp16.encode(NaN))).toBe('NaN');
+        expect(fp16.toExactDecimalString(fp16.encode(Infinity))).toBe('Infinity');
+        expect(fp16.toExactDecimalString(fp16.encode(-Infinity))).toBe('-Infinity');
+    });
+});
+
 describe('encodeString - long fractions are precision, not magnitude', () => {
     // The guard on how far a decimal may sit from 1 must not be driven by how
     // many digits it was written with: 0.749...9 is an ordinary number however

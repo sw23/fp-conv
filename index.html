@@ -207,8 +207,14 @@
                 </div>
 
                 <div class="input-group">
-                    <label for="input-decimal-input">Decimal Value:</label>
-                    <input type="text" id="input-decimal-input" class="input-display" autocomplete="off" placeholder="Enter decimal number">
+                    <div class="decimal-input-label-row">
+                        <label for="input-decimal-input">Decimal Value:</label>
+                        <span id="input-representation-message" class="input-representation-message" role="status" aria-live="polite" hidden>Input not representable; using value:</span>
+                    </div>
+                    <div class="decimal-input-row">
+                        <input type="text" id="input-decimal-input" class="input-display" autocomplete="off" placeholder="Enter decimal number">
+                        <button type="button" id="input-represented-value" class="output-display represented-input-value" aria-label="Use represented input value" title="Use this represented value" hidden></button>
+                    </div>
                 </div>
 
                 <div class="rep-group">
@@ -467,7 +473,8 @@
             <p>
                 When converting between formats, you can choose from the five IEEE 754 rounding modes: round to nearest (ties to even),
                 round to nearest (ties away from zero), round toward zero (truncation), round toward +infinity (ceiling), and
-                round toward &minus;infinity (floor). The default is ties to even, which is the standard IEEE 754 rounding mode.
+                round toward &minus;infinity (floor). These modes apply when converting the represented input value to the output
+                format.
             </p>
             <p>
                 You can also choose what happens when a value is too large for the target format. <em>Overflow</em> produces

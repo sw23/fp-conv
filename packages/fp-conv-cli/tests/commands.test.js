@@ -47,6 +47,19 @@ describe("command functions", () => {
         expect(result.precisionLoss).toHaveProperty("absolute");
     });
 
+    test("runConvert applies overflow mode only to the output", () => {
+        const result = runConvert({
+            value: "Infinity",
+            from: "fp16",
+            to: "e8m0",
+            overflowMode: "saturate",
+        });
+        expect(result.input.hex).toBe("0x7C00");
+        expect(result.input.actualValue).toBe("Infinity");
+        expect(result.output.hex).toBe("0xFE");
+        expect(result.output.actualValue).toBe(Math.pow(2, 127));
+    });
+
     test("runInfo returns floating-point details", () => {
         const info = runInfo({ format: "bf16" });
         expect(info.type).toBe("floating-point");

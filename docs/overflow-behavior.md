@@ -17,9 +17,12 @@ NVIDIA CUDA (`__NV_SATFINITE`), OpenCL/SPIR-V (`convert_<type>_sat()`), LLVM
 FP8/FP16 casts in PyTorch, JAX and TensorRT all expose the same choice.
 
 The setting applies when you *encode*, so it affects `encode` and the output side of
-`convert`. Decoding a bit pattern is unaffected, because every pattern already names a
-value. Underflow is a separate path and is unaffected too: a value too small for the
-format still rounds toward the smallest magnitude the format can hold, under both modes.
+`convert`. A conversion first constructs the source operand using the input format's
+standard defaults, then applies the selected overflow mode only while encoding that
+operand into the output format. Decoding a bit pattern is unaffected, because every
+pattern already names a value. Underflow is a separate path and is unaffected too: a
+value too small for the format still rounds toward the smallest magnitude the format can
+hold, under both modes.
 
 ## Per-format defaults
 

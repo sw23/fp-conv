@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, decimalToString, parseDecimal */
+/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, parseDecimal */
 // UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
 // and the URL helpers from url-state.js.
 
@@ -129,6 +129,7 @@ function syncUrl() {
             inputFormat: currentFormat,
             outputFormat: outputFormat,
             currentValue: currentValue,
+            currentValueText: currentValueText,
             currentEncoded: currentEncoded,
             roundingMode: currentRoundingMode,
             overflowMode: currentOverflowMode,
@@ -274,7 +275,7 @@ function applyStateFromUrl() {
     } else {
         if (parsed.value && parsed.value.decimal !== undefined) {
             setValueFromText(parsed.value.decimal, parsed.value.text);
-            document.getElementById('input-decimal-input').value = decimalToString(currentValue);
+            document.getElementById('input-decimal-input').value = parsed.value.text;
         }
         updateValue();
     }
@@ -337,9 +338,21 @@ function setupEventListeners() {
         if (parsed === null) {
             // Transient/unparseable input ("-", "1e", ".", "3.14abc", ""):
             // keep the last valid value instead of resetting the UI to zero.
+            clearInputRepresentedValue();
             return;
         }
         setValueFromText(parsed, e.target.value);
+        updateValue();
+    });
+
+    document.getElementById('input-represented-value').addEventListener('click', () => {
+        const representedValue = currentFormat.decode(
+            currentEncoded.sign,
+            currentEncoded.exponent,
+            currentEncoded.mantissa);
+        const representedText = currentFormat.toExactDecimalString(currentEncoded);
+        document.getElementById('input-decimal-input').value = representedText;
+        setValueFromText(representedValue, representedText);
         updateValue();
     });
 
@@ -350,7 +363,7 @@ function setupEventListeners() {
     document.getElementById('rounding-mode').addEventListener('change', (e) => {
         currentRoundingMode = e.target.value;
         updateOverflowModeUi();
-        updateValue();
+        updateOutput();
     });
 
     // Overflow behavior. The empty option means "format default", which is a
@@ -358,7 +371,7 @@ function setupEventListeners() {
     document.getElementById('overflow-mode').addEventListener('change', (e) => {
         currentOverflowMode = e.target.value || null;
         updateOverflowModeUi();
-        updateValue();
+        updateOutput();
     });
 }
 
@@ -644,6 +657,7 @@ function updateOutputFormat() {
 function setValueFromBits(value) {
     currentValue = value;
     currentValueText = null;
+    clearInputRepresentedValue();
 }
 
 // Record a value the user typed or that arrived in a link. The literal is kept
@@ -663,11 +677,53 @@ function setValueFromText(value, text) {
 // or format change re-encodes through here rather than through the double.
 function updateValue() {
     currentEncoded = currentFormat.encode(
-        currentValueText !== null ? currentValueText : currentValue,
-        { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
+        currentValueText !== null ? currentValueText : currentValue);
+    updateInputRepresentedValue();
     updateRepresentation();
     updateOutput();
     updateActiveValuePreset();
+}
+
+function updateInputRepresentedValue() {
+    const input = document.getElementById('input-decimal-input');
+    const represented = document.getElementById('input-represented-value');
+    const message = document.getElementById('input-representation-message');
+    if (!input || !represented || !message) return;
+
+    if (currentValueText === null || currentEncoded === null ||
+        currentFormat.isExactlyRepresentable(currentValueText, currentEncoded)) {
+        clearInputRepresentedValue();
+        return;
+    }
+
+    const representedValue = currentFormat.decode(
+        currentEncoded.sign,
+        currentEncoded.exponent,
+        currentEncoded.mantissa);
+    input.classList.add('input-inexact');
+    const displayedValue = Number.isFinite(representedValue)
+        ? currentFormat.toExactDecimalString(currentEncoded)
+        : String(representedValue);
+    represented.textContent = displayedValue;
+    represented.title = displayedValue;
+    represented.setAttribute('aria-label', `Use represented input value ${displayedValue}`);
+    represented.hidden = false;
+    message.hidden = false;
+    represented.closest('.decimal-input-row').classList.add('has-represented-value');
+}
+
+function clearInputRepresentedValue() {
+    const input = document.getElementById('input-decimal-input');
+    const represented = document.getElementById('input-represented-value');
+    const message = document.getElementById('input-representation-message');
+    if (input) input.classList.remove('input-inexact');
+    if (message) message.hidden = true;
+    if (!represented) return;
+    represented.textContent = '';
+    represented.title = 'Use this represented value';
+    represented.setAttribute('aria-label', 'Use represented input value');
+    represented.hidden = true;
+    represented.closest('.decimal-input-row').classList.remove('has-represented-value');
 }
 
 function updateRepresentation() {
@@ -1086,10 +1142,11 @@ function valuesMatch(a, b, format) {
     // Handle NaN comparison
     if (Number.isNaN(a) && Number.isNaN(b)) return true;
     if (Number.isNaN(a) || Number.isNaN(b)) return false;
-    // Compare the encoded representations under the active rounding mode so the
-    // preset highlight matches the encoding the user actually sees.
-    const encodedA = format.encode(a, { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
-    const encodedB = format.encode(b, { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
+    // Presets describe canonical values in this format, independently of the
+    // policy selected for the subsequent output conversion. In particular,
+    // saturating the output must not make Infinity also match max normal here.
+    const encodedA = format.encode(a);
+    const encodedB = format.encode(b);
     return encodedA.sign === encodedB.sign &&
            encodedA.exponent === encodedB.exponent &&
            encodedA.mantissa === encodedB.mantissa;
@@ -1305,6 +1362,7 @@ if (typeof module !== 'undefined' && module.exports) {
         updateFormat,
         updateOutputFormat,
         updateValue,
+        updateInputRepresentedValue,
         updateOutput,
         handleHexInput,
         determineFloatType,
