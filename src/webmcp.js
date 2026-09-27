@@ -579,6 +579,7 @@ function buildToolDescriptors() {
     return [
         {
             name: 'list_formats',
+            title: 'List formats',
             description:
                 'List all available floating-point and integer format presets supported by this converter. ' +
                 'Returns format keys, names, categories, and parameters (bits, exponent, mantissa, etc.).',
@@ -587,10 +588,12 @@ function buildToolDescriptors() {
                 properties: {},
                 required: [],
             },
-            execute: (_params, _agent) => listFormats(),
+            execute: () => listFormats(),
+            annotations: { readOnlyHint: true },
         },
         {
             name: 'encode_number',
+            title: 'Encode number',
             description:
                 'Encode a decimal number (or special value like Infinity / NaN) into a specified ' +
                 'floating-point or integer format. Returns binary, hex, and component breakdown.',
@@ -630,10 +633,12 @@ function buildToolDescriptors() {
                 },
                 required: ['value', 'format'],
             },
-            execute: (params, _agent) => encodeNumber(params),
+            execute: (params) => encodeNumber(params),
+            annotations: { readOnlyHint: true },
         },
         {
             name: 'decode_bits',
+            title: 'Decode bits',
             description:
                 'Decode a binary or hexadecimal bit-pattern into a specified format. ' +
                 'Returns the decimal value and full component breakdown.',
@@ -654,10 +659,12 @@ function buildToolDescriptors() {
                 },
                 required: ['bits', 'format'],
             },
-            execute: (params, _agent) => decodeBits(params),
+            execute: (params) => decodeBits(params),
+            annotations: { readOnlyHint: true },
         },
         {
             name: 'convert_format',
+            title: 'Convert format',
             description:
                 'Convert a value from one floating-point or integer format to another. ' +
                 'Returns full encoding details for both formats and precision loss analysis.',
@@ -701,10 +708,12 @@ function buildToolDescriptors() {
                 },
                 required: ['value', 'inputFormat', 'outputFormat'],
             },
-            execute: (params, _agent) => convertFormat(params),
+            execute: (params) => convertFormat(params),
+            annotations: { readOnlyHint: true },
         },
         {
             name: 'get_format_info',
+            title: 'Get format info',
             description:
                 'Get detailed information about a floating-point or integer format, including ' +
                 'value range (max/min normal, subnormal), bias, and special value support.',
@@ -719,9 +728,56 @@ function buildToolDescriptors() {
                 },
                 required: ['format'],
             },
-            execute: (params, _agent) => getFormatInfo(params),
+            execute: (params) => getFormatInfo(params),
+            annotations: { readOnlyHint: true },
         },
     ];
+}
+
+/**
+ * Convert a thrown error into an MCP-style `isError` result.
+ *
+ * The WebMCP spec's imperative execute steps drop a rejection's reason: the
+ * agent learns only that the call failed. Returning the message as a result
+ * instead lets the agent read what was wrong with its arguments and retry.
+ */
+function toolError(err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { isError: true, content: [{ type: 'text', text: `Error: ${message}` }] };
+}
+
+/**
+ * Wrap a descriptor's `execute` so it reports invalid input as a result.
+ * The descriptors themselves keep throwing, since fp-conv-mcp's callTool
+ * relies on that to build its own error results.
+ *
+ * The spec's execute callback is `(inputObject, { signal })` returning a
+ * promise, so the options are passed through and a rejection is caught the
+ * same way as a throw, should a tool ever become asynchronous.
+ */
+function withToolErrors(tool) {
+    return {
+        ...tool,
+        execute: async (params, options) => {
+            try {
+                return await tool.execute(params, options);
+            } catch (err) {
+                return toolError(err);
+            }
+        },
+    };
+}
+
+/**
+ * The page's ModelContext, or null when the browser has none. The spec
+ * exposes it as `document.modelContext`; early Chrome previews put it on
+ * `navigator` instead, so fall back to that.
+ */
+function findModelContext() {
+    if (typeof window === 'undefined') return null;
+    const candidates = [window.document && window.document.modelContext,
+        window.navigator && window.navigator.modelContext];
+    return candidates.find(mc => mc && typeof mc.registerTool === 'function') || null;
 }
 
 /**
@@ -730,18 +786,31 @@ function buildToolDescriptors() {
  * or false if the browser does not support WebMCP.
  */
 function registerWebMCP() {
-    if (typeof window === 'undefined' ||
-        !window.navigator ||
-        !window.navigator.modelContext ||
-        typeof window.navigator.modelContext.registerTool !== 'function') {
+    const modelContext = findModelContext();
+    if (!modelContext) {
         return false;
     }
 
     const controller = new AbortController();
     const tools = buildToolDescriptors();
-    for (const tool of tools) {
-        window.navigator.modelContext.registerTool(tool, { signal: controller.signal });
-    }
+    // registerTool() returns a promise that rejects when registration is
+    // refused (permissions policy, a non-origin-keyed agent cluster, ...).
+    // It also rejects with the abort reason if the signal is aborted before
+    // the registration has settled; once it has resolved, a later abort just
+    // unregisters the tool. Only a refusal is worth reporting, and since one
+    // cause refuses every tool alike, report it once with the names it hit.
+    // Promise.resolve also covers early implementations that returned
+    // undefined.
+    const outcomes = tools.map((tool) =>
+        Promise.resolve(modelContext.registerTool(withToolErrors(tool), { signal: controller.signal }))
+            .then(() => null, (err) => ({ name: tool.name, err })));
+    Promise.all(outcomes).then((results) => {
+        const refused = results.filter(Boolean);
+        if (refused.length && !controller.signal.aborted) {
+            const names = refused.map(r => `"${r.name}"`).join(', ');
+            console.warn(`WebMCP: could not register ${names}:`, refused[0].err);
+        }
+    });
     return controller;
 }
 
@@ -771,6 +840,9 @@ if (typeof module !== 'undefined' && module.exports) {
         convertFormat,
         getFormatInfo,
         buildToolDescriptors,
+        toolError,
+        withToolErrors,
+        findModelContext,
         registerWebMCP,
     };
 }
