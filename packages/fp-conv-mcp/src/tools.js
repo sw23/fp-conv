@@ -11,22 +11,27 @@ const { buildToolDescriptors } = webmcp;
 
 /**
  * Tool descriptors shared with the browser WebMCP build.
- * Each descriptor is `{ name, description, inputSchema, execute(params) }`,
- * where `inputSchema` is plain JSON Schema and `execute` returns a JSON-ready
- * object.
- * @type {Array<{name: string, description: string, inputSchema: object, execute: (params: object) => unknown}>}
+ * Each descriptor is `{ name, title, description, inputSchema, annotations,
+ * execute(params) }`, where `inputSchema` is plain JSON Schema, `annotations`
+ * holds the WebMCP/MCP behaviour hints (`readOnlyHint` for these pure
+ * computations) and `execute` returns a JSON-ready object.
+ * @type {Array<{name: string, title: string, description: string, inputSchema: object, annotations: {readOnlyHint: boolean}, execute: (params: object) => unknown}>}
  */
 export const toolDescriptors = buildToolDescriptors();
 
 /**
- * Map descriptors to the MCP `tools/list` shape.
- * @returns {Array<{name: string, description: string, inputSchema: object}>}
+ * Map descriptors to the MCP `tools/list` shape. MCP's `Tool` carries `title`
+ * and `annotations.readOnlyHint` with the same meaning as WebMCP's, so both
+ * are forwarded; only `execute` is left out.
+ * @returns {Array<{name: string, title: string, description: string, inputSchema: object, annotations: {readOnlyHint: boolean}}>}
  */
 export function listToolDefinitions() {
-    return toolDescriptors.map(({ name, description, inputSchema }) => ({
+    return toolDescriptors.map(({ name, title, description, inputSchema, annotations }) => ({
         name,
+        title,
         description,
         inputSchema,
+        annotations,
     }));
 }
 

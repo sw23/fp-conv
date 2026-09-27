@@ -25,8 +25,13 @@ describe("tool descriptors", () => {
         const defs = listToolDefinitions();
         expect(defs.map((d) => d.name).sort()).toEqual([...EXPECTED_TOOLS].sort());
         for (const def of defs) {
+            expect(typeof def.title).toBe("string");
             expect(typeof def.description).toBe("string");
             expect(def.inputSchema.type).toBe("object");
+            // Every tool is a pure computation, and MCP clients use the hint
+            // to decide whether a call needs confirmation.
+            expect(def.annotations).toEqual({ readOnlyHint: true });
+            expect(def).not.toHaveProperty("execute");
         }
     });
 });

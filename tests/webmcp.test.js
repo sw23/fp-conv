@@ -16,6 +16,8 @@ const {
     convertFormat,
     getFormatInfo,
     buildToolDescriptors,
+    toolError,
+    withToolErrors,
     registerWebMCP,
 } = require('../src/webmcp.js');
 
@@ -1049,62 +1051,161 @@ describe('buildToolDescriptors', () => {
 // ── registerWebMCP ────────────────────────────────────────────────
 
 describe('registerWebMCP', () => {
+    // A ModelContext stand-in whose registerTool() returns a promise, as the
+    // spec's does; `result` picks what that promise does.
+    function mockModelContext(result = () => Promise.resolve()) {
+        const registered = [];
+        return {
+            registered,
+            registerTool: (tool, options) => {
+                registered.push({ tool, options });
+                return result(tool, options);
+            },
+        };
+    }
+
+    afterEach(() => {
+        delete global.window;
+        jest.restoreAllMocks();
+    });
+
     test('returns false in Node.js (no window)', () => {
         expect(registerWebMCP()).toBe(false);
     });
 
-    test('registers tools via registerTool when modelContext is available', () => {
-        const registeredTools = [];
-        // Mock browser environment with registerTool API
-        global.window = {
-            navigator: {
-                modelContext: {
-                    registerTool: (tool, options) => { registeredTools.push({ tool, options }); },
-                },
-            },
-        };
+    test('registers tools via document.modelContext', () => {
+        const mc = mockModelContext();
+        global.window = { document: { modelContext: mc } };
 
         const controller = registerWebMCP();
         expect(controller).toBeInstanceOf(AbortController);
-        expect(registeredTools).toHaveLength(5);
+        expect(mc.registered).toHaveLength(5);
 
         // Each call should pass a tool object and an options object with a signal
-        for (const { tool, options } of registeredTools) {
+        for (const { tool, options } of mc.registered) {
             expect(tool).toHaveProperty('name');
+            expect(tool).toHaveProperty('title');
             expect(tool).toHaveProperty('execute');
             expect(tool).toHaveProperty('inputSchema');
+            expect(tool.annotations).toEqual({ readOnlyHint: true });
             expect(options).toHaveProperty('signal');
             expect(options.signal).toBeInstanceOf(AbortSignal);
         }
 
         // Verify the expected tool names
-        const names = registeredTools.map(r => r.tool.name);
+        const names = mc.registered.map(r => r.tool.name);
         expect(names).toEqual(['list_formats', 'encode_number', 'decode_bits', 'convert_format', 'get_format_info']);
 
         // All signals should be from the same controller
-        const signal = registeredTools[0].options.signal;
+        const signal = mc.registered[0].options.signal;
         expect(signal.aborted).toBe(false);
         controller.abort();
         expect(signal.aborted).toBe(true);
-
-        // Clean up
-        delete global.window;
     });
 
-    test('returns false when window.navigator.modelContext is absent', () => {
-        global.window = { navigator: {} };
+    test('falls back to navigator.modelContext, and prefers document', () => {
+        const legacy = mockModelContext(() => undefined);
+        global.window = { document: {}, navigator: { modelContext: legacy } };
+        expect(registerWebMCP()).toBeInstanceOf(AbortController);
+        expect(legacy.registered).toHaveLength(5);
 
+        const current = mockModelContext();
+        const stale = mockModelContext();
+        global.window = { document: { modelContext: current }, navigator: { modelContext: stale } };
+        registerWebMCP();
+        expect(current.registered).toHaveLength(5);
+        expect(stale.registered).toHaveLength(0);
+    });
+
+    test('returns false when modelContext is absent', () => {
+        global.window = { document: {}, navigator: {} };
         expect(registerWebMCP()).toBe(false);
-
-        delete global.window;
     });
 
     test('returns false when registerTool is not a function', () => {
-        global.window = { navigator: { modelContext: {} } };
-
+        global.window = { document: { modelContext: {} } };
         expect(registerWebMCP()).toBe(false);
+    });
 
-        delete global.window;
+    test('warns when registration is refused', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const refusal = new Error('NotAllowedError');
+        global.window = { document: { modelContext: mockModelContext(() => Promise.reject(refusal)) } };
+
+        registerWebMCP();
+        await new Promise(resolve => setImmediate(resolve));
+        // One cause refuses every tool alike, so one warning names them all.
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledWith(
+            'WebMCP: could not register "list_formats", "encode_number", "decode_bits", ' +
+            '"convert_format", "get_format_info":', refusal);
+    });
+
+    test('a single refused tool is named on its own', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const duplicate = new Error('InvalidStateError');
+        global.window = { document: { modelContext: mockModelContext((tool) =>
+            tool.name === 'decode_bits' ? Promise.reject(duplicate) : Promise.resolve()) } };
+
+        registerWebMCP();
+        await new Promise(resolve => setImmediate(resolve));
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledWith('WebMCP: could not register "decode_bits":', duplicate);
+    });
+
+    test('unregistering by abort is not reported', async () => {
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        // Like the spec, reject each registration promise when its signal aborts.
+        const mc = mockModelContext((_tool, { signal }) => new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason));
+        }));
+        global.window = { document: { modelContext: mc } };
+
+        registerWebMCP().abort();
+        await new Promise(resolve => setImmediate(resolve));
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    test('registered tools return invalid input as an error result', async () => {
+        const mc = mockModelContext();
+        global.window = { document: { modelContext: mc } };
+        registerWebMCP();
+
+        const encode = mc.registered.find(r => r.tool.name === 'encode_number').tool;
+        const result = await encode.execute({ value: 1, format: 'nope' });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toBe(
+            'Error: Unknown format preset: "nope". Use the list_formats tool to see available presets.');
+
+        // A valid call passes through unchanged.
+        const ok = await encode.execute({ value: 1, format: 'fp16' });
+        expect(ok.isError).toBeUndefined();
+        expect(JSON.parse(ok.content[0].text).hex).toBe('0x3C00');
+
+        // The shared descriptors still throw; fp-conv-mcp's callTool relies on it.
+        const shared = buildToolDescriptors().find(t => t.name === 'encode_number');
+        expect(() => shared.execute({ value: 1, format: 'nope' })).toThrow('Unknown format preset');
+    });
+
+    test('withToolErrors passes the execute options through and catches a rejection', async () => {
+        const seen = [];
+        const wrapped = withToolErrors({
+            name: 'async_tool',
+            execute: async (params, options) => {
+                seen.push({ params, options });
+                if (params.fail) throw new Error('later');
+                return { content: [{ type: 'text', text: 'ok' }] };
+            },
+        });
+        const signal = new AbortController().signal;
+
+        const ok = await wrapped.execute({ fail: false }, { signal });
+        expect(ok.content[0].text).toBe('ok');
+        expect(seen[0]).toEqual({ params: { fail: false }, options: { signal } });
+
+        expect(await wrapped.execute({ fail: true }, { signal })).toEqual(toolError(new Error('later')));
+        expect(toolError('plain string')).toEqual(
+            { isError: true, content: [{ type: 'text', text: 'Error: plain string' }] });
     });
 });
 
