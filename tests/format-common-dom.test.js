@@ -273,6 +273,37 @@ describe('renderRangeTable', () => {
         expect(headerTexts).toContain('Value');
         expect(headerTexts).not.toContain('Signed (INT4)');
     });
+
+    test('integer bounds are exact past 53 bits, like the special-values table', () => {
+        // buildFormat() accepts any width; a 64-bit page used to print the
+        // rounded doubles minRealValue/maxRealValue (...552000) in this
+        // table beside exact BigInt bounds in the table below it.
+        createContainer('range-table');
+        renderRangeTable('range-table', { isInteger: true, totalBits: 64, signed: true });
+        const rows = Array.from(document.querySelectorAll('tr')).map(tr =>
+            Array.from(tr.querySelectorAll('td')).map(td => td.textContent));
+        const row = (label) => rows.find(r => r[0] === label).slice(1);
+        expect(row('Minimum Value')).toEqual([(-(2n ** 63n)).toLocaleString(), '0']);
+        expect(row('Maximum Value')).toEqual([(2n ** 63n - 1n).toLocaleString(), (2n ** 64n - 1n).toLocaleString()]);
+        expect(row('Representable Values')).toEqual([(2n ** 64n).toLocaleString(), (2n ** 64n).toLocaleString()]);
+    });
+
+    test('narrow integer and fixed-point bounds read as they always have', () => {
+        createContainer('range-table');
+        renderRangeTable('range-table', { isInteger: true, totalBits: 16, signed: true });
+        let rows = Array.from(document.querySelectorAll('tr')).map(tr =>
+            Array.from(tr.querySelectorAll('td')).map(td => td.textContent));
+        expect(rows.find(r => r[0] === 'Minimum Value').slice(1)).toEqual([(-32768).toLocaleString(), '0']);
+        expect(rows.find(r => r[0] === 'Maximum Value').slice(1)).toEqual([(32767).toLocaleString(), (65535).toLocaleString()]);
+
+        document.body.innerHTML = '';
+        createContainer('range-table');
+        renderRangeTable('range-table', { isInteger: true, totalBits: 8, signed: true, fractionBits: 6, symmetric: true });
+        rows = Array.from(document.querySelectorAll('tr')).map(tr =>
+            Array.from(tr.querySelectorAll('td')).map(td => td.textContent));
+        expect(rows.find(r => r[0] === 'Minimum Value').slice(1)).toEqual(['-1.984375', '0']);
+        expect(rows.find(r => r[0] === 'Maximum Value').slice(1)).toEqual(['1.984375', '3.984375']);
+    });
 });
 
 // ── renderSpecialValues ──────────────────────────────────────
@@ -585,6 +616,41 @@ describe('initVisualizer', () => {
         expect(decimalInput.value).toBe('1');
     });
 
+    test('pattern presets highlight on a mantissa wider than 53 bits', () => {
+        // Above 53 bits the state holds a BigInt mantissa, so a preset table
+        // written in numbers would never compare equal to it.
+        const viz = setupVisualizer({
+            signBits: 1, exponentBits: 15, mantissaBits: 64,
+            hasInfinity: true, hasNaN: true, initialValue: 0,
+        });
+        const isActive = (preset) =>
+            viz.querySelector(`.viz-preset-btn[data-preset="${preset}"]`).classList.contains('active');
+
+        for (const preset of ['min-normal', 'min-sub', 'all-ones']) {
+            viz.querySelector(`.viz-preset-btn[data-preset="${preset}"]`).click();
+            expect(isActive(preset)).toBe(true);
+        }
+
+        // A caller handing over a number mantissa lands on the same state.
+        window._vizApi.setState(0, 1, 0);
+        expect(window._vizApi.getState().mantissa).toBe(0n);
+        expect(isActive('min-normal')).toBe(true);
+    });
+
+    test('a fixed-point layout lights one preset per encoding', () => {
+        // Min Normal used to build exponent field 1, which the layout has no
+        // room for, and Min Sub named the same pattern as the smallest nonzero.
+        const viz = setupVisualizer({
+            signBits: 1, exponentBits: 0, mantissaBits: 8,
+            hasInfinity: false, hasNaN: false, initialValue: 0,
+        });
+        const activePresets = () => [...viz.querySelectorAll('.viz-preset-btn.active')]
+            .map(b => b.dataset.preset);
+        viz.querySelector('.viz-preset-btn[data-preset="min-normal"]').click();
+        expect(window._vizApi.getState()).toMatchObject({ exponent: 0, mantissa: 1 });
+        expect(activePresets()).toEqual(['min-normal']);
+    });
+
     test('clicking a bit toggles it', () => {
         setupVisualizer({
             signBits: 1, exponentBits: 5, mantissaBits: 10,
@@ -671,6 +737,29 @@ describe('initVisualizer', () => {
         expect(document.getElementById('viz-decimal').value).toBe(before);
     });
 
+    test('a hex pattern wider than the format is ignored, not sliced to width', () => {
+        // FP6 E3M2 is 6 bits in 2 hex digits. "FF" passed the digit-count
+        // check and was sliced to its low 6 bits, so the page showed 0x3F
+        // for input the converter and the decode tool both refuse.
+        setupVisualizer({
+            signBits: 1, exponentBits: 3, mantissaBits: 2,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 1,
+        });
+        const hex = document.getElementById('viz-hex');
+        const decimal = document.getElementById('viz-decimal');
+        expect(decimal.value).toBe('1');
+        hex.value = 'FF';
+        hex.dispatchEvent(new Event('blur'));
+        expect(decimal.value).toBe('1');
+        expect(hex.value).toBe('FF');
+        // What fits is read, leading zero digits included.
+        hex.value = '0x03F';
+        hex.dispatchEvent(new Event('blur'));
+        expect(decimal.value).toBe('NaN');
+        expect(hex.value).toBe('0x3F');
+    });
+
     test('decimal input blur accepts "nan"', () => {
         setupVisualizer({
             signBits: 1, exponentBits: 5, mantissaBits: 10,
@@ -679,8 +768,73 @@ describe('initVisualizer', () => {
         });
         const dec = document.getElementById('viz-decimal');
         dec.value = 'nan';
+        dec.dispatchEvent(new Event('input'));
         dec.dispatchEvent(new Event('blur'));
         expect(document.querySelector('.viz-components').innerHTML).toContain('NaN');
+    });
+
+    test('blurring the decimal box re-encodes only text the user typed', () => {
+        // The box shows 10 significant digits, and fp64's max normal rounded
+        // to 1.797693135e+308 encodes to Infinity: an unedited focus/blur used
+        // to move the bits.
+        const viz = setupVisualizer({
+            signBits: 1, exponentBits: 11, mantissaBits: 52,
+            hasInfinity: true, hasNaN: true, initialValue: 0,
+        });
+        const dec = document.getElementById('viz-decimal');
+        viz.querySelector('.viz-preset-btn[data-preset="max"]').click();
+        const max = window._vizApi.getState();
+        expect(max).toEqual({ sign: 0, exponent: 2046, mantissa: 2 ** 52 - 1 });
+        dec.focus();
+        dec.blur();
+        expect(window._vizApi.getState()).toEqual(max);
+
+        // Typed text still commits on blur, and once committed, a second
+        // blur is not a second edit.
+        dec.value = '1.5';
+        dec.dispatchEvent(new Event('input'));
+        dec.dispatchEvent(new Event('blur'));
+        expect(window._vizApi.getState()).toEqual({ sign: 0, exponent: 1023, mantissa: 2 ** 51 });
+        viz.querySelector('.viz-preset-btn[data-preset="one"]').click();
+        dec.dispatchEvent(new Event('blur'));
+        expect(window._vizApi.getState()).toEqual({ sign: 0, exponent: 1023, mantissa: 0 });
+    });
+
+    // The decimal box takes what the converter takes: the library's keywords
+    // and plain decimals. It used to go through parseFloat, which knows no
+    // "inf", accepts trailing garbage, and rounds the decimal twice.
+    describe('decimal input parses like the converter', () => {
+        const fp16 = () => setupVisualizer({
+            signBits: 1, exponentBits: 5, mantissaBits: 10,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 0,
+        });
+        const enter = (value) => {
+            const dec = document.getElementById('viz-decimal');
+            dec.value = value;
+            dec.dispatchEvent(new Event('input'));
+            dec.dispatchEvent(new Event('blur'));
+        };
+
+        test('accepts the "-inf" keyword', () => {
+            fp16();
+            enter('-inf');
+            expect(window._vizApi.getState()).toEqual({ sign: 1, exponent: 31, mantissa: 0 });
+        });
+
+        test('ignores trailing garbage rather than reading a prefix', () => {
+            fp16();
+            enter('1.5abc');
+            expect(window._vizApi.getState()).toEqual({ sign: 0, exponent: 0, mantissa: 0 });
+        });
+
+        test('rounds the typed decimal once, not via a double', () => {
+            fp16();
+            // Just above the tie between 1 and 1 + 2^-10. The double drops the
+            // excess and lands on the tie, which ties-to-even rounds down.
+            enter('1.000488281250000000001');
+            expect(window._vizApi.getState()).toEqual({ sign: 0, exponent: 15, mantissa: 1 });
+        });
     });
 
     test('integer presets set the expected values', () => {
@@ -954,5 +1108,74 @@ describe('initPage', () => {
         // visualizer, resetting this to "0".
         const decimalInput = document.getElementById('viz-decimal');
         expect(parseFloat(decimalInput.value)).toBeCloseTo(3.14, 2);
+    });
+});
+
+// ── width safety ─────────────────────────────────────────────
+
+// Every shipped format page is 53 bits or narrower, so nothing here is visible
+// today. These pin the arithmetic anyway: a wider page added later must not
+// silently show a rounded stand-in for a bit pattern, which is what Math.pow()
+// and parseInt() hand back past 2^53.
+describe('the visualizer and the special-value tables are exact at any width', () => {
+    function wideViz(config) {
+        const viz = document.createElement('div');
+        viz.id = 'visualizer';
+        viz.className = 'visualizer';
+        viz.innerHTML = `
+            <div class="viz-input-row">
+                <div class="viz-input-group"><input type="text" id="viz-decimal" class="viz-decimal-input"></div>
+                <div class="viz-input-group"><input type="text" id="viz-hex"></div>
+            </div>
+            <div class="viz-presets"></div>
+            <div class="viz-binary"></div>
+            <div class="viz-components"></div>
+        `;
+        document.body.appendChild(viz);
+        initVisualizer(config);
+        return viz;
+    }
+
+    test('a 64-bit integer table names the signed bounds by their real patterns', () => {
+        const container = createContainer('int-special');
+        renderIntegerSpecialValues(container, { totalBits: 64 });
+
+        const patterns = new Map();
+        for (const row of container.querySelectorAll('tr')) {
+            const label = row.querySelector('td.text-cell');
+            const bits = row.querySelector('.bit-pattern .exp-bits');
+            if (label && bits) patterns.set(label.textContent.split(' (')[0], bits.textContent);
+        }
+        expect(patterns.get('Max Signed')).toBe('0' + '1'.repeat(63));
+        expect(patterns.get('Min Signed')).toBe('1' + '0'.repeat(63));
+        expect(patterns.get('Max Unsigned')).toBe('1'.repeat(64));
+        expect(patterns.get('All Ones')).toBe('1'.repeat(64));
+    });
+
+    test('clicking the lowest bit of a 60-bit mantissa flips that bit', () => {
+        wideViz({ signBits: 1, exponentBits: 11, mantissaBits: 60, hasInfinity: true, hasNaN: true });
+
+        const mantBits = document.querySelectorAll('.mantissa-section .viz-bit');
+        expect(mantBits.length).toBe(60);
+        mantBits[mantBits.length - 1].click();
+
+        expect(window._vizApi.getState().mantissa).toBe(1n);
+        expect(mantBits[mantBits.length - 1].textContent).toBe('1');
+    });
+
+    test('a hex pattern wider than 53 bits reaches the fields intact', () => {
+        wideViz({ signBits: 1, exponentBits: 11, mantissaBits: 60, hasInfinity: true, hasNaN: true });
+
+        const hexInput = document.getElementById('viz-hex');
+        // 72 bits: sign 0, exponent all ones, and 1 in a 60-bit mantissa -
+        // the low bit of a field no double can name.
+        hexInput.value = '0x7FF000000000000001';
+        hexInput.dispatchEvent(new window.Event('blur'));
+
+        const state = window._vizApi.getState();
+        expect(state.sign).toBe(0);
+        expect(state.exponent).toBe(2047);
+        expect(state.mantissa).toBe(1n);
+        expect(hexInput.value.toUpperCase()).toBe('0X7FF000000000000001');
     });
 });

@@ -77,10 +77,15 @@ describe('OCP FP4 E2M1 Format', () => {
     expect(result.isNormal).toBe(true);
   });
 
-  test('encoding NaN returns zero (format does not support NaN)', () => {
-    const result = fp4.encode(NaN);
-    expect(result.isZero).toBe(true);
-    expect(result.isNaN).toBe(false);
+  test('encoding NaN returns positive max normal (format does not support NaN)', () => {
+    // MX §5.3.3 leaves this implementation-defined; PTX cvt.satfinite gives
+    // "positive MAX_NORM" for e2m1, and so does this library.
+    for (const nan of [NaN, -NaN]) {
+      const result = fp4.encode(nan);
+      expect(result.isNaN).toBe(false);
+      expect([result.sign, result.exponent, result.mantissa]).toEqual([0, 3, 1]);
+      expect(fp4.decode(result.sign, result.exponent, result.mantissa)).toBe(6.0);
+    }
   });
 
   test('getInfinity throws error', () => {

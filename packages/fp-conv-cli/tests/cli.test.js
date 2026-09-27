@@ -50,6 +50,13 @@ describe("parseArgs", () => {
         expect(() => parseArgs(["encode", "--nope"])).toThrow();
     });
 
+    test("treats -nan as a positional value, like -inf", () => {
+        const parsed = parseArgs(["encode", "-nan", "--format", "fp32"]);
+        expect(parsed.command).toBe("encode");
+        expect(parsed.positionals).toEqual(["encode", "-nan"]);
+        expect(parseArgs(["encode", "-inf", "-f", "fp32"]).positionals).toEqual(["encode", "-inf"]);
+    });
+
     test("treats a bare negative number as a positional value", () => {
         const parsed = parseArgs(["encode", "-1.5", "--format", "fp16"]);
         expect(parsed.command).toBe("encode");

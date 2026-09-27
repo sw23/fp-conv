@@ -1,8 +1,9 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES */
-// WebMCP integration - requires FloatingPoint, Integer, FORMATS, and ROUNDING_MODES from floating-point.js
+/* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES, conversionLoss, convertEncoded, valueKeyword, showsDecodedValue, encodingValueText, showsDecodedSignificand, normalizedEncoding */
+// WebMCP integration - requires FloatingPoint, Integer, FORMATS, ROUNDING_MODES
+// and the conversion helpers from floating-point.js
 
 // In Node.js (testing), import from the library; in browser, rely on globals.
 //
@@ -11,13 +12,22 @@
 // environment, so a top-level `let`/`const`/`class` of the same name in two of
 // them is a redeclaration and throws SyntaxError before the second file runs at
 // all. tests/browser-scripts.test.js enforces that the names stay disjoint.
-let _mcpFloatingPoint, _mcpInteger, _mcpFORMATS, _mcpROUNDING_MODES;
+let _mcpFloatingPoint, _mcpInteger, _mcpFORMATS, _mcpROUNDING_MODES,
+    _mcpConversionLoss, _mcpConvertEncoded, _mcpValueKeyword, _mcpShowsDecodedValue,
+    _mcpEncodingValueText, _mcpShowsDecodedSignificand, _mcpNormalizedEncoding;
 if (typeof require !== 'undefined') {
     const lib = require('../lib/floating-point.js');
     _mcpFloatingPoint = lib.FloatingPoint;
     _mcpInteger = lib.Integer;
     _mcpFORMATS = lib.FORMATS;
     _mcpROUNDING_MODES = lib.ROUNDING_MODES;
+    _mcpConversionLoss = lib.conversionLoss;
+    _mcpConvertEncoded = lib.convertEncoded;
+    _mcpValueKeyword = lib.valueKeyword;
+    _mcpShowsDecodedValue = lib.showsDecodedValue;
+    _mcpEncodingValueText = lib.encodingValueText;
+    _mcpShowsDecodedSignificand = lib.showsDecodedSignificand;
+    _mcpNormalizedEncoding = lib.normalizedEncoding;
 } else {
     /* istanbul ignore next */
     _mcpFloatingPoint = FloatingPoint;
@@ -27,6 +37,20 @@ if (typeof require !== 'undefined') {
     _mcpFORMATS = FORMATS;
     /* istanbul ignore next */
     _mcpROUNDING_MODES = ROUNDING_MODES;
+    /* istanbul ignore next */
+    _mcpConversionLoss = conversionLoss;
+    /* istanbul ignore next */
+    _mcpConvertEncoded = convertEncoded;
+    /* istanbul ignore next */
+    _mcpValueKeyword = valueKeyword;
+    /* istanbul ignore next */
+    _mcpShowsDecodedValue = showsDecodedValue;
+    /* istanbul ignore next */
+    _mcpEncodingValueText = encodingValueText;
+    /* istanbul ignore next */
+    _mcpShowsDecodedSignificand = showsDecodedSignificand;
+    /* istanbul ignore next */
+    _mcpNormalizedEncoding = normalizedEncoding;
 }
 
 /**
@@ -69,7 +93,7 @@ function resolveFormat(formatSpec) {
         // Integer format: { bits, signed, fractionBits?, symmetric? }
         if (formatSpec.isInteger || (formatSpec.bits !== undefined && formatSpec.exponentBits === undefined)) {
             const bits = formatSpec.bits;
-            const signed = formatSpec.signed !== undefined ? formatSpec.signed : true;
+            const signed = optionalFlag(formatSpec, 'signed') !== false;
             if (!Number.isInteger(bits) || bits < 1 || bits > 64) {
                 throw new Error('Integer format "bits" must be an integer between 1 and 64.');
             }
@@ -80,7 +104,7 @@ function resolveFormat(formatSpec) {
             }
             return new _mcpInteger(bits, signed, {
                 fractionBits,
-                symmetric: formatSpec.symmetric,
+                symmetric: optionalFlag(formatSpec, 'symmetric'),
             });
         }
 
@@ -105,56 +129,24 @@ function resolveFormat(formatSpec) {
 
         return new _mcpFloatingPoint(signBits, exponentBits, mantissaBits, {
             bias: formatSpec.bias,
-            hasInfinity: formatSpec.hasInfinity,
-            hasNaN: formatSpec.hasNaN,
-            hasSubnormals: formatSpec.hasSubnormals,
+            hasInfinity: optionalFlag(formatSpec, 'hasInfinity'),
+            hasNaN: optionalFlag(formatSpec, 'hasNaN'),
+            hasSubnormals: optionalFlag(formatSpec, 'hasSubnormals'),
         });
     }
 
     throw new Error('Format must be a preset key string (e.g. "fp16") or a custom format object.');
 }
 
-/**
- * Determine the classification of a value within a given format.
- */
-function classifyValue(format, sign, exponent, mantissa) {
-    if (format.isInteger) {
-        const value = format.decode(sign, exponent, mantissa);
-        if (value === 0) return 'Zero';
-        // A format with an implicit scale (MXINT8) does not hold integers.
-        const noun = format.fractionBits ? 'Fixed-point' : 'Integer';
-        return value > 0 ? `Positive ${noun}` : `Negative ${noun}`;
+// A flag of a custom format descriptor, which may be left out but must be a
+// boolean when given: the string "false" is truthy, and the library's
+// `!== false` tests would silently read it as true.
+function optionalFlag(spec, name) {
+    const value = spec[name];
+    if (value !== undefined && typeof value !== 'boolean') {
+        throw new Error(`"${name}" must be true or false.`);
     }
-
-    if (format.exponentBits === 0) {
-        if (mantissa === 0) return sign ? '-Zero' : '+Zero';
-        return 'Fixed-point';
-    }
-
-    const kind = format.classify(sign, exponent, mantissa);
-    switch (kind) {
-        case 'Zero': return sign ? '-Zero' : '+Zero';
-        case 'Infinity': return sign ? '-Infinity' : '+Infinity';
-        case 'NaN': return 'NaN';
-        default: return kind; // 'Normal' | 'Subnormal'
-    }
-}
-
-/**
- * Calculate the decimal mantissa value for display.
- *
- * Exponent field 0 only carries the implicit-bit-less "0.x" significand in a
- * format that HAS a subnormal regime. Where it does not (E8M0), field 0 is an
- * ordinary normal binade and its significand is 1.x like any other.
- */
-function mantissaDecimal(format, exponent, mantissa) {
-    if (format.isInteger) return format.decode(0, 0, mantissa);
-    const subnormalRegime = exponent === 0 && format.hasSubnormals;
-    if (format.mantissaBits === 0) return subnormalRegime ? 0 : 1.0;
-    const denom = Math.pow(2, format.mantissaBits);
-    return subnormalRegime
-        ? mantissa / denom
-        : 1.0 + mantissa / denom;
+    return value;
 }
 
 /**
@@ -187,10 +179,9 @@ function parseValueInput(input) {
 
     if (typeof input === 'string') {
         const lower = input.toLowerCase().trim();
-        // Special keywords
-        if (lower === 'infinity' || lower === '+infinity' || lower === '+inf' || lower === 'inf') return Infinity;
-        if (lower === '-infinity' || lower === '-inf') return -Infinity;
-        if (lower === 'nan') return NaN;
+        // Special keywords, from the library so every parser accepts the same.
+        const keyword = _mcpValueKeyword(input);
+        if (keyword !== null) return keyword;
 
         // Reject empty/whitespace-only input (Number("") === 0 would hide it).
         if (lower === '') {
@@ -225,25 +216,40 @@ function parseValueInput(input) {
  * Build the full statistics object for an encoded value in a given format.
  */
 function jsonSafeNumber(value) {
+    // JSON.stringify throws on a BigInt (a field wider than 53 bits); emit its
+    // exact digits as a string rather than a rounded number.
+    if (typeof value === 'bigint') return value.toString();
     if (value === Infinity) return 'Infinity';
     if (value === -Infinity) return '-Infinity';
     if (Number.isNaN(value)) return 'NaN';
     return value;
 }
 
+/**
+ * One tool's return envelope: the payload as pretty-printed JSON. JSON has no
+ * BigInt (JSON.stringify throws) and no Infinity or NaN (written as null), so
+ * jsonSafeNumber() runs over every value here rather than in each producer.
+ */
+function toolResult(payload) {
+    const text = JSON.stringify(payload, (_key, value) => jsonSafeNumber(value), 2);
+    return { content: [{ type: 'text', text }] };
+}
+
 function buildStats(format, encoded) {
     const { sign, exponent, mantissa } = encoded;
     const binary = format.toBinaryString(sign, exponent, mantissa);
     const hex = format.toHexString(sign, exponent, mantissa);
-    const type = classifyValue(format, sign, exponent, mantissa);
-    const actualValue = format.decode(sign, exponent, mantissa);
-
+    // The type name and the significand come from the library, so every
+    // surface names a bit pattern the same way.
+    const type = format.typeLabel(sign, exponent, mantissa);
     const stats = {
         binary,
         hex,
         sign,
         type,
-        actualValue: jsonSafeNumber(actualValue),
+        // Exact, like the web UI's value lines: a double would round a wide
+        // integer or overflow past fp64's range.
+        actualValue: boundValue(format, encoded),
     };
 
     if (format.isInteger) {
@@ -252,7 +258,12 @@ function buildStats(format, encoded) {
     } else {
         stats.exponentBiased = exponent;
         stats.exponentActual = exponentActual(format, exponent, mantissa);
-        stats.mantissaDecimal = mantissaDecimal(format, exponent, mantissa);
+        // Exact like actualValue: the double where it is the significand, and
+        // the digits where a wide field would round it (to 2 for a 60-bit
+        // all-ones normal, a value no normal significand has).
+        stats.mantissaDecimal = _mcpShowsDecodedSignificand(format, exponent, mantissa)
+            ? format.significand(exponent, mantissa)
+            : format.exactSignificandString(exponent, mantissa);
         stats.totalBits = format.totalBits;
         stats.signBits = format.signBits;
         stats.exponentBits = format.exponentBits;
@@ -295,8 +306,8 @@ function listFormats() {
                     entry.implicitScale = `2^-${f.fractionBits}`;
                 }
                 if (f.symmetric) entry.symmetric = true;
-                entry.minValue = instance.minRealValue;
-                entry.maxValue = instance.maxRealValue;
+                entry.minValue = boundValue(instance, instance.getMinValue());
+                entry.maxValue = boundValue(instance, instance.getMaxValue());
             } else {
                 entry.signBits = f.sign;
                 entry.exponentBits = f.exponent;
@@ -315,12 +326,13 @@ function listFormats() {
                 saturate: instance.overflowTarget('saturate'),
                 overflow: instance.overflowTarget('overflow'),
             };
+            entry.nanTarget = instance.nanTarget();
 
             formats.push(entry);
         }
     }
 
-    return { content: [{ type: 'text', text: JSON.stringify(formats, null, 2) }] };
+    return toolResult(formats);
 }
 
 /**
@@ -358,7 +370,7 @@ function encodeNumber({ value, format: formatSpec, roundingMode, overflowMode })
     const encoded = format.encode(encodeInput(value, numericValue), encodeOptions);
     const stats = buildStats(format, encoded);
 
-    return { content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }] };
+    return toolResult(stats);
 }
 
 /**
@@ -378,19 +390,14 @@ function decodeBits({ bits, format: formatSpec }) {
     let sign, exponent, mantissa;
 
     if (bitString.toLowerCase().startsWith('0x')) {
-        // Hex → binary (BigInt-safe for 64-bit and beyond)
         const hexDigits = bitString.substring(2).trim();
         if (!/^[0-9a-fA-F]+$/.test(hexDigits)) {
             throw new Error(`Invalid hex value: "${bitString}"`);
         }
-        const significant = BigInt('0x' + hexDigits).toString(2);
-        if (significant.length > format.totalBits) {
-            throw new Error(
-                `Bit pattern "${bitString}" has ${significant.length} significant bits, ` +
-                `which does not fit the ${format.totalBits}-bit format.`);
-        }
-        const binary = significant.padStart(format.totalBits, '0');
-        ({ sign, exponent, mantissa } = extractComponents(binary, format));
+        // The format reads the pattern, by the rule every surface shares:
+        // leading zero digits are fine, and a pattern whose bits do not fit
+        // is refused (the RangeError names the width).
+        ({ sign, exponent, mantissa } = format.fromHexString('0x' + hexDigits));
     } else if (/^[01]+$/.test(bitString)) {
         // A binary pattern is an exact bit layout: reject anything wider than
         // the format (a caller passing a 32-bit string to fp16 almost certainly
@@ -409,27 +416,15 @@ function decodeBits({ bits, format: formatSpec }) {
     const encoded = { sign, exponent, mantissa };
     const stats = buildStats(format, encoded);
 
-    return { content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }] };
+    return toolResult(stats);
 }
 
 /**
- * Extract sign, exponent, mantissa from a full binary string.
+ * Extract sign, exponent, mantissa from a full binary string. The split lives
+ * in the library, which keeps a field wider than 53 bits exact.
  */
 function extractComponents(binary, format) {
-    if (format.isInteger) {
-        return { sign: 0, exponent: 0, mantissa: Number(BigInt('0b' + binary)) };
-    }
-    let idx = 0;
-    const sign = format.signBits ? parseInt(binary.substring(idx, idx + format.signBits), 2) : 0;
-    idx += format.signBits;
-    const exponent = format.exponentBits > 0
-        ? parseInt(binary.substring(idx, idx + format.exponentBits), 2)
-        : 0;
-    idx += format.exponentBits;
-    const mantissa = format.mantissaBits > 0
-        ? Number(BigInt('0b' + binary.substring(idx, idx + format.mantissaBits)))
-        : 0;
-    return { sign, exponent, mantissa };
+    return format.fromBinaryString(binary);
 }
 
 /**
@@ -457,32 +452,47 @@ function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec
     // Rounding and overflow options describe the conversion to the destination;
     // changing them must not mutate the value being converted.
     const inputEncoded = inFmt.encode(encodeInput(value, numericValue));
-    const inputActual = inFmt.decode(inputEncoded.sign, inputEncoded.exponent, inputEncoded.mantissa);
 
-    // Re-encode in output format
-    const outputEncoded = outFmt.encode(inputActual, outputEncodeOptions);
-    const outputActual = outFmt.decode(outputEncoded.sign, outputEncoded.exponent, outputEncoded.mantissa);
+    // Convert from the source encoding's exact value, not its decoded double,
+    // which rounds a field wider than 53 bits.
+    const outputEncoded = _mcpConvertEncoded(inFmt, inputEncoded, outFmt, outputEncodeOptions);
 
     const inputStats = buildStats(inFmt, inputEncoded);
     const outputStats = buildStats(outFmt, outputEncoded);
 
-    // Precision loss
-    const absoluteLoss = Math.abs(inputActual - outputActual);
-    const relativeLossPercent = inputActual !== 0
-        ? (absoluteLoss / Math.abs(inputActual)) * 100
-        : 0;
+    // Precision loss, decided by conversionLoss() in floating-point.js so every
+    // surface agrees. Only 'exact' is lossless (NaN -> NaN included).
+    // `absolute` and `relativePercent` are null unless both sides are finite,
+    // where "Infinity"/"NaN" would read like measurements.
+    const loss = _mcpConversionLoss(inFmt, inputEncoded, outFmt, outputEncoded, outputEncodeOptions);
 
     const result = {
         input: inputStats,
         output: outputStats,
         precisionLoss: {
-            absolute: jsonSafeNumber(absoluteLoss),
-            relativePercent: jsonSafeNumber(Number(relativeLossPercent.toFixed(6))),
-            lossless: absoluteLoss === 0 || isNaN(absoluteLoss),
+            kind: loss.kind,
+            absolute: loss.absolute,
+            // As the library measured it: rounding it to six decimals read a
+            // 1e-17 % loss (int64 max into FP32) as 0.
+            relativePercent: loss.relativePercent,
+            lossless: loss.kind === 'exact',
         },
     };
 
-    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    return toolResult(result);
+}
+
+/**
+ * A range bound as JSON can carry it: a number when a double names it exactly
+ * (every preset format), otherwise its exact decimal digits as a string, as
+ * rawMinValue/rawMaxValue do. As a double, a 64-bit integer's maximum would
+ * read 2^64 and a magnitude past fp64's range would become Infinity.
+ */
+function boundValue(format, encoded) {
+    // Spelled by the library, like the web UI's readouts. JSON writes -0 as 0,
+    // dropping a sign the bits carry, so that one stays a string.
+    const text = _mcpEncodingValueText(format, encoded);
+    return _mcpShowsDecodedValue(format, encoded) && text !== '-0' ? Number(text) : text;
 }
 
 /**
@@ -501,6 +511,9 @@ function getFormatInfo({ format: formatSpec }) {
             saturate: format.overflowTarget('saturate'),
             overflow: format.overflowTarget('overflow'),
         },
+        // Where a NaN input lands. Unlike overflowTarget it ignores the
+        // overflow mode: a format without a NaN has one fixed substitute.
+        nanTarget: format.nanTarget(),
     };
 
     if (format.isInteger) {
@@ -512,8 +525,8 @@ function getFormatInfo({ format: formatSpec }) {
             info.implicitScale = `2^-${format.fractionBits}`;
             info.symmetric = format.symmetric;
         }
-        info.minValue = format.minRealValue;
-        info.maxValue = format.maxRealValue;
+        info.minValue = boundValue(format, format.getMinValue());
+        info.maxValue = boundValue(format, format.getMaxValue());
         info.rawMinValue = format.minValue;
         info.rawMaxValue = format.maxValue;
     } else {
@@ -531,28 +544,30 @@ function getFormatInfo({ format: formatSpec }) {
             // largest normal lives at maxExponent — e.g. E4M3 max = 448 — are
             // reported correctly).
             const mn = format.getMaxNormal(false);
-            info.maxNormal = format.decode(mn.sign, mn.exponent, mn.mantissa);
+            info.maxNormal = boundValue(format, mn);
 
-            // Min normal. A format with no subnormals uses exponent field 0 as
-            // its smallest normal binade rather than reserving it.
-            info.minNormal = format.decode(0, format.hasSubnormals ? 1 : 0, 0);
-
-            // Subnormals
-            if (format.mantissaBits > 0 && format.hasSubnormals) {
-                const maxMantissa = Math.pow(2, format.mantissaBits) - 1;
-                info.maxSubnormal = format.decode(0, 0, maxMantissa);
-                info.minSubnormal = format.decode(0, 0, 1);
+            // The library decides which fields these are, and leaves out one
+            // the format lacks (s1e1m0 with an Infinity has no normal at all).
+            const minNormal = format.getMinNormal();
+            if (minNormal) info.minNormal = boundValue(format, minNormal);
+            const maxSubnormal = format.getMaxSubnormal();
+            if (maxSubnormal) {
+                info.maxSubnormal = boundValue(format, maxSubnormal);
+                info.minSubnormal = boundValue(format, format.getMinSubnormal());
             }
         } else {
             // Fixed-point
             if (format.mantissaBits > 0) {
-                info.maxValue = format.decode(0, 0, (Math.pow(2, format.mantissaBits) - 1));
-                info.minValue = format.signBits ? -info.maxValue : 0;
+                info.maxValue = boundValue(format,
+                    _mcpNormalizedEncoding(format, 0, 0, format.maxMantissa));
+                info.minValue = format.signBits
+                    ? boundValue(format, _mcpNormalizedEncoding(format, 1, 0, format.maxMantissa))
+                    : 0;
             }
         }
     }
 
-    return { content: [{ type: 'text', text: JSON.stringify(info, null, 2) }] };
+    return toolResult(info);
 }
 
 // ── WebMCP registration ───────────────────────────────────────────
@@ -598,16 +613,14 @@ function buildToolDescriptors() {
                     roundingMode: {
                         type: 'string',
                         description:
-                            'Rounding mode for encoding the output format. Source construction uses ' +
-                            'the input format default. Options: "tiesToEven" (default, IEEE 754), ' +
-                            '"tiesToAway", "towardZero", "towardPositive", "towardNegative".',
+                            'Rounding mode for encoding the value. Options: "tiesToEven" (default, ' +
+                            'IEEE 754), "tiesToAway", "towardZero", "towardPositive", "towardNegative".',
                         enum: ['tiesToEven', 'tiesToAway', 'towardZero', 'towardPositive', 'towardNegative'],
                     },
                     overflowMode: {
                         type: 'string',
                         description:
-                            'What an out-of-range output magnitude becomes; source construction uses ' +
-                            'the input format default. "overflow" produces Infinity ' +
+                            'What an out-of-range magnitude becomes. "overflow" produces Infinity ' +
                             '(or NaN when the format has no Infinity); "saturate" clamps to the ' +
                             'largest finite value. Omit to use the per-format default (overflow for ' +
                             'formats with Infinity, saturate otherwise). IEEE 754 §7.4 directed ' +
@@ -669,17 +682,20 @@ function buildToolDescriptors() {
                     roundingMode: {
                         type: 'string',
                         description:
-                            'Rounding mode for encoding. Options: "tiesToEven" (default, IEEE 754), ' +
-                            '"tiesToAway", "towardZero", "towardPositive", "towardNegative".',
+                            'Rounding mode for encoding into the output format; the source ' +
+                            'operand is built with the input format\'s defaults. Options: ' +
+                            '"tiesToEven" (default, IEEE 754), "tiesToAway", "towardZero", ' +
+                            '"towardPositive", "towardNegative".',
                         enum: ['tiesToEven', 'tiesToAway', 'towardZero', 'towardPositive', 'towardNegative'],
                     },
                     overflowMode: {
                         type: 'string',
                         description:
-                            'What an out-of-range magnitude becomes. "overflow" produces Infinity ' +
-                            '(or NaN when the format has no Infinity); "saturate" clamps to the ' +
-                            'largest finite value. Omit to use the per-format default. IEEE 754 ' +
-                            '§7.4 directed rounding still clamps finite overflow regardless.',
+                            'What an out-of-range output magnitude becomes; the source operand ' +
+                            'is built with the input format\'s defaults. "overflow" produces ' +
+                            'Infinity (or NaN when the format has no Infinity); "saturate" clamps ' +
+                            'to the largest finite value. Omit to use the per-format default. ' +
+                            'IEEE 754 §7.4 directed rounding still clamps finite overflow regardless.',
                         enum: ['saturate', 'overflow'],
                     },
                 },
@@ -742,10 +758,9 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         resolveFormat,
-        classifyValue,
-        mantissaDecimal,
         exponentActual,
         parseValueInput,
+        boundValue,
         encodeInput,
         jsonSafeNumber,
         buildStats,

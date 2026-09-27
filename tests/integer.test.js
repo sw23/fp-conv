@@ -859,4 +859,59 @@ describe('Percent Error Calculations', () => {
             expect(percentError).toBe(0);
         });
     });
+
+    // Raw fields arriving from outside - a surface that parsed bits itself, a
+    // caller poking at decode() - used to be taken on trust. A fraction reached
+    // BigInt() and threw its own engine message ("The number 1.5 cannot be
+    // converted to a BigInt"), while an out-of-range or negative field decoded
+    // silently to a value the format cannot hold.
+    describe('raw field validation', () => {
+        const int8 = new Integer(8, true);
+        const uint8 = new Integer(8, false);
+
+        test.each([
+            ['a fraction', 1.5],
+            ['NaN', NaN],
+            ['Infinity', Infinity],
+            ['undefined', undefined],
+            ['null', null],
+            ['a string', '3'],
+            ['a negative field', -1],
+            ['a negative BigInt field', -1n],
+            ['one past the top of the field', 256],
+            ['well past the top of the field', 300],
+            ['a BigInt past the top of the field', 256n],
+        ])('decode() rejects %s', (_label, field) => {
+            expect(() => int8.decode(0, 0, field)).toThrow(RangeError);
+            expect(() => int8.decodeBits(field)).toThrow(RangeError);
+            expect(() => uint8.decode(0, 0, field)).toThrow(RangeError);
+            expect(() => int8.toBinaryString(0, 0, field)).toThrow(RangeError);
+        });
+
+        test('the message names the field and its range', () => {
+            expect(() => int8.decode(0, 0, 1.5))
+                .toThrow('mantissa must be an integer in [0, 255], got 1.5');
+            expect(() => new Integer(64, false).decode(0, 0, -1n))
+                .toThrow('mantissa must be an integer in [0, 18446744073709551615], got -1');
+        });
+
+        test('a field wider than 53 bits must arrive as a BigInt', () => {
+            const int64 = new Integer(64, true);
+            // 2^63 as a double is exact, but 2^63 + 1 is the SAME double, so a
+            // number cannot be trusted to name the pattern the caller meant.
+            expect(() => int64.decode(0, 0, Math.pow(2, 63)))
+                .toThrow(/must be a BigInt/);
+            expect(int64.decode(0, 0, 2n ** 63n)).toBe(-9223372036854775808);
+            // Below the boundary a plain number is still accepted.
+            expect(int64.decode(0, 0, 255)).toBe(255);
+            expect(int64.decodeBits(2n ** 64n - 1n)).toBe(-1);
+        });
+
+        test('every legal field is still accepted, in either representation', () => {
+            for (const field of [0, 1, 127, 128, 255]) {
+                expect(typeof int8.decode(0, 0, field)).toBe('number');
+                expect(int8.decode(0, 0, BigInt(field))).toBe(int8.decode(0, 0, field));
+            }
+        });
+    });
 });

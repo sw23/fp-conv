@@ -6,6 +6,20 @@
 // identical and clean across Windows, macOS, and Linux terminals, pipes, and
 // redirected files. Use the --json flag for machine-readable output instead.
 
+import floatingPoint from "../../../lib/floating-point.js";
+
+// The library's word for each conversion loss kind, shared with the web UI.
+const { CONVERSION_LOSS_LABELS } = floatingPoint;
+
+// Where a value the format cannot hold ends up, for both overflowTarget and
+// nanTarget.
+export const TARGET_TEXT = {
+    infinity: "\u00b1Infinity",
+    nan: "NaN",
+    maxNormal: "largest finite value",
+    zero: "0",
+};
+
 /**
  * Pad a label to a fixed width for column alignment.
  * @param {string} label
@@ -93,8 +107,18 @@ export function renderConvert(result, labels) {
     const loss = result.precisionLoss;
     sections.push("Precision loss:");
     sections.push(`  ${pad("Lossless")}${loss.lossless ? "yes" : "no"}`);
-    sections.push(`  ${pad("Absolute")}${loss.absolute}`);
-    sections.push(`  ${pad("Relative")}${loss.relativePercent}%`);
+    // A rounding is described by its numbers, and named only without them.
+    // Same rule as the web UI's precision-loss row: a named kind drops a
+    // difference of 0 (a lost zero sign), which says nothing the name does not.
+    const hasNumbers = loss.absolute !== null && loss.absolute !== undefined;
+    const named = loss.kind !== "exact" && !(loss.kind === "rounded" && hasNumbers);
+    if (named) {
+        sections.push(`  ${pad("Reason")}${CONVERSION_LOSS_LABELS[loss.kind]}`);
+    }
+    if (hasNumbers && !(named && loss.absolute === 0)) {
+        sections.push(`  ${pad("Absolute")}${loss.absolute}`);
+        sections.push(`  ${pad("Relative")}${loss.relativePercent}%`);
+    }
 
     return sections.join("\n");
 }
@@ -130,6 +154,8 @@ export function renderInfo(info, labels) {
         lines.push(`Subnormal: ${info.hasSubnormals}`);
         if (info.maxNormal !== undefined) {
             lines.push(`Max normal:    ${info.maxNormal}`);
+        }
+        if (info.minNormal !== undefined) {
             lines.push(`Min normal:    ${info.minNormal}`);
         }
         if (info.maxSubnormal !== undefined) {
@@ -146,14 +172,11 @@ export function renderInfo(info, labels) {
 
     // What an out-of-range magnitude becomes, so the --overflow flag's effect
     // is discoverable without reading the spec.
-    const TARGET_TEXT = {
-        infinity: "\u00b1Infinity",
-        nan: "NaN",
-        maxNormal: "largest finite value",
-    };
     lines.push(`Overflow:  default "${info.defaultOverflowMode}" \u2014 ` +
         `--overflow overflow \u2192 ${TARGET_TEXT[info.overflowTarget.overflow]}, ` +
         `--overflow saturate \u2192 ${TARGET_TEXT[info.overflowTarget.saturate]}`);
+    // Where a NaN input lands, whatever the overflow mode.
+    lines.push(`NaN input: \u2192 ${TARGET_TEXT[info.nanTarget]}`);
 
     return lines.join("\n");
 }

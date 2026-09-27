@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 // Import the FloatingPoint class from the pure math module
-const { FloatingPoint, Integer, FORMATS } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, FORMATS, ROUNDING_MODES } = require('../lib/floating-point.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -423,6 +423,35 @@ describe('Oracle Validation - OCP conformance', () => {
     expect(oracleVectors.overflow_mode_encode.length).toBeGreaterThan(0);
   });
 
+  // A special input has no magnitude to round, so the oracle stores one row per
+  // (input, overflow mode, format) and the sweep over rounding modes lives here:
+  // every mode must reproduce that same row.
+  test('NaN and Infinity inputs match the oracle in every format and mode', () => {
+    const failures = [];
+    oracleVectors.special_encode.forEach((vector) => {
+      const format = buildFormat(vector.format);
+      Object.keys(ROUNDING_MODES).forEach((roundingMode) => {
+        const result = format.encodeString(vector.input,
+          { roundingMode, overflowMode: vector.overflowMode });
+        const label =
+          `${vector.format} ${roundingMode}/${vector.overflowMode} "${vector.input}"`;
+        if ('intValue' in vector.expected) {
+          if (result.intValue !== vector.expected.intValue) {
+            failures.push(`${label}: expected ${vector.expected.intValue}, got ${result.intValue}`);
+          }
+          return;
+        }
+        const { sign, exponent, mantissa } = vector.expected;
+        if (result.sign !== sign || result.exponent !== exponent || result.mantissa !== mantissa) {
+          failures.push(`${label}: expected ${sign}/${exponent}/${mantissa}, ` +
+            `got ${result.sign}/${result.exponent}/${result.mantissa}`);
+        }
+      });
+    });
+    expect(failures).toEqual([]);
+    expect(oracleVectors.special_encode.length).toBeGreaterThan(0);
+  });
+
   test('E8M0 decodes every bit pattern as the oracle says', () => {
     const format = buildFormat('e8m0');
     const failures = [];
@@ -476,5 +505,79 @@ describe('Oracle Validation - OCP conformance', () => {
     });
     expect(failures).toEqual([]);
     expect(oracleVectors.mxint8_string_encode.length).toBeGreaterThan(0);
+  });
+});
+
+// Raw bit fields wider than a JavaScript double can name exactly.
+//
+// Python integers are arbitrary precision, so the same Fraction-based reference
+// is exact at any field width. These sections hold the library to it past 53
+// bits, where a double cannot even spell 2^n - 1 and the field, not the
+// rounding, is what used to go wrong. Field values travel as decimal strings:
+// a JSON number could not carry them.
+describe('Oracle Validation - fields wider than 53 bits', () => {
+  let oracleVectors;
+
+  beforeAll(() => {
+    const vectorPath = path.join(__dirname, 'oracle-vectors.json');
+    oracleVectors = JSON.parse(fs.readFileSync(vectorPath, 'utf8'));
+  });
+
+  test('wide integer formats match the big-integer oracle exactly', () => {
+    const section = oracleVectors.wide_integer_encode;
+    const formats = {};
+    for (const [name, spec] of Object.entries(section.formats)) {
+      formats[name] = new Integer(spec.bits, spec.signed, {
+        fractionBits: spec.fractionBits,
+        symmetric: spec.symmetric,
+      });
+    }
+
+    const failures = [];
+    section.vectors.forEach((vector) => {
+      const format = formats[vector.format];
+      const result = format.encodeString(vector.input, { roundingMode: vector.roundingMode });
+      const binary = format.toBinaryString(result.sign, result.exponent, result.mantissa);
+      if (String(result.intValue) !== vector.intValue ||
+          String(result.mantissa) !== vector.mantissa ||
+          binary !== vector.binary) {
+        failures.push(`${vector.format} ${vector.roundingMode} "${vector.input}": ` +
+          `expected ${vector.intValue}/${vector.mantissa}/${vector.binary}, ` +
+          `got ${result.intValue}/${result.mantissa}/${binary}`);
+      }
+    });
+    expect(failures).toEqual([]);
+    expect(section.vectors.length).toBeGreaterThan(0);
+  });
+
+  test('wide mantissa formats match the big-integer oracle exactly', () => {
+    const section = oracleVectors.wide_float_encode;
+    const formats = {};
+    for (const [name, spec] of Object.entries(section.formats)) {
+      formats[name] = new FloatingPoint(spec.signBits, spec.exponentBits, spec.mantissaBits, {
+        bias: spec.bias,
+        hasInfinity: spec.hasInfinity,
+        hasNaN: spec.hasNaN,
+      });
+    }
+
+    const failures = [];
+    section.vectors.forEach((vector) => {
+      const format = formats[vector.format];
+      const result = format.encodeString(vector.input, {
+        roundingMode: vector.roundingMode,
+        overflowMode: vector.overflowMode,
+      });
+      const binary = format.toBinaryString(result.sign, result.exponent, result.mantissa);
+      if (result.sign !== vector.sign || result.exponent !== vector.exponent ||
+          String(result.mantissa) !== vector.mantissa || binary !== vector.binary) {
+        failures.push(
+          `${vector.format} ${vector.roundingMode}/${vector.overflowMode} "${vector.input}": ` +
+          `expected ${vector.sign}/${vector.exponent}/${vector.mantissa}, ` +
+          `got ${result.sign}/${result.exponent}/${result.mantissa}`);
+      }
+    });
+    expect(failures).toEqual([]);
+    expect(section.vectors.length).toBeGreaterThan(0);
   });
 });
