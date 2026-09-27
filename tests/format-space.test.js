@@ -162,14 +162,19 @@ describe('format-space property: special encodings are distinct', () => {
             const nan = format.encode(NaN);
             const kind = format.classify(nan.sign, nan.exponent, nan.mantissa);
             const decoded = format.decode(nan.sign, nan.exponent, nan.mantissa);
-            // A format with no NaN encoding returns zero by policy; otherwise
-            // the pattern must genuinely be NaN, never Infinity or a number.
+            // A format with no NaN encoding falls back to the positive maximum
+            // by policy (the CUDA/PTX rule), which is exactly where a saturated
+            // +Infinity lands; otherwise the pattern must genuinely be NaN,
+            // never Infinity or a number.
             if (nan.isNaN) {
                 if (kind !== 'NaN' || !Number.isNaN(decoded)) {
                     failures.push(`${name}: encode(NaN) -> ${bits(nan)} classifies ${kind}, decodes ${decoded}`);
                 }
-            } else if (kind !== 'Zero') {
-                failures.push(`${name}: encode(NaN) fell back to ${bits(nan)} (${kind}), expected Zero`);
+            } else {
+                const max = format.encode(Infinity, { overflowMode: 'saturate' });
+                if (bits(nan) !== bits(max) || kind === 'Infinity') {
+                    failures.push(`${name}: encode(NaN) fell back to ${bits(nan)} (${kind}), expected +max ${bits(max)}`);
+                }
             }
 
             const inf = format.encode(Infinity);
@@ -356,15 +361,18 @@ describe('zero-mantissa formats round the exponent', () => {
     });
 
     test('there is no NaN encoding when infinity already owns the slot', () => {
-        expect(e5m0._hasNaNEncoding()).toBe(false);
+        expect(e5m0.hasNaN).toBe(false);
         expect(() => e5m0.getNaN()).toThrow(/does not support NaN/);
-        // encode(NaN) falls back to zero rather than emitting Infinity's pattern.
-        expect(e5m0.encode(NaN).isZero).toBe(true);
+        // encode(NaN) falls back to the positive max normal rather than
+        // emitting Infinity's pattern.
+        const nan = e5m0.encode(NaN);
+        expect(nan.isInfinite).toBe(false);
+        expect(bits(nan)).toBe(bits(e5m0.getMaxNormal(false)));
     });
 
     test('an OCP-style zero-mantissa format keeps NaN and max normal apart', () => {
         const fp = new FloatingPoint(1, 4, 0, { hasInfinity: false, hasNaN: true });
-        expect(fp._hasNaNEncoding()).toBe(true);
+        expect(fp.hasNaN).toBe(true);
         const nan = fp.getNaN();
         const max = fp.getMaxNormal();
         expect(bits(nan)).not.toBe(bits(max));

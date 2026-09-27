@@ -1,9 +1,9 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, buildSearchParams, parseSearchParams, parseDecimal, modeUrlValue */
-// UI code - requires FloatingPoint, Integer, and FORMATS from floating-point.js
-// and the URL helpers from url-state.js.
+/* global FloatingPoint, Integer, FORMATS, sameValue, sameEncoding, normalizedEncoding, conversionLoss, convertEncoded, showsDecodedValue, encodingValueText, showsDecodedSignificand, CONVERSION_LOSS_LABELS, buildSearchParams, parseSearchParams, parseDecimal, modeUrlValue */
+// UI code - requires FloatingPoint, Integer, FORMATS and the conversion helpers
+// from floating-point.js, and the URL helpers from url-state.js.
 
 // Clamp a raw numeric-field string to an integer within [min, max], falling
 // back when unparseable. Keeps out-of-range typing from throwing out of the
@@ -281,6 +281,11 @@ function applyStateFromUrl() {
         // Exact bit pattern: set bits directly without re-encoding the decimal.
         // handleHexInput refreshes the active preset highlight itself.
         handleHexInput({ target: { value: parsed.value.hex } });
+        // handleHexInput never writes the hex field (the user is typing in it),
+        // so a link must. Spell it from the committed encoding, not the link
+        // text, so a rejected pattern leaves the box matching the page.
+        document.getElementById('input-hex-input').value = currentFormat.toHexString(
+            currentEncoded.sign, currentEncoded.exponent, currentEncoded.mantissa);
     } else {
         if (parsed.value && parsed.value.decimal !== undefined) {
             setValueFromText(parsed.value.decimal, parsed.value.text);
@@ -462,6 +467,25 @@ function loadOutputPreset(formatKey) {
     updateOutputFormat();
 }
 
+// Lock the flag checkboxes the library decides for itself (the rule is the
+// FloatingPoint constructor's). A layout with no exponent field has no
+// Infinity or NaN encoding and no binade for the subnormal flag to repurpose,
+// so all three are ignored; those boxes keep the user's choice for when the
+// field comes back, since the flags say nothing about such a layout and the
+// generated link leaves them out. With an Infinity the layout decides NaN as
+// well (the rest of the top binade, or nothing with no mantissa field), so
+// that box is locked until Infinity is unchecked and shows what the format
+// has: left at a stale "off" it would say the format has no NaN while the
+// NaN preset works and the link reloads with the box on.
+function lockDecidedFlags(prefix, format) {
+    const fixed = format.exponentBits === 0;
+    document.getElementById(`${prefix}-has-infinity`).disabled = fixed;
+    const nan = document.getElementById(`${prefix}-has-nan`);
+    nan.disabled = fixed || format.hasInfinity;
+    if (format.hasInfinity) nan.checked = format.hasNaN;
+    document.getElementById(`${prefix}-has-subnormals`).disabled = fixed;
+}
+
 function updateFormat() {
     const signBits = document.getElementById('input-sign-bits').checked ? 1 : 0;
     const exponentBitsInput = document.getElementById('input-exponent-bits').value;
@@ -503,9 +527,12 @@ function updateFormat() {
         currentInputFormatKey = null;
         
         // Find matching format to get bias
+        // NaN is the user's choice only without an Infinity (see
+        // lockDecidedFlags()); with one the constructor decides it, and the
+        // locked box may still hold a choice the constructor refuses.
         let formatOptions = {
             hasInfinity: hasInfinity,
-            hasNaN: hasNaN,
+            hasNaN: hasInfinity ? undefined : hasNaN,
             hasSubnormals: hasSubnormals
         };
         const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
@@ -518,6 +545,8 @@ function updateFormat() {
         }
 
         currentFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
+
+        lockDecidedFlags('input', currentFormat);
     }
 
     // Update total bits display
@@ -557,39 +586,16 @@ function updateOverflowModeUi() {
     defaultOption.textContent = `Output's default \u2014 ${overflowAuthority(outputFormat)}`;
 }
 
+// A preset is offered exactly when it names something in this format, which is
+// the question loading and highlighting already ask. Deciding it separately
+// here is how the -Infinity and Min Sub buttons once stayed enabled on formats
+// whose table had no entry for them.
 function updateValuePresetButtons() {
-    // Enable/disable value preset buttons based on format capabilities
-    const infinityBtn = document.querySelector('.preset-btn[data-value="infinity"]');
-    const negInfinityBtn = document.querySelector('.preset-btn[data-value="neg-infinity"]');
-    const nanBtn = document.querySelector('.preset-btn[data-value="nan"]');
-    const maxSubnormBtn = document.querySelector('.preset-btn[data-value="max-subnorm"]');
-    const minSubnormBtn = document.querySelector('.preset-btn[data-value="min-subnorm"]');
-    const zeroBtn = document.querySelector('.preset-btn[data-value="zero"]');
-
-    // Integer formats don't support infinity, NaN, or subnormals
-    const isInteger = currentFormat.isInteger;
-    // A format with no subnormal regime (E8M0) has no subnormals and no zero.
-    const hasSubnormals = !isInteger && currentFormat.hasSubnormals &&
-        currentFormat.mantissaBits > 0;
-
-    if (infinityBtn) {
-        infinityBtn.disabled = isInteger || !currentFormat.hasInfinity;
-    }
-    if (negInfinityBtn) {
-        negInfinityBtn.disabled = isInteger || !currentFormat.hasInfinity;
-    }
-    if (nanBtn) {
-        nanBtn.disabled = isInteger || !currentFormat.hasNaN;
-    }
-    if (maxSubnormBtn) {
-        maxSubnormBtn.disabled = !hasSubnormals;
-    }
-    if (minSubnormBtn) {
-        minSubnormBtn.disabled = !hasSubnormals;
-    }
-    if (zeroBtn) {
-        zeroBtn.disabled = !isInteger && !currentFormat.hasSubnormals;
-    }
+    document.querySelectorAll('.preset-btn[data-value]:not(.output-value-preset)').forEach(btn => {
+        const key = btn.dataset.value;
+        btn.disabled = getPresetEncoding(key, currentFormat) === null &&
+            getPresetValue(key, currentFormat) === null;
+    });
 }
 
 function updateOutputFormat() {
@@ -629,9 +635,12 @@ function updateOutputFormat() {
         currentOutputFormatKey = null;
         
         // Find matching format to get bias
+        // NaN is the user's choice only without an Infinity (see
+        // lockDecidedFlags()); with one the constructor decides it, and the
+        // locked box may still hold a choice the constructor refuses.
         let formatOptions = {
             hasInfinity: hasInfinity,
-            hasNaN: hasNaN,
+            hasNaN: hasInfinity ? undefined : hasNaN,
             hasSubnormals: hasSubnormals
         };
         const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
@@ -644,6 +653,8 @@ function updateOutputFormat() {
         }
 
         outputFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
+
+        lockDecidedFlags('output', outputFormat);
     }
 
     // Update total bits display
@@ -661,14 +672,34 @@ function updateOutputFormat() {
     updateOutput();
 }
 
-// Record a value that came from a bit pattern or a value preset. There is no
-// decimal literal behind such a value, and any literal still on record from
-// earlier typing must be dropped along with it — otherwise the next re-encode
-// would round that stale text instead of the bits the user just set.
+// Record a value that came from a value preset. There is no decimal literal
+// behind such a value, and any literal still on record from earlier typing must
+// be dropped along with it — otherwise the next re-encode would round that
+// stale text instead of the value the user just picked.
 function setValueFromBits(value) {
     currentValue = value;
     currentValueText = null;
     clearInputRepresentedValue();
+}
+
+// Every value readout - input, output and both "Actual Value" lines - spells a
+// value that came from bits with the library's encodingValueText(), which
+// WebMCP and the CLI use for the same job.
+
+// Record a value that came from a bit pattern (checkboxes, hex field, encoding
+// preset) and show the decimal those bits denote. A later re-encode must see
+// the exact value: the double where it is exact, otherwise the exact decimal.
+// The text shown is the double's shortest spelling, which need not be exact.
+function setValueFromEncoding(format, encoded) {
+    const value = format.decode(encoded.sign, encoded.exponent, encoded.mantissa);
+    if (showsDecodedValue(format, encoded)) {
+        setValueFromBits(value);
+    } else {
+        // Exact text, but still bits: no typed value for a hint to describe.
+        setValueFromText(value, format.toExactDecimalString(encoded));
+        clearInputRepresentedValue();
+    }
+    document.getElementById('input-decimal-input').value = encodingValueText(format, encoded);
 }
 
 // Record a value the user typed or that arrived in a link. The literal is kept
@@ -701,8 +732,7 @@ function updateInputRepresentedValue() {
     const message = document.getElementById('input-representation-message');
     if (!input || !represented || !message) return;
 
-    if (currentValueText === null || currentEncoded === null ||
-        currentFormat.isExactlyRepresentable(currentValueText, currentEncoded)) {
+    if (currentEncoded === null) {
         clearInputRepresentedValue();
         return;
     }
@@ -711,10 +741,22 @@ function updateInputRepresentedValue() {
         currentEncoded.sign,
         currentEncoded.exponent,
         currentEncoded.mantissa);
+
+    // A decimal literal is checked exactly against what it encoded to. A value
+    // with no literal ("inf", NaN, a preset like One) is checked against what
+    // the format made of it, e.g. s1e0m8 holds no 1 (its maximum is 255/256).
+    const inexact = currentValueText !== null
+        ? !currentFormat.isExactlyRepresentable(currentValueText, currentEncoded)
+        : !sameValue(currentValue, representedValue);
+    if (!inexact) {
+        clearInputRepresentedValue();
+        return;
+    }
     input.classList.add('input-inexact');
-    const displayedValue = Number.isFinite(representedValue)
-        ? currentFormat.toExactDecimalString(currentEncoded)
-        : String(representedValue);
+    // Always the exact decimal: clicking the hint accepts it as the new
+    // literal, which must re-encode to these bits. It spells the special
+    // encodings itself, so a max normal that overflows fp64 is not mislabeled.
+    const displayedValue = currentFormat.toExactDecimalString(currentEncoded);
     represented.textContent = displayedValue;
     represented.title = displayedValue;
     represented.setAttribute('aria-label', `Use represented input value ${displayedValue}`);
@@ -738,6 +780,19 @@ function clearInputRepresentedValue() {
 }
 
 function updateRepresentation() {
+    updateBitCheckboxes();
+
+    // Hex representation
+    const { sign, exponent, mantissa } = currentEncoded;
+    document.getElementById('input-hex-input').value =
+        currentFormat.toHexString(sign, exponent, mantissa);
+
+    // Update components
+    updateComponents();
+}
+
+// The input's bit checkboxes for currentEncoded.
+function updateBitCheckboxes() {
     const { sign, exponent, mantissa } = currentEncoded;
 
     // Get section containers
@@ -770,13 +825,6 @@ function updateRepresentation() {
         createBinaryCheckboxes('exponent', expBin);
         createBinaryCheckboxes('mantissa', mantBin);
     }
-
-    // Hex representation
-    document.getElementById('input-hex-input').value =
-        currentFormat.toHexString(sign, exponent, mantissa);
-
-    // Update components
-    updateComponents();
 }
 
 function calculateBitStartPosition(format, section) {
@@ -854,27 +902,24 @@ function handleBinaryCheckboxChange(e) {
         binaryString += cb.checked ? '1' : '0';
     });
 
-    // Convert binary to integer safely
-    const value = binaryString === '' ? 0 : Number(BigInt('0b' + binaryString));
+    // Read the checkboxes as an exact bit pattern. Sign and exponent are
+    // narrow, but the mantissa may exceed 53 bits; normalizeMantissa() keeps it
+    // exact.
+    const raw = binaryString === '' ? 0n : BigInt('0b' + binaryString);
 
     // Update the current encoded value
     if (section === 'sign') {
-        currentEncoded.sign = value;
+        currentEncoded.sign = Number(raw);
     } else if (section === 'exponent') {
-        currentEncoded.exponent = value;
+        currentEncoded.exponent = Number(raw);
     } else if (section === 'mantissa') {
-        currentEncoded.mantissa = value;
+        currentEncoded.mantissa = currentFormat.normalizeMantissa(raw);
     }
 
     // Decode and update current value
-    setValueFromBits(currentFormat.decode(
-        currentEncoded.sign,
-        currentEncoded.exponent,
-        currentEncoded.mantissa
-    ));
+    setValueFromEncoding(currentFormat, currentEncoded);
 
     // Update UI (but don't recreate checkboxes to avoid losing focus)
-    document.getElementById('input-decimal-input').value = currentValue;
     document.getElementById('input-hex-input').value =
         currentFormat.toHexString(currentEncoded.sign, currentEncoded.exponent, currentEncoded.mantissa);
 
@@ -884,128 +929,27 @@ function handleBinaryCheckboxChange(e) {
 }
 
 function handleHexInput(e) {
-    let hexValue = e.target.value.trim();
-
-    // Remove 0x prefix if present
-    if (hexValue.startsWith('0x') || hexValue.startsWith('0X')) {
-        hexValue = hexValue.substring(2);
+    // The format reads the pattern, by the rule every surface shares: a
+    // pattern wider than the format is refused rather than read at a fixed
+    // offset (which would make its top bits the sign and exponent, reachable
+    // from typing and shared URLs), leading zero digits are fine, and the
+    // fields stay exact past 53 bits. Partial or invalid text mid-typing is
+    // ignored, as is an empty box.
+    let fields;
+    try {
+        fields = currentFormat.fromHexString(e.target.value);
+    } catch (err) {
+        if (err instanceof RangeError) return;
+        throw err;
     }
+    currentEncoded = fields;
+    setValueFromEncoding(currentFormat, currentEncoded);
 
-    // Validate hex
-    if (!/^[0-9A-Fa-f]*$/.test(hexValue)) {
-        return; // Invalid hex
-    }
-
-    if (hexValue === '') {
-        return;
-    }
-
-    // Reject patterns wider than the format. Otherwise the fixed-offset
-    // substring below would read the TOP bits as sign/exponent/mantissa and
-    // silently produce a wrong value (reachable from typing and shared URLs).
-    if (hexValue.length > Math.ceil(currentFormat.totalBits / 4)) {
-        return;
-    }
-
-    // Convert hex to binary (BigInt-safe for >53 bits)
-    const rawBinary = BigInt('0x' + hexValue).toString(2);
-    if (rawBinary.length > currentFormat.totalBits) {
-        return; // Overlong even after accounting for a partial leading nibble.
-    }
-    const binary = rawBinary.padStart(currentFormat.totalBits, '0');
-
-    // Handle integer formats
-    if (currentFormat.isInteger) {
-        const mantissa = Number(BigInt('0b' + binary));
-        currentEncoded = { sign: 0, exponent: 0, mantissa };
-        setValueFromBits(currentFormat.decode(0, 0, mantissa));
-        
-        // Update UI
-        document.getElementById('input-decimal-input').value = currentValue;
-        createBinaryCheckboxes('sign', '');
-        createBinaryCheckboxes('exponent', '');
-        createBinaryCheckboxes('mantissa', mantissa.toString(2).padStart(currentFormat.bits, '0'));
-        
-        updateComponents();
-        updateOutput();
-        updateActiveValuePreset();
-        return;
-    }
-
-    // Extract components for floating point
-    let bitIndex = 0;
-    const sign = currentFormat.signBits ? parseInt(binary.substring(bitIndex, bitIndex + currentFormat.signBits), 2) : 0;
-    bitIndex += currentFormat.signBits;
-    const exponent = currentFormat.exponentBits ? parseInt(binary.substring(bitIndex, bitIndex + currentFormat.exponentBits), 2) : 0;
-    bitIndex += currentFormat.exponentBits;
-    const mantissa = currentFormat.mantissaBits > 0 ? Number(BigInt('0b' + binary.substring(bitIndex, bitIndex + currentFormat.mantissaBits))) : 0;
-
-    // Update current encoded
-    currentEncoded = { sign, exponent, mantissa };
-
-    // Decode to get value
-    setValueFromBits(currentFormat.decode(sign, exponent, mantissa));
-
-    // Update UI
-    document.getElementById('input-decimal-input').value = currentValue;
-    createBinaryCheckboxes('sign', currentFormat.signBits ? sign.toString() : '');
-    createBinaryCheckboxes('exponent', currentFormat.exponentBits > 0 ?
-        exponent.toString(2).padStart(currentFormat.exponentBits, '0') : '');
-    createBinaryCheckboxes('mantissa', currentFormat.mantissaBits > 0 ?
-        mantissa.toString(2).padStart(currentFormat.mantissaBits, '0') : '');
-
+    // Not updateRepresentation(): that rewrites this field mid-typing.
+    updateBitCheckboxes();
     updateComponents();
     updateOutput();
     updateActiveValuePreset();
-}
-
-function determineFloatType(format, sign, exponent, mantissa) {
-    // Handle integer formats
-    if (format.isInteger) {
-        const value = format.decode(sign, exponent, mantissa);
-        if (value === 0) {
-            return 'Zero';
-        }
-        // A format with an implicit scale (MXINT8) does not hold integers.
-        const noun = format.fractionBits ? 'Fixed-point' : 'Integer';
-        return value > 0 ? `Positive ${noun}` : `Negative ${noun}`;
-    }
-
-    if (format.exponentBits === 0) {
-        // Fixed-point format
-        if (mantissa === 0) {
-            return sign ? '-Zero' : '+Zero';
-        }
-        return 'Fixed-point';
-    }
-
-    // Floating-point classification lives in the library so every surface agrees.
-    const kind = format.classify(sign, exponent, mantissa);
-    switch (kind) {
-        case 'Zero': return sign ? '-Zero' : '+Zero';
-        case 'Infinity': return sign ? '-Infinity' : '+Infinity';
-        case 'NaN': return 'NaN';
-        default: return kind; // 'Normal' | 'Subnormal'
-    }
-}
-
-function calculateMantissaDecimal(format, exponent, mantissa) {
-    // For integer formats, return the raw value
-    if (format.isInteger) {
-        return format.decode(0, 0, mantissa);
-    }
-
-    // Exponent field 0 only carries the implicit-bit-less "0.x" significand in a
-    // format that HAS a subnormal regime. Where it does not (E8M0), field 0 is
-    // an ordinary normal binade and its significand is 1.x like any other.
-    const subnormalRegime = exponent === 0 && format.hasSubnormals;
-
-    if (format.mantissaBits === 0) {
-        return subnormalRegime ? 0 : 1.0;
-    }
-    return subnormalRegime ?
-        mantissa / Math.pow(2, format.mantissaBits) :
-        1.0 + mantissa / Math.pow(2, format.mantissaBits);
 }
 
 function formatExponentActual(format, exponent, mantissa) {
@@ -1044,12 +988,26 @@ function updateComponentsDisplay(format, encoded, idPrefix) {
     document.getElementById(`${idPrefix}-comp-exp-biased`).textContent = exponent;
     document.getElementById(`${idPrefix}-comp-exp-actual`).textContent =
         formatExponentActual(format, exponent, mantissa);
+    // The type name and the significand come from the library, so every
+    // surface names a bit pattern the same way.
     document.getElementById(`${idPrefix}-comp-type`).textContent =
-        determineFloatType(format, sign, exponent, mantissa);
+        format.typeLabel(sign, exponent, mantissa);
     document.getElementById(`${idPrefix}-comp-mantissa-dec`).textContent =
-        calculateMantissaDecimal(format, exponent, mantissa).toFixed(10);
+        mantissaDecimalText(format, encoded);
     document.getElementById(`${idPrefix}-comp-value`).textContent =
-        format.decode(sign, exponent, mantissa);
+        encodingValueText(format, encoded);
+}
+
+// The "mantissa (decimal)" line as text: the significand's double at ten
+// places where the double is the significand, and the exact decimal where it
+// is not, like the value lines (toFixed(10) on the double spells u64 all-ones
+// as 2^64, and a 60-bit all-ones normal significand as 2.0000000000).
+function mantissaDecimalText(format, encoded) {
+    const { exponent, mantissa } = encoded;
+    if (!showsDecodedSignificand(format, exponent, mantissa)) {
+        return format.exactSignificandString(exponent, mantissa);
+    }
+    return format.significand(exponent, mantissa).toFixed(10);
 }
 
 function updateComponents() {
@@ -1057,37 +1015,22 @@ function updateComponents() {
 }
 
 function loadValuePreset(valueKey) {
-    // Special handling for all-ones - set bits directly
-    if (valueKey === 'all-ones') {
-        if (currentFormat.isInteger) {
-            currentEncoded = {
-                sign: 0,
-                exponent: 0,
-                mantissa: Math.pow(2, currentFormat.bits) - 1,
-                isInteger: true
-            };
-        } else {
-            currentEncoded = {
-                sign: currentFormat.signBits ? 1 : 0,
-                exponent: currentFormat.maxExponent,
-                mantissa: Math.pow(2, currentFormat.mantissaBits) - 1
-            };
-        }
-        setValueFromBits(currentFormat.decode(
-            currentEncoded.sign,
-            currentEncoded.exponent,
-            currentEncoded.mantissa
-        ));
-        document.getElementById('input-decimal-input').value = currentValue;
+    // A preset that names a bit pattern is loaded as bits: a round trip through
+    // a double would round it, or turn a max normal past fp64's range into
+    // Infinity.
+    const encoded = getPresetEncoding(valueKey, currentFormat);
+    if (encoded !== null) {
+        currentEncoded = encoded;
+        setValueFromEncoding(currentFormat, encoded);
         updateRepresentation();
         updateOutput();
         updateActiveValuePreset();
         return;
     }
 
-    // Every remaining preset is a value the format either has or does not.
-    // getPresetValue() is the single source of truth for which, so the button
-    // and the highlight can never disagree about it.
+    // What is left is a value the format may not hold exactly (One on a
+    // fixed-point layout). getPresetValue() is the single source of truth, so
+    // the button and the highlight agree; updateValue() shows the result.
     const value = getPresetValue(valueKey, currentFormat);
     if (value === null) return;
     setValueFromBits(value);
@@ -1096,153 +1039,122 @@ function loadValuePreset(valueKey) {
     updateValue();
 }
 
-function getPresetValue(valueKey, format) {
-    // Handle integer formats
+// The encoding a preset names, or null for a value preset (One, NaN) or one the
+// format lacks. Loading and highlighting both match on bits, which keeps Max
+// and +Infinity apart where the max normal overflows a double.
+function getPresetEncoding(valueKey, format) {
     if (format.isInteger) {
         switch (valueKey) {
+            case 'all-ones':
+                // maxMantissa is exact at any width; 2^bits - 1 would round.
+                return normalizedEncoding(format, 0, 0, format.maxMantissa);
             case 'zero':
-                return 0;
-            case 'one':
-                return 1;
+                return format.getZero();
             case 'max-norm':
-                return format.maxRealValue;
+                return format.getMaxValue();
             case 'min-norm':
-                return format.minRealValue;
+                return format.getMinValue();
             default:
                 return null;
         }
     }
-    
+
     switch (valueKey) {
+        case 'all-ones':
+            return normalizedEncoding(format, format.signBits ? 1 : 0,
+                format.maxExponent, format.maxMantissa);
         case 'zero':
             // A format with no zero encoding (E8M0) has no such value to show.
-            return format.hasSubnormals ? 0 : null;
-        case 'one':
-            return 1;
+            return format.hasSubnormals ? format.getZero() : null;
         case 'max-norm': {
-            const maxNormal = format.getMaxNormal(false);
-            return format.decode(maxNormal.sign, maxNormal.exponent, maxNormal.mantissa);
+            // s1e1m0 with an Infinity has no finite pattern but its zero,
+            // which Zero already names.
+            const max = format.getMaxNormal(false);
+            return max.isZero ? null : max;
         }
         case 'min-norm':
-            // A format with no subnormals uses exponent field 0 as its smallest
-            // normal binade instead of reserving it.
-            return format.decode(0, format.hasSubnormals ? 1 : 0, 0);
+            return format.getMinNormal();
         case 'max-subnorm':
-            // Needs both a subnormal regime and a mantissa field to hold one.
-            if (!format.hasSubnormals || format.mantissaBits === 0) return null;
-            return format.decode(
-                0,
-                0,
-                Math.pow(2, format.mantissaBits) - 1
-            );
+            return format.getMaxSubnormal();
         case 'min-subnorm':
-            if (!format.hasSubnormals || format.mantissaBits === 0) return null;
-            return format.decode(0, 0, 1);
+            return format.getMinSubnormal();
         case 'infinity':
-            return format.hasInfinity ? Infinity : null;
+            return format.hasInfinity ? format.getInfinity(false) : null;
         case 'neg-infinity':
-            return format.hasInfinity ? -Infinity : null;
+            // An unsigned format's getInfinity(true) is +Infinity, which the
+            // +Inf preset already names.
+            return format.hasInfinity && format.signBits ? format.getInfinity(true) : null;
+        default:
+            // 'one' and 'nan' are values: a format rounds or substitutes them.
+            return null;
+    }
+}
+
+// The value a preset stands for, for the presets that name a value rather than
+// a bit pattern: One, which a format rounds, and NaN, which a format with a NaN
+// encoding holds. A format without one substitutes a number for NaN, and that
+// number's own pattern preset is the one that lights up; offering NaN there
+// would light two buttons for one encoding. Every other preset is a pattern
+// and loads through getPresetEncoding().
+function getPresetValue(valueKey, format) {
+    switch (valueKey) {
+        case 'one':
+            return 1;
         case 'nan':
-            return format.hasNaN ? NaN : null;
+            return format.nanTarget() === 'nan' ? NaN : null;
         default:
             return null;
     }
 }
 
-function valuesMatch(a, b, format) {
-    // Handle NaN comparison
-    if (Number.isNaN(a) && Number.isNaN(b)) return true;
-    if (Number.isNaN(a) || Number.isNaN(b)) return false;
-    // Presets describe canonical values in this format, independently of the
-    // policy selected for the subsequent output conversion. In particular,
-    // saturating the output must not make Infinity also match max normal here.
-    const encodedA = format.encode(a);
-    const encodedB = format.encode(b);
-    return encodedA.sign === encodedB.sign &&
-           encodedA.exponent === encodedB.exponent &&
-           encodedA.mantissa === encodedB.mantissa;
+// Does this encoding hold the value a value preset names? One is matched on
+// bits, against what the format makes of 1 (the format's own default rounding,
+// which cannot matter for a power of two): the decoded double is not enough,
+// since a mantissa wider than 53 bits rounds 1 + 2^-60 to 1. NaN is any NaN
+// pattern, payload included; a format without one substitutes a number, and
+// getPresetValue() offers no NaN there.
+function encodingHoldsValue(format, encoded, value) {
+    if (Number.isNaN(value)) {
+        return Number.isNaN(format.decode(encoded.sign, encoded.exponent, encoded.mantissa));
+    }
+    return sameEncoding(format, encoded, format.encode(value));
 }
 
-function isAllOnesMatch(encoded, format) {
-    // Check if encoded value has all bits set to 1
-    if (format.isInteger) {
-        const expectedMantissa = Math.pow(2, format.bits) - 1;
-        return encoded.mantissa === expectedMantissa;
+// Is this preset the one currently shown? Every preset matches on bits, so
+// two can never light up for one encoding unless they name the same pattern.
+function presetMatches(valueKey, format, encoded) {
+    const presetEncoded = getPresetEncoding(valueKey, format);
+    if (presetEncoded !== null) {
+        return sameEncoding(format, encoded, presetEncoded);
     }
-    
-    const expectedSign = format.signBits ? 1 : 0;
-    const expectedExponent = format.maxExponent;
-    const expectedMantissa = Math.pow(2, format.mantissaBits) - 1;
-    
-    return encoded.sign === expectedSign &&
-           encoded.exponent === expectedExponent &&
-           encoded.mantissa === expectedMantissa;
+    const presetValue = getPresetValue(valueKey, format);
+    return presetValue !== null && encodingHoldsValue(format, encoded, presetValue);
 }
 
 function updateActiveValuePreset() {
     document.querySelectorAll('.preset-btn[data-value]:not(.output-value-preset)').forEach(btn => {
-        const valueKey = btn.dataset.value;
-        
-        // Special handling for all-ones - compare encoded bits directly
-        if (valueKey === 'all-ones') {
-            if (isAllOnesMatch(currentEncoded, currentFormat)) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-            return;
-        }
-        
-        const presetValue = getPresetValue(valueKey, currentFormat);
-        if (presetValue !== null && valuesMatch(currentValue, presetValue, currentFormat)) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+        btn.classList.toggle('active',
+            presetMatches(btn.dataset.value, currentFormat, currentEncoded));
     });
 }
 
-function updateActiveOutputValuePreset(outputEncoded, outputValue) {
+function updateActiveOutputValuePreset(outputEncoded) {
     document.querySelectorAll('.output-value-preset').forEach(btn => {
-        const valueKey = btn.dataset.value;
-        
-        // Special handling for all-ones
-        if (valueKey === 'all-ones') {
-            if (isAllOnesMatch(outputEncoded, outputFormat)) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-            return;
-        }
-        
-        const presetValue = getPresetValue(valueKey, outputFormat);
-        if (presetValue !== null && valuesMatch(outputValue, presetValue, outputFormat)) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
+        btn.classList.toggle('active',
+            presetMatches(btn.dataset.value, outputFormat, outputEncoded));
     });
 }
 
 function updateOutput() {
-    // First decode the actual value from the input format
-    const inputValue = currentFormat.decode(
-        currentEncoded.sign,
-        currentEncoded.exponent,
-        currentEncoded.mantissa
-    );
-    
-    // Encode the input format's actual value into the output format
-    const outputEncoded = outputFormat.encode(inputValue, { roundingMode: currentRoundingMode, overflowMode: currentOverflowMode || undefined });
-    const outputValue = outputFormat.decode(
-        outputEncoded.sign,
-        outputEncoded.exponent,
-        outputEncoded.mantissa
-    );
-
-    // Update decimal display
-    document.getElementById('output-decimal').textContent = outputValue;
+    // Convert from the input encoding's exact value, not its decoded double,
+    // which rounds fields wider than 53 bits and overflows past fp64's range.
+    const outputEncoded = convertEncoded(currentFormat, currentEncoded, outputFormat, {
+        roundingMode: currentRoundingMode,
+        overflowMode: currentOverflowMode || undefined,
+    });
+    // Spelled like the input box (see encodingValueText()).
+    document.getElementById('output-decimal').textContent =
+        encodingValueText(outputFormat, outputEncoded);
 
     // Get output section containers
     const outputSignSection = document.querySelector('#output-binary-sign-values').closest('.bit-section-container');
@@ -1279,30 +1191,36 @@ function updateOutput() {
     // Update components using shared function
     updateComponentsDisplay(outputFormat, outputEncoded, 'output');
 
-    // Calculate precision loss - compare actual decoded values from both formats
-    const loss = Math.abs(inputValue - outputValue);
-    const relativeLoss = (inputValue !== 0 && isFinite(inputValue))
-        ? (loss / Math.abs(inputValue) * 100).toFixed(6)
-        : '0';
-
-    // Show/hide precision loss based on whether there's actual loss
+    // Precision loss. conversionLoss() in floating-point.js decides what
+    // happened, on the exact values, so this row and WebMCP's
+    // precisionLoss.kind always agree. A clamped finite value gets both a word
+    // and the numbers.
+    const loss = conversionLoss(currentFormat, currentEncoded, outputFormat, outputEncoded, {
+        roundingMode: currentRoundingMode,
+    });
     const precisionLossElement = document.querySelector('.precision-loss');
-    if (loss === 0 || isNaN(loss)) {
+    if (loss.kind === 'exact') {
         precisionLossElement.style.display = 'none';
     } else {
         precisionLossElement.style.display = 'flex';
-        if (!isFinite(loss)) {
-            // Finite input rounded to Infinity in the output format: the
-            // relative loss is meaningless, so label it plainly.
-            document.getElementById('output-precision-loss').textContent = 'overflow';
-        } else {
-            document.getElementById('output-precision-loss').textContent =
-                `${loss.toExponential(6)} (${relativeLoss}%)`;
-        }
+        // A rounding is described by its numbers, and is named only when there
+        // are none (a difference too large for a double). Other kinds are
+        // named, with the numbers unless the difference is 0 (a dropped sign).
+        // A zero input has no ratio, and conversionLoss() reports it as 0.
+        const hasNumbers = loss.absolute !== null;
+        const label = loss.kind === 'rounded' && hasNumbers
+            ? null
+            : CONVERSION_LOSS_LABELS[loss.kind];
+        const measured = hasNumbers && !(label && loss.absolute === 0)
+            ? `${loss.absolute.toExponential(6)} ` +
+                `(${loss.relativePercent === 0 ? '0' : loss.relativePercent.toFixed(6)}%)`
+            : '';
+        document.getElementById('output-precision-loss').textContent =
+            label && measured ? `${label} — ${measured}` : (label || measured);
     }
 
     // Update output value preset highlighting
-    updateActiveOutputValuePreset(outputEncoded, outputValue);
+    updateActiveOutputValuePreset(outputEncoded);
 
     // Keep the shareable URL in sync with the latest conversion. updateOutput()
     // is the single chokepoint reached by every state change.
@@ -1376,12 +1294,12 @@ if (typeof module !== 'undefined' && module.exports) {
         updateInputRepresentedValue,
         updateOutput,
         handleHexInput,
-        determineFloatType,
-        calculateMantissaDecimal,
+        encodingValueText,
+        mantissaDecimalText,
         formatExponentActual,
         calculateBitStartPosition,
         getPresetValue,
-        valuesMatch,
-        isAllOnesMatch,
+        getPresetEncoding,
+        encodingHoldsValue,
     };
 }

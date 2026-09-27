@@ -264,6 +264,35 @@ def overflow_fields(spec, sign, overflow_mode):
     return (sign,) + max_normal_fields(spec)
 
 
+def integer_range(spec):
+    """(low, high) representable integers for an integer format's raw field.
+
+    MX §5.3.4 lets a signed format leave the most-negative encoding unused so
+    the range stays symmetric.
+    """
+    bits = spec['bits']
+    if not spec['signed']:
+        return 0, (1 << bits) - 1
+    high = (1 << (bits - 1)) - 1
+    return (-high if spec.get('symmetric') else -(1 << (bits - 1))), high
+
+
+def saturating_integer_value(spec, text, mode):
+    """One decimal encoded into an integer format: rounded, then saturated.
+
+    Rounding happens on the SCALED magnitude so a fixed-point format (MXINT8)
+    rounds at its own 1/2^fraction_bits grid in a single step, rather than
+    rounding to a whole number and scaling afterwards, which would round twice.
+    """
+    scale = 1 << spec.get('fraction_bits', 0)
+    low, high = integer_range(spec)
+    sign, magnitude = decimal_to_fraction(text)
+    value = round_fraction(magnitude * scale, sign, mode)
+    if sign:
+        value = -value
+    return max(low, min(high, value))
+
+
 def finalize_fields(spec, sign, exponent_field, mantissa_field, mode,
                     overflow_mode='__default__'):
     """Apply mantissa carry, overflow and OCP special-value rules."""
@@ -515,29 +544,13 @@ def generate_integer_string_vectors():
     vectors = []
     for name in sorted(INTEGER_FORMATS):
         spec = INTEGER_FORMATS[name]
-        scale = 1 << spec.get('fraction_bits', 0)
-        if spec['signed']:
-            high = (1 << (spec['bits'] - 1)) - 1
-            # MX §5.3.4 lets the most-negative encoding go unused so the range
-            # stays symmetric.
-            low = -high if spec.get('symmetric') else -(1 << (spec['bits'] - 1))
-        else:
-            low, high = 0, (1 << spec['bits']) - 1
-
         for text in inputs:
-            sign, magnitude = decimal_to_fraction(text)
             for mode in ROUNDING_MODES:
-                # Round on the SCALED magnitude so a fixed-point format rounds
-                # at its own 1/2^fraction_bits grid, in a single step.
-                value = round_fraction(magnitude * scale, sign, mode)
-                if sign:
-                    value = -value
-                value = max(low, min(high, value))
                 vectors.append({
                     'format': name,
                     'input': text,
                     'roundingMode': mode,
-                    'expected': value,
+                    'expected': saturating_integer_value(spec, text, mode),
                 })
     return vectors
 
@@ -605,6 +618,62 @@ def generate_overflow_mode_vectors():
     return vectors
 
 
+# ---------------------------------------------------------------------------
+# NaN and Infinity inputs.
+#
+# OFP8 §5.2.1 / MX Table 3 fix the infinity rows, and an unsigned format has one
+# infinity to overflow towards, so -Infinity there is +Infinity. NaN into a
+# format with no NaN is implementation-defined (MX §5.3.2-5.3.4): PTX gives
+# positive MAX_NORM, except for plain integers, where it gives 0.
+# ---------------------------------------------------------------------------
+
+SPECIAL_INPUTS = ['NaN', 'Infinity', '-Infinity']
+
+
+def special_float_fields(spec, text, overflow_mode):
+    """(sign, exponent, mantissa) for a NaN/Infinity input to a float format."""
+    if text == 'NaN':
+        if has_nan_encoding(spec):
+            return (0,) + nan_fields(spec)
+        return (0,) + max_normal_fields(spec)
+    sign = 1 if text.startswith('-') and not spec.get('unsigned') else 0
+    # An Infinity input takes exactly the out-of-range path.
+    return overflow_fields(spec, sign, overflow_mode)
+
+
+def special_integer_value(spec, text):
+    """Raw integer value for a NaN/Infinity input to an integer format."""
+    low, high = integer_range(spec)
+    if text == 'NaN':
+        return high if spec.get('fraction_bits', 0) > 0 else 0
+    return low if text.startswith('-') else high
+
+
+def generate_special_vectors():
+    """NaN and +/-Infinity into every format, at every overflow mode.
+
+    There is no rounding mode key: neither helper consults one, because a
+    special input carries no magnitude to round. The JavaScript side sweeps
+    every rounding mode against the one expected row, so mode-invariance is
+    still asserted without five identical copies of every vector.
+    """
+    vectors = []
+    for text in SPECIAL_INPUTS:
+        for overflow_mode in OVERFLOW_MODES:
+            for name, spec in FLOAT_FORMATS.items():
+                s, e, m = special_float_fields(spec, text, overflow_mode)
+                vectors.append({
+                    'format': name, 'input': text, 'overflowMode': overflow_mode,
+                    'expected': {'sign': s, 'exponent': e, 'mantissa': m},
+                })
+            for name, spec in INTEGER_FORMATS.items():
+                vectors.append({
+                    'format': name, 'input': text, 'overflowMode': overflow_mode,
+                    'expected': {'intValue': special_integer_value(spec, text)},
+                })
+    return vectors
+
+
 def generate_e8m0_vectors():
     """Every E8M0 encoding, and a spread of decimals encoded into it."""
     spec = FLOAT_FORMATS['e8m0']
@@ -651,18 +720,11 @@ def generate_mxint8_vectors():
                      '-1e-30000']
     encode_vectors = []
     for text in encode_inputs:
-        sign, magnitude = decimal_to_fraction(text)
         for mode in ROUNDING_MODES:
-            value = round_fraction(magnitude * scale, sign, mode)
-            if sign:
-                value = -value
-            high = (span // 2) - 1
-            low = -high if spec['symmetric'] else -(span // 2)
-            value = max(low, min(high, value))
             encode_vectors.append({
                 'input': text,
                 'roundingMode': mode,
-                'expected': value,
+                'expected': saturating_integer_value(spec, text, mode),
             })
 
     return decode_vectors, encode_vectors
@@ -778,6 +840,7 @@ def generate_test_vectors():
 
     # OCP conformance: overflow behavior and the two MX scalar types.
     vectors['overflow_mode_encode'] = generate_overflow_mode_vectors()
+    vectors['special_encode'] = generate_special_vectors()
     e8m0_decode, e8m0_encode = generate_e8m0_vectors()
     vectors['e8m0_decode'] = e8m0_decode
     vectors['e8m0_encode'] = e8m0_encode
@@ -785,7 +848,171 @@ def generate_test_vectors():
     vectors['mxint8_decode'] = mxint8_decode
     vectors['mxint8_string_encode'] = mxint8_encode
 
+    # Raw bit fields past what a double can name exactly.
+    vectors['wide_integer_encode'] = generate_wide_integer_vectors()
+    vectors['wide_float_encode'] = generate_wide_float_vectors()
+
     return vectors
+
+# ---------------------------------------------------------------------------
+# Raw bit fields wider than a JavaScript double can name exactly.
+#
+# Python integers are arbitrary precision, so the reference above is already
+# exact at any field width; these vectors exist to hold the JavaScript side to
+# it past 53 bits, where a double cannot even spell 2^n - 1. Every field value
+# travels as a decimal STRING, because a JSON number could not carry it.
+#
+# The formats are custom layouts rather than preset keys, so each vector names
+# its own parameters and the JavaScript side constructs the format from them.
+# ---------------------------------------------------------------------------
+
+WIDE_INTEGER_FORMATS = {
+    'i54':    {'bits': 54, 'signed': True},
+    'i55q6':  {'bits': 55, 'signed': True, 'fraction_bits': 6},
+    'i64':    {'bits': 64, 'signed': True},
+    'i64sym': {'bits': 64, 'signed': True, 'symmetric': True},
+    'u64':    {'bits': 64, 'signed': False},
+}
+
+WIDE_INTEGER_INPUTS = [
+    '0', '1', '-1', '-2', '-3', '0.5', '-0.5', '-0.015625',
+    '9007199254740993', '-9007199254740993',
+    '9223372036854775807', '-9223372036854775808',
+    '18446744073709551615', '1e99', '-1e99',
+]
+
+# Custom float layouts whose mantissa field is wider than 53 bits. The bias is
+# the default one the library derives (2^(exponent-1) - 1).
+#
+# `range_probes` asks for decimals written out at the top and bottom of the
+# format's range. A 15-bit exponent puts those past 4900 significant digits,
+# which says nothing more about the MANTISSA field these vectors are about, so
+# the binary128 layout gets the near-1 probes only and the narrow-exponent
+# layouts carry the range work.
+WIDE_FLOAT_FORMATS = {
+    'e15m112': {'exponent': 15, 'mantissa': 112, 'bias': 16383,
+                'has_inf': True, 'has_nan': True, 'range_probes': False},
+    'e5m112':  {'exponent': 5, 'mantissa': 112, 'bias': 15,
+                'has_inf': True, 'has_nan': True},
+    'e5m54':   {'exponent': 5, 'mantissa': 54, 'bias': 15,
+                'has_inf': False, 'has_nan': True},
+    'e5m60':   {'exponent': 5, 'mantissa': 60, 'bias': 15,
+                'has_inf': False, 'has_nan': True},
+}
+
+
+def wide_float_inputs(spec):
+    """Decimals that land on, just under and just past the top of the range."""
+    inputs = [
+        '1', '1.5', '-1.5', '1e99', '-1e99',
+        # One ulp above 1: needs the full mantissa field, so no double can
+        # carry it at any of these widths.
+        dyadic_to_decimal(1 + TWO ** -spec['mantissa']),
+    ]
+    if not spec.get('range_probes', True):
+        return inputs
+
+    # The top of the range is already spelled out by the overflow section, so
+    # take its probes rather than deriving max normal a second time: max_value
+    # itself, and the tie half an ulp above it that rounds up and out of range.
+    max_value, _, midpoint, _, _ = overflow_probe_magnitudes(spec)
+    ulp = TWO ** (max_exponent(spec) - spec['mantissa'])
+    smallest = fields_to_fraction(spec, 0, 1)
+    inputs += [
+        dyadic_to_decimal(max_value),
+        dyadic_to_decimal(max_value - ulp),
+        dyadic_to_decimal(midpoint),
+        '-' + dyadic_to_decimal(max_value),
+        # The smallest subnormal, and half of it.
+        dyadic_to_decimal(smallest),
+        dyadic_to_decimal(smallest / 2),
+    ]
+    return inputs
+
+
+def generate_wide_integer_vectors():
+    """Integer formats whose raw field is wider than 53 bits.
+
+    The format parameters are hoisted into a `formats` map and each vector
+    names one, so the section stays readable instead of repeating the layout
+    once per vector.
+    """
+    formats = {}
+    vectors = []
+    for name in sorted(WIDE_INTEGER_FORMATS):
+        spec = WIDE_INTEGER_FORMATS[name]
+        bits = spec['bits']
+        formats[name] = {
+            'bits': bits,
+            'signed': spec['signed'],
+            'fractionBits': spec.get('fraction_bits', 0),
+            'symmetric': spec.get('symmetric', False),
+        }
+
+        for text in WIDE_INTEGER_INPUTS:
+            for mode in ROUNDING_MODES:
+                value = saturating_integer_value(spec, text, mode)
+                raw = value + (1 << bits) if value < 0 else value
+                vectors.append({
+                    'format': name,
+                    'input': text,
+                    'roundingMode': mode,
+                    'intValue': str(value),
+                    'mantissa': str(raw),
+                    'binary': format(raw, '0%db' % bits),
+                })
+    return {'formats': formats, 'vectors': vectors}
+
+
+def wide_float_mode_combinations(spec):
+    """Every rounding mode under the format's default overflow mode, plus the
+    other overflow mode under ties-to-even.
+
+    The full 5x2 cross product would double the section for no new information:
+    overflow mode only decides what an out-of-range magnitude becomes, and the
+    IEEE directed-rounding clamp that outranks it is already swept by the first
+    group.
+    """
+    default = default_overflow_mode(spec)
+    combos = [(mode, default) for mode in ROUNDING_MODES]
+    combos += [('tiesToEven', other) for other in OVERFLOW_MODES if other != default]
+    return combos
+
+
+def generate_wide_float_vectors():
+    """Float layouts whose mantissa field is wider than 53 bits."""
+    formats = {}
+    vectors = []
+    for name in sorted(WIDE_FLOAT_FORMATS):
+        spec = WIDE_FLOAT_FORMATS[name]
+        formats[name] = {
+            'signBits': 1,
+            'exponentBits': spec['exponent'],
+            'mantissaBits': spec['mantissa'],
+            'bias': spec['bias'],
+            'hasInfinity': spec['has_inf'],
+            'hasNaN': spec['has_nan'],
+        }
+        for text in wide_float_inputs(spec):
+            sign, magnitude = decimal_to_fraction(text)
+            for mode, overflow_mode in wide_float_mode_combinations(spec):
+                out_sign, exponent_field, mantissa_field = round_to_format(
+                    magnitude, sign, spec, mode, overflow_mode)
+                vectors.append({
+                    'format': name,
+                    'input': text,
+                    'roundingMode': mode,
+                    'overflowMode': overflow_mode,
+                    'sign': out_sign,
+                    'exponent': exponent_field,
+                    'mantissa': str(mantissa_field),
+                    'binary': '%d%s%s' % (
+                        out_sign,
+                        format(exponent_field, '0%db' % spec['exponent']),
+                        format(mantissa_field, '0%db' % spec['mantissa'])),
+                })
+    return {'formats': formats, 'vectors': vectors}
+
 
 def main():
     vectors = generate_test_vectors()

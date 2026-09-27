@@ -97,6 +97,98 @@ fp-conv encode inf -f fp16 --overflow overflow -r towardZero         → Infinit
 fp-conv encode inf -f fp16 --overflow saturate                       → 65504
 ```
 
+## NaN and Infinity inputs
+
+An infinite input follows the same two modes as any other out-of-range value, under every
+rounding mode. A NaN input needs its own rule, because several formats have nowhere to put
+one:
+
+| Target | NaN | +Infinity | −Infinity |
+|---|---|---|---|
+| FP64 / FP32 / FP16 / BF16 / TF32 / E5M2 | NaN | +∞ or +max | −∞ or −max |
+| FP8 E4M3 | NaN | NaN or +448 | NaN or −448 |
+| FP6 E3M2 / E2M3, FP4 E2M1 | **+max** | +max | −max |
+| E8M0 | NaN | NaN or 2^127 | **NaN or 2^127** |
+| MXINT8 | **+1.984375** (`0x7F`) | `0x7F` | `0x81` |
+| INT\* / UINT\* | 0 | max | min |
+
+Where a cell has two answers, the first is `overflow` and the second is `saturate`. The
+three bold cells are choices the specifications leave open:
+
+- **NaN into FP6, FP4 and MXINT8** becomes the positive maximum. OCP MX §5.3.2–5.3.4 say
+  only that "conversion from NaNs is implementation-defined". This library follows NVIDIA
+  PTX `cvt.satfinite`, where for the e2m1, e2m3, e3m2 and s2f6 destinations "NaN results
+  are converted to positive MAX_NORM", and the CUDA fp4/fp6 host conversions do the same.
+  The s2f6 layout is exactly MXINT8. The same rule applies to custom float and fixed-point
+  layouts that have no NaN encoding.
+- **Plain integers** keep NaN → 0, which is what PTX specifies for float-to-integer
+  conversions.
+- **−Infinity into E8M0**, which has no sign, is treated as +Infinity, as CUDA's E8M0
+  conversions do: NaN under `overflow`, 2^127 under `saturate`. A finite negative input
+  still clamps to the smallest magnitude, 2^−127. The same holds for any custom unsigned
+  float format *that has an exponent field*. An unsigned **fixed-point** layout (zero
+  exponent bits, e.g. `new FloatingPoint(0, 0, 8)`) has no binade and no Infinity to
+  reflect towards, so it clamps −Infinity to zero along with every other negative, as the
+  unsigned integer formats do.
+
+Expect other implementations to differ on these three cells, since the specifications do
+not settle them: substituting a signed zero for a NaN, refusing the conversion outright,
+and making −Infinity into E8M0 a NaN whatever the overflow mode are all answers in
+circulation. Compare against CUDA if you need to match hardware.
+
+### Only an actual infinity is reflected
+
+The reflection rule above is about the *value* −Infinity, not about "a negative that does
+not fit". A decimal literal whose magnitude merely overflows the format is a finite
+negative, however large, so on an unsigned format it clamps to the bottom of the range
+like any other negative:
+
+```sh
+fp-conv encode -inf   -f e8m0 --overflow saturate   # 2^127   — an infinity, reflected
+fp-conv encode -1e400 -f e8m0 --overflow saturate   # 2^-127  — a finite negative, clamped
+```
+
+Both encoders agree on this: `encode(-Infinity)` reflects, and `encode("-1e400")` — which
+rounds the exact decimal straight to the format — clamps.
+
+A *conversion* can still turn the second into the first, and that is not an inconsistency:
+
+```sh
+fp-conv convert -1e400 --from fp64 --to e8m0 --overflow saturate   # 2^127
+```
+
+`convert` builds the source operand first, using the input format's own defaults, and
+−1e400 is already −Infinity once FP64 holds it. Encoding *that* into E8M0 reflects it,
+correctly. The same thing happens to any literal the source format rounds: `convert`
+reports what the source format holds, `encode` reports what the literal itself becomes.
+The web UI works the same way — typing `-1e400` clamps, while typing `-inf` reflects —
+because the first is encoded as a decimal and the second is the value −Infinity. (The
+−Infinity value *preset* is offered only on a format that holds −Infinity, so it has
+nothing to reflect.)
+
+The web UI flags any typed input the format cannot hold, a NaN or an infinity included:
+it marks the field and shows the value used instead, which you can click to accept.
+Its precision-loss row names what happened rather than printing a meaningless difference:
+`saturated`, `overflow`, `sign not representable` or `NaN not representable`.
+`saturated` means the value was clamped to an **edge** of the format's range, whichever
+edge — the maximum for a magnitude past it, the minimum for a negative an unsigned format
+cannot hold, which is zero rather than a large magnitude. A finite value the `saturate`
+mode clamps is saturated too, and since both sides of that one are finite the row shows
+the difference next to the word.
+
+`sign not representable` is the narrower case where a sign came back flipped and nothing
+else happened — no clamping, no overflow: −0 into any unsigned format that has a zero, and
+−Infinity into an unsigned format that *has* an infinity to reflect towards (`s0e8m23`
+under `overflow`). −0 into E8M0, which has no zero, is `saturated` like any magnitude
+below its range.
+A *signed* integer format is different: two's complement has a single zero, so −0 lands on
+it exactly and the conversion is reported as lossless.
+It is not what the −Infinity → E8M0 reflection above reports: E8M0 has no infinity, so
+that conversion lands on `overflow` (a NaN) or `saturated` (2^127) depending on the mode,
+the reflection having only decided *which* end it saturates to. The WebMCP
+`convert_format` tool and the CLI's `Reason:` line report the same classification, from
+the same helper; see [WebMCP API](webmcp.md).
+
 ## Examples
 
 ```sh
@@ -107,6 +199,9 @@ fp-conv encode 1e40 -f fp32                        # Infinity
 # The two OFP8 Table 3 cells that need the non-default mode
 fp-conv encode inf  -f fp8_e5m2 --overflow saturate  # 57344
 fp-conv encode 1000 -f fp8_e4m3 --overflow overflow  # NaN
+
+# NaN has no encoding in FP4, so it becomes the positive maximum
+fp-conv encode nan -f fp4_e2m1                     # 6
 
 # Integers clamp either way
 fp-conv encode 5000 -f int8                        # 127

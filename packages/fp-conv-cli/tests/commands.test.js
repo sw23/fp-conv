@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 import { runEncode, runDecode, runConvert, runInfo, runList } from "../src/commands.js";
+import { TARGET_TEXT, renderConvert, renderInfo } from "../src/format.js";
+import floatingPoint from "../../../lib/floating-point.js";
 import { main } from "../src/index.js";
 import { runCli } from "./helpers.js";
 
@@ -119,6 +121,15 @@ describe("main: text output", () => {
         expect(stdout).toMatch(/floating-point/);
     });
 
+    test("info leaves out a min normal the format does not have", () => {
+        const info = runInfo({
+            format: { signBits: 1, exponentBits: 1, mantissaBits: 0, hasInfinity: true },
+        });
+        const text = renderInfo(info, { format: "s1e1m0" });
+        expect(text).not.toMatch(/Min normal/);
+        expect(text).not.toMatch(/undefined/);
+    });
+
     test("info renders integer range", async () => {
         const { stdout } = await runCli(main, ["info", "int8"]);
         expect(stdout).toMatch(/Range:\s+-128 \.\. 127/);
@@ -171,5 +182,55 @@ describe("main: JSON output", () => {
         const { stdout } = await runCli(main, ["list", "--json"]);
         const parsed = JSON.parse(stdout);
         expect(Array.isArray(parsed)).toBe(true);
+    });
+});
+
+// The renderers look every word up in a table. A value the library can report
+// but the table has no entry for would print as `undefined`, so the tables are
+// checked against what the library actually produces rather than against a copy
+// of the list kept alongside them.
+describe("lookup table coverage", () => {
+    test("every conversion loss kind has a Reason label", () => {
+        for (const kind of floatingPoint.CONVERSION_LOSS_KINDS) {
+            expect(typeof floatingPoint.CONVERSION_LOSS_LABELS[kind]).toBe("string");
+        }
+        expect(Object.keys(floatingPoint.CONVERSION_LOSS_LABELS).sort())
+            .toEqual([...floatingPoint.CONVERSION_LOSS_KINDS].sort());
+    });
+
+    test("a rounding with no numbers to show still gets a Reason line", () => {
+        // The difference (~1e397) is too large for a double, so there is no
+        // number to print.
+        const result = runConvert({
+            value: "1.001e400",
+            from: { signBits: 1, exponentBits: 15, mantissaBits: 10 },
+            to: { signBits: 1, exponentBits: 15, mantissaBits: 5 },
+        });
+        expect(result.precisionLoss.kind).toBe("rounded");
+        expect(renderConvert(result, { from: "a", to: "b" })).toMatch(/Reason:\s+rounded/);
+    });
+
+    test("a lost zero sign is named without a difference of 0, as in the web UI", () => {
+        const result = runConvert({ value: "-0", from: "fp32", to: "uint8" });
+        expect(result.precisionLoss.kind).toBe("reflected");
+        const text = renderConvert(result, { from: "a", to: "b" });
+        expect(text).toMatch(/Reason:\s+sign not representable/);
+        expect(text).not.toMatch(/Absolute:|Relative:/);
+    });
+
+    test("a clamp with a real difference keeps both the reason and the numbers", () => {
+        const result = runConvert({ value: "300", from: "fp32", to: "int8" });
+        const text = renderConvert(result, { from: "a", to: "b" });
+        expect(text).toMatch(/Reason:\s+saturated/);
+        expect(text).toMatch(/Absolute:\s+173/);
+    });
+
+    test("TARGET_TEXT has an entry for every overflow and NaN target", () => {
+        for (const { key } of runList()) {
+            const info = runInfo({ format: key });
+            expect(typeof TARGET_TEXT[info.overflowTarget.overflow]).toBe("string");
+            expect(typeof TARGET_TEXT[info.overflowTarget.saturate]).toBe("string");
+            expect(typeof TARGET_TEXT[info.nanTarget]).toBe("string");
+        }
     });
 });

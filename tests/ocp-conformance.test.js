@@ -605,9 +605,11 @@ describe('[MX] Table 6 — MXINT8', () => {
         expect(format.encode(10).mantissa).toBe(0x7F);
         expect(format.encode(-10).mantissa).toBe(0x81);
         expect(format.encode(Infinity).mantissa).toBe(0x7F);
-        // MX §5.3.4 leaves NaN conversion implementation-defined; this library
-        // maps it to zero, matching every other integer format.
-        expect(format.encode(NaN).mantissa).toBe(0);
+        // MX §5.3.4 leaves NaN conversion implementation-defined. This library
+        // follows PTX cvt.satfinite to s2f6 (the same 8-bit, 2^-6-scaled
+        // layout): "NaN results are converted to positive MAX_NORM".
+        expect(format.encode(NaN).mantissa).toBe(0x7F);
+        expect(format.encodeString('nan').mantissa).toBe(0x7F);
     });
 
     test('encodeString rounds the exact decimal in one step', () => {

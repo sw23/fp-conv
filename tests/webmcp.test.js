@@ -2,11 +2,9 @@
 // Licensed under the MIT License.
 
 // WebMCP integration tests
-const { FloatingPoint, Integer, FORMATS } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, FORMATS, CONVERSION_LOSS_KINDS } = require('../lib/floating-point.js');
 const {
     resolveFormat,
-    classifyValue,
-    mantissaDecimal,
     exponentActual,
     parseValueInput,
     jsonSafeNumber,
@@ -102,6 +100,17 @@ describe('resolveFormat', () => {
         expect(() => resolveFormat({ bits: 65 })).toThrow(/between 1 and 64/);
     });
 
+    test('a flag that is given must be a boolean: the string "false" is truthy', () => {
+        expect(() => resolveFormat({ bits: 8, signed: 'false' })).toThrow(/"signed" must be true or false/);
+        expect(() => resolveFormat({ bits: 8, symmetric: 'yes' })).toThrow(/"symmetric"/);
+        for (const flag of ['hasInfinity', 'hasNaN', 'hasSubnormals']) {
+            expect(() => resolveFormat({ signBits: 1, exponentBits: 5, mantissaBits: 2, [flag]: 'false' }))
+                .toThrow(new RegExp(`"${flag}" must be true or false`));
+        }
+        expect(resolveFormat({ bits: 8, signed: false }).signed).toBe(false);
+        expect(resolveFormat({ bits: 8 }).signed).toBe(true);
+    });
+
     test('supports custom integer widths up to 64 bits', () => {
         const fmt = resolveFormat({ bits: 64, signed: false });
         expect(fmt).toBeInstanceOf(Integer);
@@ -169,86 +178,86 @@ describe('parseValueInput', () => {
     });
 });
 
-// ── classifyValue ─────────────────────────────────────────────────
+// ── typeLabel() ─────────────────────────────────────────────────
 
-describe('classifyValue', () => {
+describe('typeLabel()', () => {
     test('classifies integer values', () => {
         const fmt = new Integer(8, true);
-        expect(classifyValue(fmt, 0, 0, 0)).toBe('Zero');
-        expect(classifyValue(fmt, 0, 0, 42)).toBe('Positive Integer');
-        expect(classifyValue(fmt, 0, 0, 200)).toBe('Negative Integer'); // two's complement
+        expect(fmt.typeLabel(0, 0, 0)).toBe('Zero');
+        expect(fmt.typeLabel(0, 0, 42)).toBe('Positive Integer');
+        expect(fmt.typeLabel(0, 0, 200)).toBe('Negative Integer'); // two's complement
     });
 
     test('classifies floating-point normal', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(classifyValue(fmt, 0, 127, 0)).toBe('Normal');
+        expect(fmt.typeLabel(0, 127, 0)).toBe('Normal');
     });
 
     test('classifies floating-point zero', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(classifyValue(fmt, 0, 0, 0)).toBe('+Zero');
-        expect(classifyValue(fmt, 1, 0, 0)).toBe('-Zero');
+        expect(fmt.typeLabel(0, 0, 0)).toBe('+Zero');
+        expect(fmt.typeLabel(1, 0, 0)).toBe('-Zero');
     });
 
     test('classifies subnormal', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(classifyValue(fmt, 0, 0, 1)).toBe('Subnormal');
+        expect(fmt.typeLabel(0, 0, 1)).toBe('Subnormal');
     });
 
     test('classifies infinity', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(classifyValue(fmt, 0, 255, 0)).toBe('+Infinity');
-        expect(classifyValue(fmt, 1, 255, 0)).toBe('-Infinity');
+        expect(fmt.typeLabel(0, 255, 0)).toBe('+Infinity');
+        expect(fmt.typeLabel(1, 255, 0)).toBe('-Infinity');
     });
 
     test('classifies NaN', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(classifyValue(fmt, 0, 255, 1)).toBe('NaN');
+        expect(fmt.typeLabel(0, 255, 1)).toBe('NaN');
     });
 
     test('classifies fixed-point', () => {
         const fmt = new FloatingPoint(1, 0, 7);
-        expect(classifyValue(fmt, 0, 0, 0)).toBe('+Zero');
-        expect(classifyValue(fmt, 0, 0, 10)).toBe('Fixed-point');
+        expect(fmt.typeLabel(0, 0, 0)).toBe('+Zero');
+        expect(fmt.typeLabel(0, 0, 10)).toBe('Fixed-point');
     });
 
     test('classifies maxExponent as Normal when no special values', () => {
         const fmt = new FloatingPoint(1, 3, 2, { hasInfinity: false, hasNaN: false, bias: 3 });
         // maxExponent=7, mantissa=3 — no special values, so it's Normal
-        expect(classifyValue(fmt, 0, 7, 3)).toBe('Normal');
+        expect(fmt.typeLabel(0, 7, 3)).toBe('Normal');
     });
 
     test('classifies negative fixed-point zero', () => {
         const fmt = new FloatingPoint(1, 0, 7);
-        expect(classifyValue(fmt, 1, 0, 0)).toBe('-Zero');
+        expect(fmt.typeLabel(1, 0, 0)).toBe('-Zero');
     });
 });
 
-// ── mantissaDecimal ───────────────────────────────────────────────
+// ── significand() ───────────────────────────────────────────────
 
-describe('mantissaDecimal', () => {
+describe('significand()', () => {
     test('returns integer value for integer format', () => {
         const fmt = new Integer(8, true);
-        expect(mantissaDecimal(fmt, 0, 42)).toBe(42);
+        expect(fmt.significand(0, 42)).toBe(42);
     });
 
     test('returns 1.x for normal float', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        const result = mantissaDecimal(fmt, 127, 0);
+        const result = fmt.significand(127, 0);
         expect(result).toBe(1.0);
     });
 
     test('returns 0.x for subnormal float', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        const result = mantissaDecimal(fmt, 0, 1);
+        const result = fmt.significand(0, 1);
         expect(result).toBeGreaterThan(0);
         expect(result).toBeLessThan(1);
     });
 
     test('returns 0 or 1 for zero mantissa bits', () => {
         const fmt = new FloatingPoint(0, 8, 0);
-        expect(mantissaDecimal(fmt, 0, 0)).toBe(0);
-        expect(mantissaDecimal(fmt, 1, 0)).toBe(1.0);
+        expect(fmt.significand(0, 0)).toBe(0);
+        expect(fmt.significand(1, 0)).toBe(1.0);
     });
 });
 
@@ -504,6 +513,12 @@ describe('encodeNumber', () => {
         expect(stats.actualValue).toBe(1.5); // 1.5 is exact in FP16
     });
 
+    test('a negative zero is "-0", not the 0 JSON would write', () => {
+        const stats = JSON.parse(decodeBits({ bits: '0x8000', format: 'fp16' }).content[0].text);
+        expect(stats.type).toBe('-Zero');
+        expect(stats.actualValue).toBe('-0');
+    });
+
     test('encodes value=0 (falsy but valid)', () => {
         const result = encodeNumber({ value: 0, format: 'fp32' });
         const stats = JSON.parse(result.content[0].text);
@@ -591,6 +606,16 @@ describe('decodeBits', () => {
 
     test('throws on invalid hex in bits', () => {
         expect(() => decodeBits({ bits: '0xZZZZ', format: 'fp32' })).toThrow(/Invalid hex/);
+    });
+
+    test('reads hex by the rule every surface shares: leading zeros fit, extra bits do not', () => {
+        const stats = JSON.parse(decodeBits({ bits: '0x03C00', format: 'fp16' }).content[0].text);
+        expect(stats.hex).toBe('0x3C00');
+        expect(stats.actualValue).toBe(1);
+        // A 6-bit format's "0xFF" is what its page used to slice to 0x3F.
+        expect(() => decodeBits({
+            bits: '0xFF', format: { signBits: 1, exponentBits: 3, mantissaBits: 2 },
+        })).toThrow(/8 significant bits.*does not fit the 6-bit/);
     });
 
     test('throws when bits is missing', () => {
@@ -730,7 +755,9 @@ describe('convertFormat', () => {
         expect(data.output.type).toBe('+Infinity');
         expect(data.output.actualValue).toBe('Infinity');
         expect(data.precisionLoss.lossless).toBe(true);
-        expect(data.precisionLoss.absolute).toBe('NaN');
+        // Infinity - Infinity is NaN, but an unchanged value lost nothing.
+        expect(data.precisionLoss.absolute).toBe(0);
+        expect(data.precisionLoss.relativePercent).toBe(0);
     });
 
     test('handles NaN conversion', () => {
@@ -746,6 +773,27 @@ describe('convertFormat', () => {
         expect(data.output.type).toBe('NaN');
         expect(data.output.actualValue).toBe('NaN');
         expect(data.precisionLoss.lossless).toBe(true);
+    });
+
+    // Exactly one side NaN is never lossless: NaN into a format that has no
+    // NaN substitutes a number, and E4M3's overflow mode turns Infinity into NaN.
+    test.each([
+        ['nan', 'fp32', 'fp4_e2m1', undefined, 6],
+        ['nan', 'fp32', 'mxint8', undefined, 1.984375],
+        ['nan', 'fp32', 'int8', undefined, 0],
+        ['infinity', 'fp32', 'fp8_e4m3', 'overflow', 'NaN'],
+        ['infinity', 'fp32', 'fp8_e4m3', 'saturate', 448],
+        ['-infinity', 'fp32', 'e8m0', 'saturate', Math.pow(2, 127)],
+    ])('%s %s -> %s (%s) is not lossless', (value, inputFormat, outputFormat, overflowMode, expected) => {
+        const data = JSON.parse(convertFormat({
+            value, inputFormat, outputFormat, overflowMode,
+        }).content[0].text);
+        expect(data.output.actualValue).toBe(expected);
+        expect(data.precisionLoss.lossless).toBe(false);
+        // At least one side is non-finite in every one of these, so there is no
+        // difference to report: null, never the strings "Infinity"/"NaN".
+        expect(data.precisionLoss.absolute).toBeNull();
+        expect(data.precisionLoss.relativePercent).toBeNull();
     });
 
     test('converts with custom formats', () => {
@@ -826,6 +874,38 @@ describe('getFormatInfo', () => {
         expect(info.minNormal).toBeDefined();
         expect(info.maxSubnormal).toBeDefined();
         expect(info.minSubnormal).toBeDefined();
+    });
+
+    test('hasNaN reports the NaN the layout has, beside nanTarget', () => {
+        // s1e5m0 with an Infinity asked for NaN and has no pattern for it;
+        // it used to report hasNaN: true next to nanTarget: "maxNormal".
+        const noRoom = JSON.parse(getFormatInfo({
+            format: { signBits: 1, exponentBits: 5, mantissaBits: 0, hasInfinity: true, hasNaN: true },
+        }).content[0].text);
+        expect(noRoom.hasNaN).toBe(false);
+        expect(noRoom.nanTarget).toBe('maxNormal');
+        // s1e6m9 declining NaN beside its Infinity is refused, like a flag of
+        // the wrong type: the top binade's other patterns are NaN, and a flag
+        // the format silently ignored would leave the caller reading those
+        // bits as finite.
+        expect(() => getFormatInfo({
+            format: { signBits: 1, exponentBits: 6, mantissaBits: 9, hasNaN: false },
+        })).toThrow(/hasNaN cannot be false with hasInfinity/);
+        const ieee = JSON.parse(getFormatInfo({
+            format: { signBits: 1, exponentBits: 6, mantissaBits: 9 },
+        }).content[0].text);
+        expect(ieee.hasNaN).toBe(true);
+        expect(ieee.nanTarget).toBe('nan');
+    });
+
+    test('leaves out a min normal the layout does not have', () => {
+        // s1e1m0 with an Infinity: exponent field 1 is the Infinity, which
+        // used to be reported as the min normal.
+        const info = JSON.parse(getFormatInfo({
+            format: { signBits: 1, exponentBits: 1, mantissaBits: 0, hasInfinity: true },
+        }).content[0].text);
+        expect(info.minNormal).toBeUndefined();
+        expect(info.maxSubnormal).toBeUndefined();
     });
 
     test('returns info for INT8', () => {
@@ -1278,6 +1358,40 @@ describe('overflowMode through the tool kernel', () => {
         expect(info.defaultOverflowMode).toBe('overflow');
         expect(info.overflowTarget).toEqual({ saturate: 'maxNormal', overflow: 'infinity' });
     });
+
+    // Where a NaN INPUT lands. overflowTarget cannot say: it answers for an
+    // out-of-range magnitude, and a NaN is not one.
+    test.each([
+        ['fp32', 'nan'],
+        ['fp8_e4m3', 'nan'],
+        ['e8m0', 'nan'],
+        ['fp4_e2m1', 'maxNormal'],
+        ['fp6_e3m2', 'maxNormal'],
+        ['mxint8', 'maxNormal'],
+        ['int8', 'zero'],
+        ['uint8', 'zero'],
+    ])('get_format_info reports nanTarget %s -> %s', (format, nanTarget) => {
+        expect(JSON.parse(getFormatInfo({ format }).content[0].text).nanTarget)
+            .toBe(nanTarget);
+    });
+
+    test('get_format_info reports nanTarget for a custom layout with no NaN', () => {
+        const info = JSON.parse(getFormatInfo({
+            format: { signBits: 1, exponentBits: 3, mantissaBits: 2, bias: 3, hasInfinity: false, hasNaN: false },
+        }).content[0].text);
+        expect(info.nanTarget).toBe('maxNormal');
+    });
+
+    test('list_formats reports nanTarget for every preset, matching the encoder', () => {
+        const formats = JSON.parse(listFormats().content[0].text);
+        for (const entry of formats) {
+            expect(['nan', 'maxNormal', 'zero']).toContain(entry.nanTarget);
+            expect(entry.nanTarget).toBe(resolveFormat(entry.key).nanTarget());
+        }
+        expect(formats.find(f => f.key === 'fp4_e2m1').nanTarget).toBe('maxNormal');
+        expect(formats.find(f => f.key === 'int8').nanTarget).toBe('zero');
+        expect(formats.find(f => f.key === 'e8m0').nanTarget).toBe('nan');
+    });
 });
 
 describe('E8M0 and MXINT8 through the tool kernel', () => {
@@ -1355,13 +1469,13 @@ describe('E8M0 and MXINT8 through the tool kernel', () => {
 
     test('the metadata helpers follow the format subnormal regime', () => {
         const e8m0 = resolveFormat('e8m0');
-        expect(mantissaDecimal(e8m0, 0, 0)).toBe(1.0);
+        expect(e8m0.significand(0, 0)).toBe(1.0);
         expect(exponentActual(e8m0, 0, 0)).toBe('0 - 127 = -127');
 
         // An ordinary IEEE format keeps the subnormal formulas at field 0.
         const fp16 = resolveFormat('fp16');
-        expect(mantissaDecimal(fp16, 0, 0)).toBe(0);
-        expect(mantissaDecimal(fp16, 0, 512)).toBe(0.5);
+        expect(fp16.significand(0, 0)).toBe(0);
+        expect(fp16.significand(0, 512)).toBe(0.5);
         expect(exponentActual(fp16, 0, 0)).toBe('1 - 15 = -14');
 
         // ... and so does a zero-mantissa format that still HAS subnormals.
@@ -1369,7 +1483,7 @@ describe('E8M0 and MXINT8 through the tool kernel', () => {
             signBits: 1, exponentBits: 5, mantissaBits: 0,
             hasInfinity: false, hasNaN: false,
         });
-        expect(mantissaDecimal(zeroMantissa, 0, 0)).toBe(0);
+        expect(zeroMantissa.significand(0, 0)).toBe(0);
         expect(exponentActual(zeroMantissa, 0, 0)).toBe('1 - 15 = -14');
     });
 
@@ -1421,13 +1535,325 @@ describe('E8M0 and MXINT8 through the tool kernel', () => {
         expect(int8.maxValue).toBe(127);
     });
 
-    test('classifyValue labels a scaled integer as fixed-point', () => {
+    test('typeLabel() labels a scaled integer as fixed-point', () => {
         const mxint8 = resolveFormat('mxint8');
-        expect(classifyValue(mxint8, 0, 0, 0)).toBe('Zero');
-        expect(classifyValue(mxint8, 0, 0, 64)).toBe('Positive Fixed-point');
-        expect(classifyValue(mxint8, 0, 0, 192)).toBe('Negative Fixed-point');
+        expect(mxint8.typeLabel(0, 0, 0)).toBe('Zero');
+        expect(mxint8.typeLabel(0, 0, 64)).toBe('Positive Fixed-point');
+        expect(mxint8.typeLabel(0, 0, 192)).toBe('Negative Fixed-point');
         const int8 = resolveFormat('int8');
-        expect(classifyValue(int8, 0, 0, 1)).toBe('Positive Integer');
-        expect(classifyValue(int8, 0, 0, 255)).toBe('Negative Integer');
+        expect(int8.typeLabel(0, 0, 1)).toBe('Positive Integer');
+        expect(int8.typeLabel(0, 0, 255)).toBe('Negative Integer');
+    });
+});
+
+// ── precisionLoss.kind ────────────────────────────────────────────
+//
+// convert_format used to emit absolute: "Infinity", relativePercent: "NaN" for
+// anything involving a non-finite side - figures that read like measurements
+// and are not. The kind names what happened instead, and it is computed by the
+// same library helper the web UI's loss row uses, so the two cannot disagree.
+describe('convert_format precisionLoss.kind', () => {
+    const CUSTOM_UNSIGNED_WITH_INF = {
+        signBits: 0, exponentBits: 5, mantissaBits: 2, bias: 15,
+        hasInfinity: true, hasNaN: true,
+    };
+
+    test.each([
+        // [label, args, kind, output value]
+        ['unchanged value', { value: 1.5, inputFormat: 'fp16', outputFormat: 'fp32' }, 'exact', 1.5],
+        ['NaN that stays NaN', { value: 'nan', inputFormat: 'fp32', outputFormat: 'fp16' }, 'exact', 'NaN'],
+        ['Infinity that stays Infinity', { value: 'infinity', inputFormat: 'fp32', outputFormat: 'fp16' }, 'exact', 'Infinity'],
+        ['ordinary precision loss', { value: Math.PI, inputFormat: 'fp32', outputFormat: 'fp16' }, 'rounded', 3.140625],
+        ['finite value off the top of the range',
+            { value: 1e40, inputFormat: 'fp64', outputFormat: 'fp32', overflowMode: 'overflow' }, 'overflow', 'Infinity'],
+        ['Infinity into a format whose overflow is NaN',
+            { value: 'infinity', inputFormat: 'fp32', outputFormat: 'fp8_e4m3', overflowMode: 'overflow' }, 'overflow', 'NaN'],
+        ['-Infinity into E8M0 under overflow',
+            { value: '-infinity', inputFormat: 'fp32', outputFormat: 'e8m0', overflowMode: 'overflow' }, 'overflow', 'NaN'],
+        ['Infinity clamped to the largest finite value',
+            { value: 'infinity', inputFormat: 'fp32', outputFormat: 'fp8_e4m3', overflowMode: 'saturate' }, 'saturated', 448],
+        ['-Infinity clamped in E8M0',
+            { value: '-infinity', inputFormat: 'fp32', outputFormat: 'e8m0', overflowMode: 'saturate' }, 'saturated', Math.pow(2, 127)],
+        ['-Infinity reflected by an unsigned format that HAS an infinity',
+            { value: '-infinity', inputFormat: 'fp32', outputFormat: CUSTOM_UNSIGNED_WITH_INF, overflowMode: 'overflow' }, 'reflected', 'Infinity'],
+        ['NaN a format cannot hold',
+            { value: 'nan', inputFormat: 'fp32', outputFormat: 'fp4_e2m1' }, 'nanSubstituted', 6],
+        ['NaN into an integer',
+            { value: 'nan', inputFormat: 'fp32', outputFormat: 'int8' }, 'nanSubstituted', 0],
+    ])('%s is %s', (_label, args, kind, outputValue) => {
+        const data = JSON.parse(convertFormat(args).content[0].text);
+        expect(data.output.actualValue).toBe(outputValue);
+        expect(data.precisionLoss.kind).toBe(kind);
+        expect(data.precisionLoss.lossless).toBe(kind === 'exact');
+
+        if (kind === 'exact' || kind === 'rounded') {
+            expect(typeof data.precisionLoss.absolute).toBe('number');
+            expect(typeof data.precisionLoss.relativePercent).toBe('number');
+        } else {
+            expect(data.precisionLoss.absolute).toBeNull();
+            expect(data.precisionLoss.relativePercent).toBeNull();
+        }
+    });
+
+    test('a zero input with a rounded output still reports 0%, not a division by zero', () => {
+        const data = JSON.parse(convertFormat({
+            value: 1e-40, inputFormat: 'fp16', outputFormat: 'fp32',
+        }).content[0].text);
+        // 1e-40 underflows to 0 in FP16, so the source operand IS zero.
+        expect(data.input.actualValue).toBe(0);
+        expect(data.precisionLoss.kind).toBe('exact');
+        expect(data.precisionLoss.relativePercent).toBe(0);
+    });
+
+    test('a tiny relative loss is reported as measured, not rounded to 0', () => {
+        // int64 max into FP32 loses 1 in 2^63: six decimals of percent read
+        // that as 0 next to absolute: 1.
+        const data = JSON.parse(convertFormat({
+            value: '9223372036854775807', inputFormat: { bits: 64 }, outputFormat: 'fp32',
+        }).content[0].text);
+        expect(data.precisionLoss.kind).toBe('rounded');
+        expect(data.precisionLoss.absolute).toBe(1);
+        expect(data.precisionLoss.relativePercent).toBeCloseTo(1.0842021724855044e-17, 30);
+    });
+});
+
+// ── An overflowing negative literal on an unsigned format ─────────
+//
+// The rule (docs/overflow-behavior.md, "Only an actual infinity is reflected"):
+// -Infinity is reflected to the TOP of an unsigned format, but a decimal
+// literal that merely overflows is a finite negative and clamps to the BOTTOM.
+// encode_number sees the literal; convert_format sees what the SOURCE format
+// made of it. Both are right, and this pins the difference so it cannot be
+// "fixed" into an inconsistency later.
+describe('encode_number and convert_format on "-1e400" into E8M0', () => {
+    test.each(['overflow', 'saturate'])(
+        'encode_number clamps the literal to the bottom under %s', (overflowMode) => {
+            const stats = JSON.parse(encodeNumber({
+                value: '-1e400', format: 'e8m0', overflowMode,
+            }).content[0].text);
+            // 0x00 is 2^-127, the smallest magnitude E8M0 holds.
+            expect(stats.hex).toBe('0x00');
+        });
+
+    test.each([
+        ['overflow', '0xFF'],   // E8M0 has no Infinity, so its overflow is NaN
+        ['saturate', '0xFE'],   // 2^127
+    ])('convert_format from FP64 reflects, because the operand is already -Infinity (%s)',
+        (overflowMode, hex) => {
+            const data = JSON.parse(convertFormat({
+                value: '-1e400', inputFormat: 'fp64', outputFormat: 'e8m0', overflowMode,
+            }).content[0].text);
+            // The literal overflows FP64 under FP64's own default, so the value
+            // being converted really is -Infinity - the same thing that happens
+            // to any literal the source format rounds.
+            expect(data.input.actualValue).toBe('-Infinity');
+            expect(data.output.hex).toBe(hex);
+        });
+
+    test('every spelling of -Infinity agrees, and none of them is the literal', () => {
+        const hexFor = (value) => JSON.parse(encodeNumber({
+            value, format: 'e8m0', overflowMode: 'saturate',
+        }).content[0].text).hex;
+
+        expect(hexFor('-inf')).toBe('0xFE');
+        expect(hexFor('-Infinity')).toBe('0xFE');
+        expect(hexFor(-Infinity)).toBe('0xFE');
+        // ...and +Infinity gets the same answer, which is the point of the rule.
+        expect(hexFor('inf')).toBe('0xFE');
+        // The literal is a different input and gets the other end.
+        expect(hexFor('-1e400')).toBe('0x00');
+    });
+});
+
+// ── convert_format converts the VALUE, not a rounded double ───────
+//
+// The conversion used to decode the source encoding to a double and re-encode
+// that, and to compare the two doubles to decide what was lost. Both steps
+// round a field wider than 53 bits, so an int64 -> int64 identity conversion
+// dropped its low bit and reported "exact".
+describe('convert_format on values a double cannot carry', () => {
+    const json = (result) => JSON.parse(result.content[0].text);
+
+    test('an int64 identity conversion keeps every bit', () => {
+        const data = json(convertFormat({
+            value: '9007199254740993', // 2^53 + 1
+            inputFormat: { bits: 64, signed: true },
+            outputFormat: { bits: 64, signed: true },
+        }));
+        expect(data.input.hex).toBe('0x0020000000000001');
+        expect(data.output.hex).toBe(data.input.hex);
+        expect(data.precisionLoss.kind).toBe('exact');
+        expect(data.precisionLoss.lossless).toBe(true);
+    });
+
+    test('an int64 maximum into FP32 is not "exact" just because the doubles match', () => {
+        const data = json(convertFormat({
+            value: '9223372036854775807', // 2^63 - 1; FP32 holds only 2^63
+            inputFormat: { bits: 64, signed: true },
+            outputFormat: 'fp32',
+        }));
+        expect(data.precisionLoss.kind).toBe('rounded');
+        expect(data.precisionLoss.lossless).toBe(false);
+    });
+
+    test('a 64-bit pattern converted to itself round-trips through the hex', () => {
+        const format = { bits: 64, signed: false };
+        const data = json(convertFormat({
+            value: '18446744073709551615',
+            inputFormat: format,
+            outputFormat: format,
+        }));
+        expect(data.output.hex).toBe('0xFFFFFFFFFFFFFFFF');
+        expect(data.precisionLoss.kind).toBe('exact');
+    });
+});
+
+// ── the rest of the precisionLoss vocabulary ──────────────────────
+describe('convert_format precisionLoss.kind: clamps and dropped signs', () => {
+    const json = (result) => JSON.parse(result.content[0].text);
+
+    test.each([
+        // [label, args, kind, output value, measurable]
+        ['a finite value clamped by the saturate mode',
+            { value: '1e10', inputFormat: 'fp32', outputFormat: 'fp16', overflowMode: 'saturate' },
+            'saturated', 65504, true],
+        ['the same value under overflow',
+            { value: '1e10', inputFormat: 'fp32', outputFormat: 'fp16', overflowMode: 'overflow' },
+            'overflow', 'Infinity', false],
+        ['an ordinary rounding',
+            { value: '3.14159265', inputFormat: 'fp32', outputFormat: 'fp16' },
+            'rounded', 3.140625, true],
+        ['-Infinity clamped to the BOTTOM of an unsigned integer',
+            { value: '-inf', inputFormat: 'fp32', outputFormat: 'uint8' },
+            'saturated', 0, false],
+        ['-Infinity clamped to the bottom of an unsigned fixed-point layout',
+            { value: '-inf', inputFormat: 'fp32',
+                outputFormat: { signBits: 0, exponentBits: 0, mantissaBits: 8 } },
+            'saturated', 0, false],
+        ['a finite negative an unsigned format cannot hold',
+            { value: '-5', inputFormat: 'fp32', outputFormat: 'uint8' },
+            'saturated', 0, true],
+        ['-0 into an unsigned format',
+            { value: '-0', inputFormat: 'fp32', outputFormat: 'uint8' },
+            'reflected', 0, true],
+        ['-0 into a signed float, which keeps the sign',
+            { value: '-0', inputFormat: 'fp32', outputFormat: 'fp16' },
+            'exact', '-0', true],
+        ['-0 into a signed integer, which has a single zero',
+            { value: '-0', inputFormat: 'fp32', outputFormat: 'int8' },
+            'exact', 0, true],
+    ])('%s is %s', (_label, args, kind, outputValue, measurable) => {
+        const data = json(convertFormat(args));
+        expect(data.output.actualValue).toBe(outputValue);
+        expect(data.precisionLoss.kind).toBe(kind);
+        expect(data.precisionLoss.lossless).toBe(kind === 'exact');
+        if (measurable) {
+            expect(typeof data.precisionLoss.absolute).toBe('number');
+            expect(typeof data.precisionLoss.relativePercent).toBe('number');
+        } else {
+            expect(data.precisionLoss.absolute).toBeNull();
+            expect(data.precisionLoss.relativePercent).toBeNull();
+        }
+    });
+
+    test('the difference is exact, not taken between rounded doubles', () => {
+        // 2^64 - 1 -> 2^64; both decode to the double 2^64.
+        const data = json(convertFormat({
+            value: '18446744073709551615',
+            inputFormat: { bits: 64, signed: false },
+            outputFormat: 'fp32',
+        }));
+        expect(data.precisionLoss.kind).toBe('rounded');
+        expect(data.precisionLoss.absolute).toBe(1);
+    });
+
+    test('a clamped finite value reports the difference as well as the clamp', () => {
+        const data = json(convertFormat({
+            value: '1e10', inputFormat: 'fp32', outputFormat: 'fp16', overflowMode: 'saturate',
+        }));
+        expect(data.precisionLoss.absolute).toBeCloseTo(1e10 - 65504, 0);
+        expect(data.precisionLoss.relativePercent).toBeGreaterThan(99);
+    });
+
+    test('-0 into an unsigned format keeps the sign of a signed output', () => {
+        const signed = json(convertFormat({
+            value: '-0', inputFormat: 'fp32', outputFormat: 'fp16',
+        }));
+        expect(signed.output.sign).toBe(1);
+        expect(signed.output.hex).toBe('0x8000');
+    });
+});
+
+// ── keyword spellings are the library's ───────────────────────────
+describe('parseValueInput and the library agree on the keywords', () => {
+    const { valueKeyword } = require('../lib/floating-point.js');
+
+    test.each([
+        'inf', '+inf', 'INF', 'infinity', '+infinity', 'Infinity',
+        '-inf', '-INF', '-infinity', '-Infinity',
+        'nan', 'NaN', '+nan', '-nan',
+    ])('"%s" parses to the library keyword value', (text) => {
+        const expected = valueKeyword(text);
+        expect(expected).not.toBeNull();
+        expect(Object.is(parseValueInput(text), expected)).toBe(true);
+    });
+
+    test('a keyword encodes exactly as the value does, through the tool', () => {
+        const hexFor = (value) => JSON.parse(encodeNumber({
+            value, format: 'int8',
+        }).content[0].text).hex;
+        expect(hexFor('-inf')).toBe(hexFor(-Infinity));
+        expect(hexFor('-inf')).toBe('0x80');
+        expect(hexFor('inf')).toBe('0x7F');
+    });
+});
+
+// ── the conversion loss kinds ─────────────────────────────────────
+
+// CONVERSION_LOSS_KINDS is what CONVERSION_LOSS_LABELS, the word every surface
+// shows, is checked against, so a stale list
+// would let a real kind reach a user unlabelled. These pin it from both sides:
+// every listed kind is one a conversion really produces, and no conversion
+// produces a kind that is not listed.
+describe('CONVERSION_LOSS_KINDS', () => {
+    // One conversion per kind, chosen so each takes a different branch of the
+    // ladder in conversionKind().
+    const CASES = {
+        exact: { value: '1.5', inputFormat: 'fp32', outputFormat: 'fp64' },
+        rounded: { value: '3.14', inputFormat: 'fp32', outputFormat: 'fp16' },
+        overflow: {
+            value: '1e10', inputFormat: 'fp32', outputFormat: 'fp16',
+            overflowMode: 'overflow',
+        },
+        saturated: {
+            value: '1e10', inputFormat: 'fp32', outputFormat: 'fp16',
+            overflowMode: 'saturate',
+        },
+        reflected: { value: '-0', inputFormat: 'fp32', outputFormat: 'uint8' },
+        nanSubstituted: { value: 'nan', inputFormat: 'fp32', outputFormat: 'int8' },
+    };
+
+    test('every listed kind is reachable', () => {
+        for (const [kind, params] of Object.entries(CASES)) {
+            const result = JSON.parse(convertFormat(params).content[0].text);
+            expect(result.precisionLoss.kind).toBe(kind);
+        }
+    });
+
+    test('the list names every kind those conversions produce', () => {
+        expect(Object.keys(CASES).sort()).toEqual([...CONVERSION_LOSS_KINDS].sort());
+    });
+
+    test('a sweep of preset pairs reports nothing outside the list', () => {
+        const keys = Object.keys(FORMATS);
+        for (const value of ['1.5', '1e10', '-1e10', 'nan', 'inf', '-inf', '0', '-0']) {
+            for (const inputFormat of keys) {
+                for (const outputFormat of keys) {
+                    const result = JSON.parse(
+                        convertFormat({ value, inputFormat, outputFormat }).content[0].text);
+                    expect(CONVERSION_LOSS_KINDS).toContain(result.precisionLoss.kind);
+                }
+            }
+        }
     });
 });

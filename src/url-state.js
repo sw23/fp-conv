@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS */
+/* global FloatingPoint, Integer, FORMATS, valueKeyword, sameEncoding, showsDecodedValue */
 // URL state serialization for shareable/bookmarkable conversions.
 // Pure (DOM-free) helpers so they can be unit tested under Node.
 // Requires FloatingPoint, Integer, and FORMATS from floating-point.js.
@@ -13,12 +13,15 @@
 // so a top-level `let`/`const`/`class` of the same name in two of them is a
 // redeclaration and throws SyntaxError before the second file runs at all.
 // tests/browser-scripts.test.js enforces that the names stay disjoint.
-let _usFloatingPoint, _usInteger, _usFORMATS;
+let _usFloatingPoint, _usInteger, _usFORMATS, _usValueKeyword, _usSameEncoding, _usShowsDecodedValue;
 if (typeof require !== 'undefined') {
     const lib = require('../lib/floating-point.js');
     _usFloatingPoint = lib.FloatingPoint;
     _usInteger = lib.Integer;
     _usFORMATS = lib.FORMATS;
+    _usValueKeyword = lib.valueKeyword;
+    _usSameEncoding = lib.sameEncoding;
+    _usShowsDecodedValue = lib.showsDecodedValue;
 } else {
     /* istanbul ignore next */
     _usFloatingPoint = FloatingPoint;
@@ -26,6 +29,12 @@ if (typeof require !== 'undefined') {
     _usInteger = Integer;
     /* istanbul ignore next */
     _usFORMATS = FORMATS;
+    /* istanbul ignore next */
+    _usValueKeyword = valueKeyword;
+    /* istanbul ignore next */
+    _usSameEncoding = sameEncoding;
+    /* istanbul ignore next */
+    _usShowsDecodedValue = showsDecodedValue;
 }
 
 const ROUNDING_MODE_VALUES = [
@@ -112,9 +121,18 @@ function formatToParam(format) {
     let spec = 's' + (format.signBits ? 1 : 0) +
         'e' + format.exponentBits +
         'm' + format.mantissaBits;
-    if (!format.hasInfinity) spec += 'i0';
-    if (!format.hasNaN) spec += 'n0';
-    // "d" for denormal - "s" is already taken by the sign bit.
+    // A layout with no exponent field has no Infinity or NaN whatever was
+    // asked for, so the flags say nothing about it and are left out: the page
+    // keeps its checkboxes for when the exponent field comes back.
+    if (format.exponentBits > 0) {
+        if (!format.hasInfinity) spec += 'i0';
+        // With an Infinity the layout decides NaN (see the constructor), so
+        // the flag is not the user's and is left out for the same reason.
+        if (!format.hasInfinity && !format.hasNaN) spec += 'n0';
+    }
+    // "d" for denormal - "s" is already taken by the sign bit. Never emitted
+    // with no exponent field either: the constructor keeps hasSubnormals true
+    // there, for the same reason.
     if (!format.hasSubnormals) spec += 'd0';
     return spec;
 }
@@ -157,6 +175,11 @@ function parseFormatParam(str) {
         if (exponentBits > 15 || mantissaBits > 112) return null;
         const hasInfinity = m[4] === undefined ? true : m[4] === '1';
         const hasNaN = m[5] === undefined ? true : m[5] === '1';
+        // "n0" beside an Infinity with a mantissa field asks for a format the
+        // constructor refuses (the top binade's other patterns are NaN), so
+        // the link is malformed like an out-of-range width. formatToParam()
+        // never writes it.
+        if (hasInfinity && exponentBits > 0 && mantissaBits > 0 && !hasNaN) return null;
         const desc = { kind: 'fp', signBits, exponentBits, mantissaBits, hasInfinity, hasNaN };
         if (m[6] === '0') desc.hasSubnormals = false;
         return desc;
@@ -218,11 +241,10 @@ function decimalToString(value) {
  */
 function parseDecimal(str) {
     if (typeof str !== 'string') return null;
-    const lower = str.toLowerCase().trim();
-    if (lower === 'inf' || lower === '+inf' || lower === 'infinity' || lower === '+infinity') return Infinity;
-    if (lower === '-inf' || lower === '-infinity') return -Infinity;
-    if (lower === 'nan' || lower === '-nan' || lower === '+nan') return NaN;
-    if (lower === '') return null;
+    // Keyword spellings come from the library, so every parser accepts the same.
+    const keyword = _usValueKeyword(str);
+    if (keyword !== null) return keyword;
+    if (str.trim() === '') return null;
     const n = Number(str);
     return Number.isNaN(n) ? null : n;
 }
@@ -239,21 +261,27 @@ function valueToParam(format, currentValue, currentEncoded, currentValueText = n
     const sourceValue = currentValueText !== null ? currentValueText : currentValue;
     try {
         const reEncoded = format.encode(sourceValue);
-        faithful =
-            reEncoded.sign === currentEncoded.sign &&
-            reEncoded.exponent === currentEncoded.exponent &&
-            reEncoded.mantissa === currentEncoded.mantissa;
+        faithful = _usSameEncoding(format, reEncoded, currentEncoded);
     } catch {
         faithful = false;
     }
 
     if (faithful) {
-        return {
-            key: 'val',
-            value: currentValueText !== null
-                ? currentValueText
-                : decimalToString(currentValue),
-        };
+        const text = currentValueText !== null
+            ? currentValueText
+            : decimalToString(currentValue);
+        // The exact decimal of a wide-exponent pattern runs to thousands of
+        // digits (s1e15m10's max normal has 4,933), which no one pastes. When
+        // the literal is the spelling the page gives those bits anyway (their
+        // exact decimal, on a pattern the double cannot show) and longer than
+        // the pattern is wide, the hex loads back to the identical page in
+        // fewer characters. A literal the page would not regenerate from the
+        // bits, such as fp64's exact spelling accepted from the hint, is kept.
+        const isBitsSpelling = !_usShowsDecodedValue(format, currentEncoded) &&
+            text === format.toExactDecimalString(currentEncoded);
+        if (!isBitsSpelling || text.length <= format.totalBits) {
+            return { key: 'val', value: text };
+        }
     }
     return {
         key: 'hex',

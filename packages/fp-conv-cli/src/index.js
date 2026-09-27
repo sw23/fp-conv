@@ -79,7 +79,7 @@ const OPTIONS = {
  * @returns {{command: string|undefined, positionals: string[], values: object}}
  */
 export function parseArgs(argv) {
-    const NEGATIVE_VALUE = /^-(?:\d.*|\.\d.*|inf(?:inity)?)$/i;
+    const NEGATIVE_VALUE = /^-(?:\d.*|\.\d.*|inf(?:inity)?|nan)$/i;
     const forwarded = [];
     const extraPositionals = [];
     for (let i = 0; i < argv.length; i++) {

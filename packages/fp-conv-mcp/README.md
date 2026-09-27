@@ -51,12 +51,12 @@ For floating-point:
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `signBits` | yes | Number of sign bits (typically 1) |
+| `signBits` | no | Number of sign bits, `0` or `1` (default `1`) |
 | `exponentBits` | yes | Number of exponent bits |
 | `mantissaBits` | yes | Number of mantissa (fraction) bits |
 | `bias` | no | Exponent bias; defaults to `2^(exponentBits-1) - 1` |
 | `hasInfinity` | no | Whether the format can represent ±Infinity (default `true`) |
-| `hasNaN` | no | Whether the format can represent NaN (default `true`) |
+| `hasNaN` | no | Whether the format can represent NaN (default `true`). Decided by the layout when `hasInfinity` is set: `true` with a mantissa field (passing `false` there is an error), `false` without one |
 | `hasSubnormals` | no | Whether exponent field 0 is a subnormal/zero region (default `true`). Set `false` for a scale type such as E8M0. |
 
 For integers:
@@ -68,13 +68,15 @@ For integers:
 | Field | Required | Description |
 | --- | --- | --- |
 | `bits` | yes | Total bit width (1–64) |
-| `signed` | yes | `true` for signed two's-complement, `false` for unsigned |
+| `signed` | no | `true` for signed two's-complement, `false` for unsigned (default `true`) |
 | `fractionBits` | no | Implicit `2^-fractionBits` scale (default `0`; MXINT8 uses `6`) |
 | `symmetric` | no | Leave the most-negative encoding unused so the range is symmetric (default `false`) |
 
-> **Precision note:** values are computed with JavaScript doubles, so formats
-> wider than 53 significant bits (e.g. 64-bit integers or mantissas above 52)
-> are supported but may round at the extremes of their range.
+> **Precision note:** encoding, decoding and conversion are exact at every
+> width. A value a JSON number could not name exactly (a 64-bit integer's
+> maximum, a mantissa wider than 53 bits, a magnitude outside fp64's range) is
+> returned as a decimal digit string rather than a rounded number. Every flag
+> in a custom format, when given, must be a JSON boolean.
 
 ## Client configuration
 

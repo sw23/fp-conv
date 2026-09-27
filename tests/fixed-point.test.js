@@ -18,11 +18,13 @@ describe('Fixed-point encoding', () => {
     const unsigned = new FloatingPoint(0, 0, 8); // 8 fractional bits, unsigned
     const maxSigned = Math.pow(2, 4) - 1;
 
-    test('NaN encodes to zero', () => {
-        const enc = signed.encode(NaN);
-        expect(enc.mantissa).toBe(0);
-        expect(enc.isZero).toBe(true);
-        expect(enc.isNaN).toBe(false);
+    test('NaN encodes to the positive maximum', () => {
+        for (const fp of [signed, unsigned]) {
+            const enc = fp.encode(NaN);
+            expect(enc.sign).toBe(0);
+            expect(enc.mantissa).toBe(fp.maxMantissa);
+            expect(enc.isNaN).toBe(false);
+        }
     });
 
     test('positive Infinity saturates to max mantissa', () => {

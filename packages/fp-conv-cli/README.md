@@ -79,7 +79,7 @@ fp-conv convert 3.14 --from fp32 --to fp16
 fp-conv info bf16
 
 # Saturate instead of overflowing to Infinity
-fp-conv encode 1e40 --format fp32 --overflow saturate   # 3.4028234663852886e38
+fp-conv encode 1e40 --format fp32 --overflow saturate   # 3.4028234663852886e+38
 fp-conv encode inf --format fp8_e5m2 --overflow saturate # 57344
 fp-conv encode 1000 --format fp8_e4m3 --overflow overflow # NaN
 

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, setupThemeToggle */
+/* global FloatingPoint, Integer, FORMATS, valueKeyword, sameEncoding, normalizedEncoding, setupThemeToggle */
 // Shared JavaScript for format documentation pages.
 // Requires floating-point.js to be loaded first.
 
@@ -11,12 +11,15 @@
 // as a CLASSIC script, and every classic script on a page shares one global
 // lexical environment, so duplicate top-level `let`/`const`/`class` names across
 // two of them throw SyntaxError. tests/browser-scripts.test.js enforces it.
-let _fcFloatingPoint, _fcInteger, _fcFORMATS;
+let _fcFloatingPoint, _fcInteger, _fcFORMATS, _fcValueKeyword, _fcSameEncoding, _fcNormalizedEncoding;
 if (typeof require !== 'undefined') {
     const lib = require('../lib/floating-point.js');
     _fcFloatingPoint = lib.FloatingPoint;
     _fcInteger = lib.Integer;
     _fcFORMATS = lib.FORMATS;
+    _fcValueKeyword = lib.valueKeyword;
+    _fcSameEncoding = lib.sameEncoding;
+    _fcNormalizedEncoding = lib.normalizedEncoding;
 } else {
     /* istanbul ignore next */
     _fcFloatingPoint = FloatingPoint;
@@ -24,6 +27,12 @@ if (typeof require !== 'undefined') {
     _fcInteger = Integer;
     /* istanbul ignore next */
     _fcFORMATS = FORMATS;
+    /* istanbul ignore next */
+    _fcValueKeyword = valueKeyword;
+    /* istanbul ignore next */
+    _fcSameEncoding = sameEncoding;
+    /* istanbul ignore next */
+    _fcNormalizedEncoding = normalizedEncoding;
 }
 
 // ── Format metadata for navigation and pages ─────────────────
@@ -219,6 +228,23 @@ function formatValue(val) {
     return str;
 }
 
+// A bound of an integer format as table text. A whole number keeps the
+// thousands grouping the tables have always had, grouped from a BigInt so it
+// stays exact past 53 bits (minRealValue/maxRealValue are doubles, and a
+// 64-bit page would end in ...552000 beside a special-values table that says
+// ...551615). A fixed-point bound is its exact decimal, which is what
+// formatValue() showed for MXINT8 and never rounds at a wider width.
+function integerBoundText(fmt, encoded) {
+    const exact = fmt.toExactDecimalString(encoded);
+    return fmt.fractionBits ? exact : BigInt(exact).toLocaleString();
+}
+
+// How many patterns a width has, grouped like the bounds and exact at any
+// width (Math.pow(2, 64) is a double too).
+function patternCountText(totalBits) {
+    return (1n << BigInt(totalBits)).toLocaleString();
+}
+
 function renderRangeTable(containerId, config) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -238,14 +264,14 @@ function renderRangeTable(containerId, config) {
 
         const rows = config.signed ? [
             ['Total Bits', config.totalBits, config.totalBits],
-            ['Minimum Value', fmt.minRealValue, fmtU.minRealValue],
-            ['Maximum Value', fmt.maxRealValue, fmtU.maxRealValue],
-            ['Representable Values', Math.pow(2, config.totalBits), Math.pow(2, config.totalBits)],
+            ['Minimum Value', integerBoundText(fmt, fmt.getMinValue()), integerBoundText(fmtU, fmtU.getMinValue())],
+            ['Maximum Value', integerBoundText(fmt, fmt.getMaxValue()), integerBoundText(fmtU, fmtU.getMaxValue())],
+            ['Representable Values', patternCountText(config.totalBits), patternCountText(config.totalBits)],
         ] : [
             ['Total Bits', config.totalBits],
-            ['Minimum Value', fmt.minRealValue],
-            ['Maximum Value', fmt.maxRealValue],
-            ['Representable Values', Math.pow(2, config.totalBits)],
+            ['Minimum Value', integerBoundText(fmt, fmt.getMinValue())],
+            ['Maximum Value', integerBoundText(fmt, fmt.getMaxValue())],
+            ['Representable Values', patternCountText(config.totalBits)],
         ];
 
         if (config.fractionBits) {
@@ -285,7 +311,7 @@ function renderRangeTable(containerId, config) {
     // normal binade rather than reserving it.
     const minNormVal = fp.decode(0, fp.hasSubnormals ? 1 : 0, 0);
 
-    const maxSubMant = fp.mantissaBits > 0 ? Math.pow(2, fp.mantissaBits) - 1 : 0;
+    const maxSubMant = fp.mantissaBits > 0 ? fp.maxMantissa : 0;
     const maxSubVal = fp.hasSubnormals ? fp.decode(0, 0, maxSubMant) : null;
 
     const minSubVal = (fp.hasSubnormals && fp.mantissaBits > 0) ? fp.decode(0, 0, 1) : 0;
@@ -360,8 +386,7 @@ function renderSpecialValues(containerId, config) {
 
         // Max subnormal
         if (fp.mantissaBits > 0) {
-            const maxSub = Math.pow(2, fp.mantissaBits) - 1;
-            entries.push({ name: 'Max Subnormal', sign: 0, exp: 0, mant: maxSub });
+            entries.push({ name: 'Max Subnormal', sign: 0, exp: 0, mant: fp.maxMantissa });
         }
     }
 
@@ -381,7 +406,7 @@ function renderSpecialValues(containerId, config) {
     }
 
     // NaN
-    if (fp._hasNaNEncoding()) {
+    if (fp.hasNaN) {
         const nan = fp.getNaN();
         entries.push({ name: 'NaN', sign: 0, exp: nan.exponent, mant: nan.mantissa });
     }
@@ -426,14 +451,18 @@ function renderIntegerSpecialValues(container, config) {
     const entries = [
         { name: 'Zero', raw: 0 },
         { name: scale === 1 ? 'One' : `One (${scale} raw)`, raw: scale },
-        { name: 'Max Unsigned', raw: Math.pow(2, config.totalBits) - 1 },
+        { name: 'Max Unsigned', raw: fmtU.maxMantissa },
     ];
     if (config.totalBits > 1) {
-        entries.push({ name: 'Max Signed', raw: Math.pow(2, config.totalBits - 1) - 1 });
-        entries.push({ name: `All Ones (${-1 / scale === -1 ? '-1' : formatValue(-1 / scale)})`, raw: Math.pow(2, config.totalBits) - 1 });
+        // The sign bit on its own, from the library's bounds so it stays exact
+        // past 53 bits. Shown even where a symmetric format (MX §5.3.4) leaves
+        // it unused, since decode() is total over the bit space.
+        const minSignedRaw = fmtU.maxMantissa - fmtS.maxValue;
+        entries.push({ name: 'Max Signed', raw: fmtS.maxValue });
+        entries.push({ name: `All Ones (${-1 / scale === -1 ? '-1' : formatValue(-1 / scale)})`, raw: fmtU.maxMantissa });
         entries.push({
-            name: `Min Signed (${formatValue(-Math.pow(2, config.totalBits - 1) / scale)})`,
-            raw: Math.pow(2, config.totalBits - 1)
+            name: `Min Signed (${formatValue(fmtS.decode(0, 0, minSignedRaw))})`,
+            raw: minSignedRaw
         });
     }
 
@@ -515,11 +544,11 @@ function renderComparisonTable(containerId, currentKey, compareKeys) {
             bits: fmt.bits,
         }));
         rows.push(['Total Bits', ...intInstances.map(i => i.bits)]);
-        rows.push(['Signed Min', ...intInstances.map(i => i.s.minRealValue.toLocaleString())]);
-        rows.push(['Signed Max', ...intInstances.map(i => i.s.maxRealValue.toLocaleString())]);
-        rows.push(['Unsigned Max', ...intInstances.map(i => i.u.maxRealValue.toLocaleString())]);
+        rows.push(['Signed Min', ...intInstances.map(i => integerBoundText(i.s, i.s.getMinValue()))]);
+        rows.push(['Signed Max', ...intInstances.map(i => integerBoundText(i.s, i.s.getMaxValue()))]);
+        rows.push(['Unsigned Max', ...intInstances.map(i => integerBoundText(i.u, i.u.getMaxValue()))]);
         rows.push(['Step (ULP)', ...intInstances.map(i => formatValue(1 / i.s.scale))]);
-        rows.push(['Values', ...intInstances.map(i => Math.pow(2, i.bits).toLocaleString())]);
+        rows.push(['Values', ...intInstances.map(i => patternCountText(i.bits))]);
     }
 
     for (const row of rows) {
@@ -541,20 +570,15 @@ function initVisualizer(config) {
     const vizContainer = document.getElementById('visualizer');
     if (!vizContainer) return;
 
-    let format;
-    let isInteger = false;
-
-    if (config.isInteger) {
-        isInteger = true;
-        format = buildFormat(config);
-    } else {
-        format = buildFormat(config);
-    }
+    const format = buildFormat(config);
+    const isInteger = Boolean(config.isInteger);
 
     // State
     let currentSign = 0;
     let currentExponent = 0;
     let currentMantissa = 0;
+    // Whether the decimal box holds text the user typed (see the blur handler).
+    let decimalEdited = false;
 
     // Build the bit display
     const binaryContainer = vizContainer.querySelector('.viz-binary');
@@ -662,23 +686,25 @@ function initVisualizer(config) {
         }
     }
 
-    // Safe bit helpers - JS bitwise ops truncate to 32 bits, which
-    // breaks FP64 (52-bit mantissa) and INT32 (bit 31 sign issues).
+    // Safe bit helpers - JS bitwise ops truncate to 32 bits, which breaks FP64
+    // (52-bit mantissa) and INT32 (bit 31 sign issues). BigInt keeps fields
+    // wider than 53 bits exact.
     function getBit(value, index) {
-        return Math.floor(value / Math.pow(2, index)) % 2;
+        return Number((BigInt(value) >> BigInt(index)) & 1n);
     }
     function flipBit(value, index) {
-        const bitVal = Math.pow(2, index);
-        return getBit(value, index) ? value - bitVal : value + bitVal;
+        return BigInt(value) ^ (1n << BigInt(index));
     }
 
     function toggleBit(field, index) {
         if (field === 'sign') {
             currentSign = currentSign ? 0 : 1;
         } else if (field === 'exponent') {
-            currentExponent = flipBit(currentExponent, index);
+            // At most 15 bits wide, so always a plain number.
+            currentExponent = Number(flipBit(currentExponent, index));
         } else {
-            currentMantissa = flipBit(currentMantissa, index);
+            // Back in this width's representation, to compare with the library's.
+            currentMantissa = format.normalizeMantissa(flipBit(currentMantissa, index));
         }
         updateDisplay();
     }
@@ -689,6 +715,7 @@ function initVisualizer(config) {
         // Update decimal input (without triggering re-encode)
         if (decimalInput && document.activeElement !== decimalInput) {
             decimalInput.value = formatValue(decoded);
+            decimalEdited = false;
         }
 
         // Update bits display
@@ -737,9 +764,8 @@ function initVisualizer(config) {
                 ? 1 - format.bias
                 : currentExponent - format.bias;
 
-            const mantDec = fieldZeroIsSubnormal
-                ? (format.mantissaBits > 0 ? currentMantissa / Math.pow(2, format.mantissaBits) : 0)
-                : (format.mantissaBits > 0 ? 1 + currentMantissa / Math.pow(2, format.mantissaBits) : 1);
+            // The library's 0.x/1.x rule, shared with the converter.
+            const mantDec = format.significand(currentExponent, currentMantissa);
 
             const type = format.classify(currentSign, currentExponent, currentMantissa);
 
@@ -773,6 +799,7 @@ function initVisualizer(config) {
         updateActivePreset();
     }
 
+    // The encoding a preset button names, or null where the format lacks it.
     function getPresetEncoding(preset) {
         if (isInteger) {
             switch (preset) {
@@ -781,7 +808,7 @@ function initVisualizer(config) {
                 case 'neg-one': return format.encode(-1);
                 case 'max': return format.getMaxValue();
                 case 'min': return format.getMinValue();
-                case 'all-ones': return { sign: 0, exponent: 0, mantissa: Math.pow(2, format.totalBits) - 1 };
+                case 'all-ones': return _fcNormalizedEncoding(format, 0, 0, format.maxMantissa);
                 default: return null;
             }
         } else {
@@ -790,17 +817,15 @@ function initVisualizer(config) {
                 case 'one': return format.encode(1);
                 case 'neg-one': return format.signBits ? format.encode(-1) : null;
                 case 'max': return format.getMaxNormal(false);
-                case 'min-normal': return { sign: 0, exponent: format.hasSubnormals ? 1 : 0, mantissa: 0 };
-                case 'min-sub':
-                    return (format.hasSubnormals && format.mantissaBits > 0)
-                        ? { sign: 0, exponent: 0, mantissa: 1 } : null;
+                // The library owns which fields these are, as for the
+                // converter's presets; on a fixed-point layout there is no
+                // subnormal, so the two never name one encoding.
+                case 'min-normal': return format.getMinNormal();
+                case 'min-sub': return format.getMinSubnormal();
                 case 'inf': return format.hasInfinity ? format.getInfinity(false) : null;
-                case 'nan': return format._hasNaNEncoding() ? format.getNaN() : null;
-                case 'all-ones': return {
-                    sign: format.signBits ? 1 : 0,
-                    exponent: format.maxExponent,
-                    mantissa: Math.pow(2, format.mantissaBits) - 1
-                };
+                case 'nan': return format.hasNaN ? format.getNaN() : null;
+                case 'all-ones':
+                    return _fcNormalizedEncoding(format, format.signBits ? 1 : 0, format.maxExponent, format.maxMantissa);
                 default: return null;
             }
         }
@@ -809,65 +834,59 @@ function initVisualizer(config) {
     function updateActivePreset() {
         vizContainer.querySelectorAll('.viz-preset-btn').forEach(btn => {
             const expected = getPresetEncoding(btn.dataset.preset);
-            if (expected &&
-                currentSign === expected.sign &&
-                currentExponent === expected.exponent &&
-                currentMantissa === expected.mantissa) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+            const current = { sign: currentSign, exponent: currentExponent, mantissa: currentMantissa };
+            btn.classList.toggle('active',
+                expected !== null && _fcSameEncoding(format, current, expected));
         });
     }
 
+    // Accept what the converter accepts: the library's keywords ("inf",
+    // "-nan", ...) and plain decimals, which are encoded as text so the exact
+    // decimal rounds once. Anything else (including "1.5abc") is ignored.
     function encodeFromDecimal(str) {
-        const val = parseFloat(str);
-        if (isNaN(val) && str.toLowerCase() !== 'nan') return;
+        decimalEdited = false;
+        const keyword = _fcValueKeyword(str);
+        if (keyword === null && !_fcFloatingPoint.isDecimalLiteral(str)) return;
 
-        const encoded = format.encode(isNaN(val) ? NaN : val);
+        const encoded = format.encode(keyword === null ? str.trim() : keyword);
         currentSign = encoded.sign;
         currentExponent = encoded.exponent;
         currentMantissa = encoded.mantissa;
         updateDisplay();
     }
 
+    // The format reads the pattern, so this box accepts exactly what the
+    // converter's hex box and the decode tool accept: a pattern that does not
+    // fit (FP6's "0xFF") is ignored rather than sliced to width, and the
+    // fields stay exact past 53 bits. Anything else, an empty box on blur
+    // included, is ignored too.
     function encodeFromHex(str) {
-        const hex = str.replace(/^0x/i, '').trim();
-        if (!/^[0-9a-f]+$/i.test(hex) || hex.length === 0) return;
-        const totalBits = isInteger ? format.totalBits : format.signBits + format.exponentBits + format.mantissaBits;
-        const expectedHexLen = Math.ceil(totalBits / 4);
-        const padded = hex.padStart(expectedHexLen, '0');
-        if (padded.length > expectedHexLen) return;
-        let binary = '';
-        for (let i = 0; i < padded.length; i++) {
-            binary += parseInt(padded[i], 16).toString(2).padStart(4, '0');
+        let fields;
+        try {
+            fields = format.fromHexString(str);
+        } catch (e) {
+            if (e instanceof RangeError) return;
+            throw e;
         }
-        // Trim leading bits if total isn't a multiple of 4
-        binary = binary.slice(binary.length - totalBits);
-
-        if (isInteger) {
-            currentSign = 0;
-            currentExponent = 0;
-            currentMantissa = parseInt(binary, 2);
-        } else {
-            let pos = 0;
-            currentSign = format.signBits ? parseInt(binary[pos++], 2) : 0;
-            currentExponent = parseInt(binary.substr(pos, format.exponentBits), 2);
-            pos += format.exponentBits;
-            currentMantissa = parseInt(binary.substr(pos, format.mantissaBits), 2);
-        }
+        ({ sign: currentSign, exponent: currentExponent, mantissa: currentMantissa } = fields);
         updateDisplay();
     }
 
-    // Decimal input handler
+    // Decimal input handler. Blur commits only text the user edited: the box
+    // otherwise holds formatValue()'s 10-significant-digit rendering, and
+    // re-encoding that moves the bits (fp64's max normal reads 1.797693135e+308,
+    // which encodes to Infinity).
     if (decimalInput) {
+        decimalInput.addEventListener('input', () => {
+            decimalEdited = true;
+        });
         decimalInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 encodeFromDecimal(decimalInput.value);
             }
         });
         decimalInput.addEventListener('blur', () => {
-            encodeFromDecimal(decimalInput.value);
+            if (decimalEdited) encodeFromDecimal(decimalInput.value);
         });
     }
 
@@ -886,46 +905,10 @@ function initVisualizer(config) {
     // Preset buttons
     vizContainer.querySelectorAll('.viz-preset-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const preset = btn.dataset.preset;
-            let encoded;
-
-            if (isInteger) {
-                switch (preset) {
-                    case 'zero': encoded = format.encode(0); break;
-                    case 'one': encoded = format.encode(1); break;
-                    case 'neg-one': encoded = format.encode(-1); break;
-                    case 'max': encoded = format.getMaxValue(); break;
-                    case 'min': encoded = format.getMinValue(); break;
-                    case 'all-ones':
-                        currentSign = 0;
-                        currentExponent = 0;
-                        currentMantissa = Math.pow(2, format.totalBits) - 1;
-                        updateDisplay();
-                        return;
-                    default: return;
-                }
-            } else {
-                switch (preset) {
-                    case 'zero':
-                    case 'one':
-                    case 'neg-one':
-                    case 'max':
-                    case 'min-normal':
-                    case 'min-sub':
-                    case 'inf':
-                    case 'nan':
-                        encoded = getPresetEncoding(preset);
-                        if (!encoded) return;
-                        break;
-                    case 'all-ones':
-                        currentSign = format.signBits ? 1 : 0;
-                        currentExponent = format.maxExponent;
-                        currentMantissa = Math.pow(2, format.mantissaBits) - 1;
-                        updateDisplay();
-                        return;
-                    default: return;
-                }
-            }
+            // The one table that updateActivePreset() highlights from, so a
+            // loaded preset always lights up.
+            const encoded = getPresetEncoding(btn.dataset.preset);
+            if (!encoded) return;
 
             currentSign = encoded.sign;
             currentExponent = encoded.exponent;
@@ -949,7 +932,8 @@ function initVisualizer(config) {
         setState: function(s, e, m) {
             currentSign = s;
             currentExponent = e;
-            currentMantissa = m;
+            // Callers pass whatever they hold; keep the width's representation.
+            currentMantissa = format.normalizeMantissa(m);
             updateDisplay();
         },
         getState: function() {

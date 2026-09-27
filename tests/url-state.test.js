@@ -42,8 +42,32 @@ describe('formatToParam', () => {
 
     test('serializes custom flags for disabled infinity/NaN', () => {
         expect(formatToParam(new FloatingPoint(1, 5, 2, { hasInfinity: false }))).toBe('s1e5m2i0');
-        expect(formatToParam(new FloatingPoint(1, 6, 9, { hasNaN: false }))).toBe('s1e6m9n0');
         expect(formatToParam(new FloatingPoint(1, 6, 9, { hasInfinity: false, hasNaN: false }))).toBe('s1e6m9i0n0');
+    });
+
+    test('a layout with an infinity carries no NaN flag: the layout decides it', () => {
+        // The constructor has NaN with a mantissa field and none without one,
+        // so "n0"/"n1" would say nothing the link's shape does not.
+        expect(formatToParam(new FloatingPoint(1, 6, 9))).toBe('s1e6m9');
+        expect(formatToParam(new FloatingPoint(1, 5, 0, { hasNaN: true }))).toBe('s1e5m0');
+        // A link that says "n0" there asks for a format the constructor
+        // refuses, so it is malformed rather than quietly a different format
+        // (it used to load as s1e6m9 with the NaN box off).
+        expect(parseFormatParam('s1e6m9n0')).toBeNull();
+        expect(parseFormatParam('s1e6m9i1n0')).toBeNull();
+        // Without an Infinity, or with nothing to decide, the flag is the link's.
+        expect(parseFormatParam('s1e6m9i0n0')).toMatchObject({ hasInfinity: false, hasNaN: false });
+        expect(parseFormatParam('s1e5m0n0')).toMatchObject({ hasInfinity: true, hasNaN: false });
+        expect(descriptorToFormat(parseFormatParam('s1e5m0n0')).hasNaN).toBe(false);
+    });
+
+    test('a layout with no exponent field carries no infinity/NaN flags', () => {
+        // The constructor forces both off there, so emitting them would turn
+        // the page's kept checkbox choice into an explicit "off" on restore.
+        const fixed = new FloatingPoint(1, 0, 8, { hasInfinity: true, hasNaN: true });
+        expect(fixed.hasInfinity).toBe(false);
+        expect(formatToParam(fixed)).toBe('s1e0m8');
+        expect(parseFormatParam('s1e0m8')).toMatchObject({ hasInfinity: true, hasNaN: true });
     });
 
     test('serializes custom integer widths', () => {
@@ -166,8 +190,24 @@ describe('decimalToString / parseDecimal', () => {
 
     test('returns null for unparseable input', () => {
         expect(parseDecimal('')).toBeNull();
+        expect(parseDecimal('   ')).toBeNull();
         expect(parseDecimal('abc')).toBeNull();
         expect(parseDecimal(42)).toBeNull();
+    });
+
+    // The keywords are the library's, so a link, the WebMCP tool and every
+    // format's own encodeString() accept the same spellings. Three copies of
+    // the list used to be the only thing keeping them in step.
+    test('agrees with the library on every keyword spelling', () => {
+        const { valueKeyword } = require('../lib/floating-point.js');
+        for (const text of [
+            'inf', '+inf', 'INF', 'infinity', '+infinity', 'Infinity',
+            '-inf', '-INF', '-infinity', '-Infinity',
+            'nan', '+nan', '-nan', 'NaN', ' inf ',
+        ]) {
+            expect([text, Object.is(parseDecimal(text), valueKeyword(text))])
+                .toEqual([text, true]);
+        }
     });
 });
 
@@ -189,6 +229,33 @@ describe('valueToParam', () => {
         const result = valueToParam(format, NaN, encoded);
         expect(result.key).toBe('hex');
         expect(result.value).toBe(format.toHexString(0, 31, payload));
+    });
+
+    test('prefers hex when the literal is the bits\' exact spelling and longer than the pattern', () => {
+        // s1e15m10's max normal is a 4,933-digit decimal; the page records
+        // that text as the literal once the bits are loaded.
+        const wide = new FloatingPoint(1, 15, 10);
+        const max = wide.getMaxNormal(false);
+        const exact = wide.toExactDecimalString(max);
+        expect(exact.length).toBeGreaterThan(wide.totalBits);
+        expect(valueToParam(wide, Infinity, max, exact))
+            .toEqual({ key: 'hex', value: wide.toHexString(0, max.exponent, max.mantissa) });
+
+        // A short exact spelling stays as the readable decimal, and a typed
+        // literal that is not the exact spelling is kept verbatim.
+        const u64 = new Integer(64, false);
+        expect(valueToParam(u64, 2 ** 64, u64.getMaxValue(), '18446744073709551615'))
+            .toEqual({ key: 'val', value: '18446744073709551615' });
+        const fp64 = FloatingPoint.fromFormat('fp64');
+        const typed = '0.1' + '0'.repeat(70);
+        expect(valueToParam(fp64, 0.1, fp64.encode(typed), typed))
+            .toEqual({ key: 'val', value: typed });
+        // An exact spelling the page would NOT show from the bits (fp64 shows
+        // the double's short form) is kept, or the link would lose it.
+        const sub = fp64.encode(5e-324);
+        const subExact = fp64.toExactDecimalString(sub);
+        expect(subExact.length).toBeGreaterThan(64);
+        expect(valueToParam(fp64, 5e-324, sub, subExact)).toEqual({ key: 'val', value: subExact });
     });
 });
 
