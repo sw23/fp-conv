@@ -129,6 +129,8 @@ header {
 }
 
 header h1 {
+    width: 100%;
+    text-align: center;
     font-size: var(--fs-h1);
     font-weight: 600;
     margin: 0;
