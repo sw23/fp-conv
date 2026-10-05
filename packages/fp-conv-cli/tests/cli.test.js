@@ -73,6 +73,13 @@ describe("parseArgs", () => {
             .toEqual(["encode", "-.5"]);
     });
 
+    test("a negative value keeps its place among the positionals", () => {
+        expect(parseArgs(["encode", "-1.5", "2", "-f", "fp16"]).positionals)
+            .toEqual(["encode", "-1.5", "2"]);
+        expect(parseArgs(["encode", "2", "-1.5", "-f", "fp16"]).positionals)
+            .toEqual(["encode", "2", "-1.5"]);
+    });
+
     test("still supports the -- separator for values", () => {
         const parsed = parseArgs(["encode", "--format", "fp16", "--", "-1.5"]);
         expect(parsed.positionals).toEqual(["encode", "-1.5"]);
@@ -133,6 +140,33 @@ describe("main: error handling", () => {
         ]);
         expect(stderr).toMatch(/Invalid custom format JSON/);
         expect(exitCodes).toContain(1);
+    });
+});
+
+// Extra arguments used to be dropped silently, hiding typos.
+describe("main: arguments a command does not take", () => {
+    test.each([
+        [["encode", "1", "2", "--format", "fp32"], /Unexpected argument "2": encode takes <value>\./],
+        [["encode", "-1.5", "-2", "-f", "fp16"], /Unexpected argument "-2"/],
+        [["encode", "-1.5", "2", "-f", "fp16"], /Unexpected argument "2"/],
+        [["list", "extra"], /Unexpected argument "extra": list takes no arguments\./],
+        [["info", "fp16", "bf16"], /Unexpected argument "bf16": info takes <format>\./],
+        [["encode", "1", "--format", "fp32", "--to", "fp16"], /Option --to does not apply to encode\./],
+        [["decode", "0x3c00", "-f", "fp16", "-r", "towardZero"], /Option --rounding does not apply to decode\./],
+        [["convert", "1", "--from", "fp32", "--to", "fp16", "--format", "fp8_e4m3"], /Option --format does not apply to convert\./],
+        [["info", "fp16", "--overflow", "saturate"], /Option --overflow does not apply to info\./],
+        [["list", "--from", "fp32"], /Option --from does not apply to list\./],
+    ])("%j is refused", async (args, message) => {
+        const { stdout, stderr, exitCodes } = await runCli(main, args);
+        expect(stderr).toMatch(message);
+        expect(exitCodes).toContain(1);
+        expect(stdout).toBe("");
+    });
+
+    test("the options every command shares are still accepted", async () => {
+        const { stdout, exitCodes } = await runCli(main, ["info", "fp16", "--json"]);
+        expect(exitCodes).toEqual([]);
+        expect(JSON.parse(stdout).totalBits).toBe(16);
     });
 });
 

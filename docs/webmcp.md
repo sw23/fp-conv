@@ -27,7 +27,7 @@ Encode a decimal number (or special value) into a format.
 | `roundingMode` | string | Optional. One of `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative` |
 | `overflowMode` | string | Optional. `overflow` (produce Infinity, or NaN when the format has NaN but no Infinity) or `saturate` (clamp to the largest finite value). Omit to use the per-format default. IEEE 754 §7.4 directed rounding still clamps finite overflow regardless. |
 
-**Returns:** Binary string, hex string, sign, exponent (biased & actual), mantissa, type classification, and actual value. `actualValue` and `mantissaDecimal` follow the same number-or-digit-string convention as the range bounds in [`get_format_info`](#get_format_info), so neither is a rounded stand-in: a mantissa wider than 52 bits can hold a significand no double can. A negative zero is the string `"-0"`, since JSON would write the number as `0`.
+**Returns:** Binary string, hex string, sign, exponent (biased & actual), mantissa, type classification, and actual value. For floating-point formats the actual exponent comes twice: `exponentActual` is readable text such as `"128 - 127 = 1"` (or `"Special"` for Infinity and NaN, `"N/A"` without an exponent field), and `exponentUnbiased` is the same value as a number, or `null` where the text has none. `actualValue` and `mantissaDecimal` follow the same number-or-digit-string convention as the range bounds in [`get_format_info`](#get_format_info), so neither is a rounded stand-in: a mantissa wider than 52 bits can hold a significand no double can. A negative zero is the string `"-0"`, since JSON would write the number as `0`.
 
 ### `decode_bits`
 
@@ -208,7 +208,7 @@ Or convert 1.5 from FP16 to a custom 8-bit floating-point format:
 }
 
 // Response includes:
-// input:  { actualValue: 1.5, binary: "0011110000000000", hex: "0x3C00", type: "Normal", ... }
-// output: { actualValue: 1.5, binary: "01111000", hex: "0x78", type: "Normal", ... }
+// input:  { actualValue: 1.5, binary: "0011111000000000", hex: "0x3E00", type: "Normal", ... }
+// output: { actualValue: 1.5, binary: "00111100", hex: "0x3C", type: "Normal", ... }
 // precisionLoss: { kind: "exact", absolute: 0, relativePercent: 0, lossless: true }
 ```

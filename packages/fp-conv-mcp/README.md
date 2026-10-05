@@ -147,6 +147,13 @@ fp-conv-mcp --http --host 127.0.0.1 --port 3001
 > **Security:** The HTTP transport has no authentication and binds to `127.0.0.1`
 > by default. Do not bind it to a non-loopback interface unless you add your own
 > authentication and understand the implications.
+>
+> To block DNS-rebinding and cross-site requests from web pages, the server
+> refuses (403) a request whose `Host` is not a loopback name or the `--host`
+> address, and one whose `Origin` names any other host. A wildcard bind
+> (`--host 0.0.0.0`) cannot know its own names, so it skips the `Host` check and
+> only accepts an `Origin` that is loopback or matches the `Host`. Request
+> bodies are capped at 1 MiB, and a session idle for 30 minutes is closed.
 
 ## Usage
 

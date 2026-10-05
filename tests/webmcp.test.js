@@ -5,7 +5,6 @@
 const { FloatingPoint, Integer, FORMATS, CONVERSION_LOSS_KINDS } = require('../lib/floating-point.js');
 const {
     resolveFormat,
-    exponentActual,
     parseValueInput,
     jsonSafeNumber,
     buildStats,
@@ -90,6 +89,14 @@ describe('resolveFormat', () => {
 
     test('throws on unknown preset key', () => {
         expect(() => resolveFormat('fp99')).toThrow(/Unknown format preset/);
+    });
+
+    // A plain-object lookup would find Object.prototype members and fail later
+    // with an unrelated message about signBits.
+    test('names an Object.prototype key as an unknown preset', () => {
+        for (const key of ['constructor', 'Constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+            expect(() => resolveFormat(key)).toThrow(/Unknown format preset/);
+        }
     });
 
     test('throws on missing required fields in custom float', () => {
@@ -265,37 +272,65 @@ describe('significand()', () => {
 
 // ── exponentActual ────────────────────────────────────────────────
 
-describe('exponentActual', () => {
+describe('exponentText() (get_format_info and decode_bits exponentActual)', () => {
     test('returns N/A for integer format', () => {
         const fmt = new Integer(8, true);
-        expect(exponentActual(fmt, 0)).toBe('N/A');
+        expect(fmt.exponentText(0)).toBe('N/A');
     });
 
     test('returns N/A for zero exponent bits', () => {
         const fmt = new FloatingPoint(1, 0, 7);
-        expect(exponentActual(fmt, 0)).toBe('N/A');
+        expect(fmt.exponentText(0)).toBe('N/A');
     });
 
     test('returns subnormal formula for exponent 0', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(exponentActual(fmt, 0)).toBe('1 - 127 = -126');
+        expect(fmt.exponentText(0)).toBe('1 - 127 = -126');
     });
 
     test('returns Special for max exponent', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(exponentActual(fmt, 255)).toBe('Special');
+        expect(fmt.exponentText(255)).toBe('Special');
     });
 
     test('returns actual exponent for normal values', () => {
         const fmt = new FloatingPoint(1, 8, 23);
-        expect(exponentActual(fmt, 127)).toBe('127 - 127 = 0');
-        expect(exponentActual(fmt, 128)).toBe('128 - 127 = 1');
+        expect(fmt.exponentText(127)).toBe('127 - 127 = 0');
+        expect(fmt.exponentText(128)).toBe('128 - 127 = 1');
     });
 
     test('returns actual exponent for OCP format at max exponent (no special values)', () => {
         const fmt = new FloatingPoint(1, 2, 1, { bias: 1, hasInfinity: false, hasNaN: false });
         // maxExponent = 3, but no special values reserved
-        expect(exponentActual(fmt, 3)).toBe('3 - 1 = 2');
+        expect(fmt.exponentText(3)).toBe('3 - 1 = 2');
+    });
+});
+
+describe('unbiasedExponent() (exponentUnbiased)', () => {
+    // The number scripts read, beside the text exponentActual() spells.
+    test('is the number exponentActual() spells, and null where it says N/A or Special', () => {
+        const fp32 = new FloatingPoint(1, 8, 23);
+        expect(fp32.unbiasedExponent(128)).toBe(1);
+        expect(fp32.unbiasedExponent(0)).toBe(-126);
+        expect(fp32.unbiasedExponent(255, 0)).toBeNull();
+        expect(fp32.unbiasedExponent(255, 1)).toBeNull();
+        expect(new Integer(8, true).unbiasedExponent(0)).toBeNull();
+        expect(new FloatingPoint(1, 0, 7).unbiasedExponent(0)).toBeNull();
+        // E8M0's field 0 is a normal binade: 0 - 127, not 1 - 127.
+        expect(resolveFormat('e8m0').unbiasedExponent(0)).toBe(-127);
+        // E4M3 has normals at maxExponent beside its one NaN.
+        expect(resolveFormat('fp8_e4m3').unbiasedExponent(15, 6)).toBe(8);
+        expect(resolveFormat('fp8_e4m3').unbiasedExponent(15, 7)).toBeNull();
+    });
+
+    test('rides along in every float stats object', () => {
+        const stats = JSON.parse(encodeNumber({ value: 2, format: 'fp32' }).content[0].text);
+        expect(stats.exponentActual).toBe('128 - 127 = 1');
+        expect(stats.exponentUnbiased).toBe(1);
+        const inf = JSON.parse(encodeNumber({ value: 'inf', format: 'fp16' }).content[0].text);
+        expect(inf.exponentUnbiased).toBeNull();
+        const int = JSON.parse(encodeNumber({ value: 3, format: 'int8' }).content[0].text);
+        expect(int).not.toHaveProperty('exponentUnbiased');
     });
 });
 
@@ -692,6 +727,18 @@ describe('decodeBits rejects overlong patterns', () => {
 // ── convertFormat tool ────────────────────────────────────────────
 
 describe('convertFormat', () => {
+    // docs/webmcp.md's second worked example, value for value.
+    test('converts 1.5 from FP16 to a custom E4M3 as the docs show', () => {
+        const result = JSON.parse(convertFormat({
+            value: 1.5,
+            inputFormat: 'fp16',
+            outputFormat: { signBits: 1, exponentBits: 4, mantissaBits: 3, bias: 7, hasInfinity: true, hasNaN: true },
+        }).content[0].text);
+        expect(result.input).toMatchObject({ actualValue: 1.5, binary: '0011111000000000', hex: '0x3E00', type: 'Normal' });
+        expect(result.output).toMatchObject({ actualValue: 1.5, binary: '00111100', hex: '0x3C', type: 'Normal' });
+        expect(result.precisionLoss).toEqual({ kind: 'exact', absolute: 0, relativePercent: 0, lossless: true });
+    });
+
     test('converts FP32 → FP16 with precision loss', () => {
         const result = convertFormat({
             value: Math.PI,
@@ -1571,13 +1618,13 @@ describe('E8M0 and MXINT8 through the tool kernel', () => {
     test('the metadata helpers follow the format subnormal regime', () => {
         const e8m0 = resolveFormat('e8m0');
         expect(e8m0.significand(0, 0)).toBe(1.0);
-        expect(exponentActual(e8m0, 0, 0)).toBe('0 - 127 = -127');
+        expect(e8m0.exponentText(0, 0)).toBe('0 - 127 = -127');
 
         // An ordinary IEEE format keeps the subnormal formulas at field 0.
         const fp16 = resolveFormat('fp16');
         expect(fp16.significand(0, 0)).toBe(0);
         expect(fp16.significand(0, 512)).toBe(0.5);
-        expect(exponentActual(fp16, 0, 0)).toBe('1 - 15 = -14');
+        expect(fp16.exponentText(0, 0)).toBe('1 - 15 = -14');
 
         // ... and so does a zero-mantissa format that still HAS subnormals.
         const zeroMantissa = resolveFormat({
@@ -1585,7 +1632,7 @@ describe('E8M0 and MXINT8 through the tool kernel', () => {
             hasInfinity: false, hasNaN: false,
         });
         expect(zeroMantissa.significand(0, 0)).toBe(0);
-        expect(exponentActual(zeroMantissa, 0, 0)).toBe('1 - 15 = -14');
+        expect(zeroMantissa.exponentText(0, 0)).toBe('1 - 15 = -14');
     });
 
     test('encode_number and decode_bits agree on MXINT8', () => {

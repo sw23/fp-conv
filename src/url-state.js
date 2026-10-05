@@ -189,41 +189,6 @@ function parseFormatParam(str) {
 }
 
 /**
- * Build a FloatingPoint or Integer instance from a parsed format descriptor.
- * Returns null for a null/preset descriptor (presets are applied via the UI).
- */
-function descriptorToFormat(desc) {
-    if (!desc) return null;
-    if (desc.presetKey) {
-        const preset = _usFORMATS[desc.presetKey];
-        if (!preset) return null;
-        if (preset.isInteger) {
-            return new _usInteger(preset.bits, preset.signed, {
-                fractionBits: preset.fractionBits,
-                symmetric: preset.symmetric,
-            });
-        }
-        return new _usFloatingPoint(preset.sign, preset.exponent, preset.mantissa, {
-            bias: preset.bias,
-            hasInfinity: preset.hasInfinity,
-            hasNaN: preset.hasNaN,
-            hasSubnormals: preset.hasSubnormals,
-        });
-    }
-    if (desc.kind === 'int') {
-        return new _usInteger(desc.bits, desc.signed, { fractionBits: desc.fractionBits });
-    }
-    if (desc.kind === 'fp') {
-        return new _usFloatingPoint(desc.signBits, desc.exponentBits, desc.mantissaBits, {
-            hasInfinity: desc.hasInfinity,
-            hasNaN: desc.hasNaN,
-            hasSubnormals: desc.hasSubnormals,
-        });
-    }
-    return null;
-}
-
-/**
  * Convert a numeric value to its URL string form, using keywords for the
  * non-finite cases that survive a round trip.
  */
@@ -257,19 +222,21 @@ function parseDecimal(str) {
  * @returns {{ key: 'val'|'hex', value: string }}
  */
 function valueToParam(format, currentValue, currentEncoded, currentValueText = null) {
+    const text = currentValueText !== null
+        ? currentValueText
+        : decimalToString(currentValue);
+    // Check the TEXT the link will carry, since that is what the reader
+    // encodes. Re-encoding the number instead agrees only while a double can
+    // hold the format's grid: on s1e11m60 the double 0.1 is a pattern of its
+    // own, but the text "0.1" rounds to a different, nearer one.
     let faithful;
-    const sourceValue = currentValueText !== null ? currentValueText : currentValue;
     try {
-        const reEncoded = format.encode(sourceValue);
-        faithful = _usSameEncoding(format, reEncoded, currentEncoded);
+        faithful = _usSameEncoding(format, format.encode(text), currentEncoded);
     } catch {
         faithful = false;
     }
 
     if (faithful) {
-        const text = currentValueText !== null
-            ? currentValueText
-            : decimalToString(currentValue);
         // The exact decimal of a wide-exponent pattern runs to thousands of
         // digits (s1e15m10's max normal has 4,933), which no one pastes. When
         // the literal is the spelling the page gives those bits anyway (their
@@ -382,7 +349,6 @@ if (typeof module !== 'undefined' && module.exports) {
         findIntPresetKey,
         formatToParam,
         parseFormatParam,
-        descriptorToFormat,
         decimalToString,
         parseDecimal,
         valueToParam,

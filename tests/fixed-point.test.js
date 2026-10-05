@@ -122,6 +122,23 @@ describe('Constructor and field validation', () => {
         expect(() => new FloatingPoint(1, 4, 3, { bias: 1.5 })).toThrow(RangeError);
     });
 
+    // Every exact path shifts BigInts by the bias, so an unbounded one makes a
+    // single decode build megabytes of digits.
+    test('rejects a bias past +/-32767 and accepts one at the bound', () => {
+        expect(() => new FloatingPoint(1, 8, 23, { bias: 32768 })).toThrow(/between -32767 and 32767/);
+        expect(() => new FloatingPoint(1, 8, 23, { bias: -32768 })).toThrow(RangeError);
+        expect(() => new FloatingPoint(1, 8, 23, { bias: 1e7 })).toThrow(RangeError);
+
+        for (const bias of [32767, -32767]) {
+            const fp = new FloatingPoint(1, 15, 112, { bias });
+            // The extremes stay well inside the decimal parser's exact range.
+            const digits = fp.toExactDecimalString(fp.getMaxNormal()).length;
+            expect(digits).toBeLessThan(20000);
+            expect(fp.toExactDecimalString(fp.encode(fp.toExactDecimalString(fp.getMaxNormal()))))
+                .toBe(fp.toExactDecimalString(fp.getMaxNormal()));
+        }
+    });
+
     test('accepts an explicit integer bias', () => {
         expect(() => new FloatingPoint(1, 4, 3, { bias: 7 })).not.toThrow();
     });

@@ -39,6 +39,8 @@ beforeAll(() => {
     global.parseSearchParams = urlState.parseSearchParams;
     global.decimalToString = urlState.decimalToString;
     global.parseDecimal = urlState.parseDecimal;
+    global.findFloatPresetKey = urlState.findFloatPresetKey;
+    global.findIntPresetKey = urlState.findIntPresetKey;
 });
 
 /**
@@ -330,6 +332,108 @@ describe('ui.js — hex input', () => {
         expect($('input-decimal-input').value).toBe('1');
         ui.handleHexInput({ target: { value: ' 4000 ' } });
         expect($('input-decimal-input').value).toBe('2');
+    });
+});
+
+// The lit preset button is the one the URL names (url-state's matchers decide
+// both), so it goes dark when a flag, width or scale leaves the preset and
+// lights again when the controls get back to it.
+describe('ui.js — the lit format preset names the live format', () => {
+    const active = (side) => Array.from(document.querySelectorAll(`.${side}-preset.active`))
+        .map(btn => btn.dataset.format);
+    const set = (id, value) => {
+        const el = $(id);
+        if (el.type === 'checkbox') {
+            el.checked = value;
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            el.value = value;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    };
+
+    test('a flag that leaves the preset turns its button off, and back on', () => {
+        freshUi({ syncUrl: true });
+        const ui = require('../src/ui.js');
+        ui.loadInputPreset('fp32');
+        set('input-has-infinity', false);
+        expect(active('input')).toEqual([]);
+        expect(new URLSearchParams(window.location.search).get('in')).toBe('s1e8m23i0');
+        set('input-has-infinity', true);
+        expect(active('input')).toEqual(['fp32']);
+        expect(new URLSearchParams(window.location.search).get('in')).toBe('fp32');
+    });
+
+    test('E8M0 with subnormals is no longer E8M0', () => {
+        const ui = freshUi();
+        ui.loadOutputPreset('e8m0');
+        expect(active('output')).toEqual(['e8m0']);
+        set('output-has-subnormals', true);
+        expect(active('output')).toEqual([]);
+    });
+
+    test('a hand-made layout that matches a preset lights it', () => {
+        freshUi();
+        // FP16 -> exponent 8 and mantissa 10 is TF32's layout.
+        set('input-exponent-bits', '8');
+        expect(active('input')).toEqual(['tf32']);
+    });
+
+    test('an integer width edited away and back re-lights the preset', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('int8');
+        set('input-mantissa-bits', '9');
+        expect(active('input')).toEqual([]);
+        set('input-mantissa-bits', '8');
+        expect(active('input')).toEqual(['int8']);
+    });
+
+    test('a custom integer link that is a preset lights it', () => {
+        freshUi({ search: 'in=i8&out=u16&val=5' });
+        expect(active('input')).toEqual(['int8']);
+        expect(active('output')).toEqual(['uint16']);
+        // i8q6 is MXINT8's shape without its symmetric range, so not MXINT8.
+        freshUi({ search: 'in=i8q6&out=fp16&val=1' });
+        expect(active('input')).toEqual([]);
+    });
+
+    // The page has no bias control, so a preset with another bias could not
+    // be built from its controls, and the matchers do not compare bias.
+    test('every float preset uses the default bias', () => {
+        for (const [key, f] of Object.entries(floatingPoint.FORMATS)) {
+            if (f.isInteger || f.bias === undefined) continue;
+            expect([key, f.bias]).toEqual([key, Math.pow(2, f.exponent - 1) - 1]);
+        }
+    });
+});
+
+// Clearing a width to retype it used to read the blank as FP32's or FP16's
+// width, swapping the live format for one keystroke.
+describe('ui.js — a blank width keeps the last one', () => {
+    test('a blank exponent or mantissa field changes nothing', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('bf16');
+        ui.loadOutputPreset('fp8_e5m2');
+        for (const id of ['input-exponent-bits', 'input-mantissa-bits']) {
+            $(id).value = '';
+            $(id).dispatchEvent(new Event('input', { bubbles: true }));
+            expect(text('input-total-bits')).toBe('16');
+            expect(document.querySelector('.input-preset[data-format="bf16"]').classList.contains('active')).toBe(true);
+        }
+        $('output-mantissa-bits').value = '';
+        $('output-mantissa-bits').dispatchEvent(new Event('input', { bubbles: true }));
+        expect(text('output-total-bits')).toBe('8');
+    });
+
+    test('a blank integer width or scale keeps the last one too', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('mxint8');
+        $('input-mantissa-bits').value = '';
+        $('input-mantissa-bits').dispatchEvent(new Event('input', { bubbles: true }));
+        $('input-fraction-bits').value = '';
+        $('input-fraction-bits').dispatchEvent(new Event('input', { bubbles: true }));
+        expect(text('input-total-bits')).toBe('8');
+        expect(document.querySelector('.input-preset[data-format="mxint8"]').classList.contains('active')).toBe(true);
     });
 });
 
@@ -648,6 +752,15 @@ describe('ui.js — binary checkbox toggling', () => {
 });
 
 describe('ui.js — URL state restoration', () => {
+    // The fragment is navigation (the About anchor), not state.
+    test('keeping the URL in sync leaves the fragment alone', () => {
+        const ui = freshUi({ syncUrl: true });
+        window.history.replaceState(null, '', window.location.pathname + window.location.search + '#about');
+        ui.loadInputPreset('fp32');
+        expect(window.location.hash).toBe('#about');
+        expect(new URLSearchParams(window.location.search).get('in')).toBe('fp32');
+    });
+
     test('restores preset formats, decimal value, and rounding mode', () => {
         freshUi({ search: 'in=fp32&out=fp16&val=2&rm=towardZero' });
         expect(text('input-total-bits')).toBe('32');
@@ -760,33 +873,33 @@ describe('ui.js — component metadata follows the subnormal regime', () => {
     const { FloatingPoint } = floatingPoint;
 
     test('an ordinary IEEE format still uses the subnormal formulas at field 0', () => {
-        const ui = freshUi();
+        freshUi();
         const fp16 = FloatingPoint.fromFormat('fp16');
-        expect(ui.formatExponentActual(fp16, 0, 0)).toBe('1 - 15 = -14');
+        expect(fp16.exponentText(0, 0)).toBe('1 - 15 = -14');
         expect(fp16.significand(0, 0)).toBe(0);
         expect(fp16.significand(0, 512)).toBe(0.5);
         // ... and the normal formulas elsewhere.
-        expect(ui.formatExponentActual(fp16, 15, 0)).toBe('15 - 15 = 0');
+        expect(fp16.exponentText(15, 0)).toBe('15 - 15 = 0');
         expect(fp16.significand(15, 512)).toBe(1.5);
     });
 
     test('E8M0 field 0 is a NORMAL binade, not a subnormal', () => {
-        const ui = freshUi();
+        freshUi();
         const e8m0 = FloatingPoint.fromFormat('e8m0');
         expect(e8m0.classify(0, 0, 0)).toBe('Normal');
-        expect(ui.formatExponentActual(e8m0, 0, 0)).toBe('0 - 127 = -127');
+        expect(e8m0.exponentText(0, 0)).toBe('0 - 127 = -127');
         expect(e8m0.significand(0, 0)).toBe(1.0);
         // The rest of the range is unaffected.
-        expect(ui.formatExponentActual(e8m0, 129, 0)).toBe('129 - 127 = 2');
+        expect(e8m0.exponentText(129, 0)).toBe('129 - 127 = 2');
         expect(e8m0.significand(129, 0)).toBe(1.0);
     });
 
     test('a zero-mantissa format WITH subnormals keeps the 0 significand', () => {
-        const ui = freshUi();
+        freshUi();
         const custom = new FloatingPoint(1, 5, 0, { hasInfinity: false, hasNaN: false });
         expect(custom.classify(0, 0, 0)).toBe('Zero');
         expect(custom.significand(0, 0)).toBe(0);
-        expect(ui.formatExponentActual(custom, 0, 0)).toBe('1 - 15 = -14');
+        expect(custom.exponentText(0, 0)).toBe('1 - 15 = -14');
     });
 
     test('the E8M0 min-normal preset renders consistent components in the DOM', () => {

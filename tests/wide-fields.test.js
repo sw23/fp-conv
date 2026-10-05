@@ -21,7 +21,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { FloatingPoint, Integer, showsDecodedSignificand } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, showsDecodedSignificand, encodingValueText } = require('../lib/floating-point.js');
 const webmcp = require('../src/webmcp.js');
 const urlState = require('../src/url-state.js');
 
@@ -429,6 +429,8 @@ beforeAll(() => {
     global.parseSearchParams = urlState.parseSearchParams;
     global.decimalToString = urlState.decimalToString;
     global.parseDecimal = urlState.parseDecimal;
+    global.findFloatPresetKey = urlState.findFloatPresetKey;
+    global.findIntPresetKey = urlState.findIntPresetKey;
 });
 
 function freshUi({ search = '' } = {}) {
@@ -666,10 +668,10 @@ describe('ui.js: both panels spell one encoding the same way', () => {
         const allOnes = (format) => ({ sign: 0, exponent: 0, mantissa: format.maxMantissa });
 
         // Past 53 bits an integer's own digits need the exact decimal...
-        expect(ui.encodingValueText(u64, allOnes(u64))).toBe('18446744073709551615');
+        expect(encodingValueText(u64, allOnes(u64))).toBe('18446744073709551615');
         expect(ui.mantissaDecimalText(u64, allOnes(u64))).toBe('18446744073709551615');
         // ...and below it nothing changes, mantissa line included.
-        expect(ui.encodingValueText(u32, allOnes(u32))).toBe('4294967295');
+        expect(encodingValueText(u32, allOnes(u32))).toBe('4294967295');
         expect(ui.mantissaDecimalText(u32, allOnes(u32))).toBe('4294967295.0000000000');
 
         // A float's significand follows the same rule: the double at ten

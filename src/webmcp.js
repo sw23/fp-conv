@@ -64,13 +64,17 @@ if (typeof require !== 'undefined') {
  */
 function resolveFormat(formatSpec) {
     if (typeof formatSpec === 'string') {
-        let preset = _mcpFORMATS[formatSpec];
+        // Own keys only: a plain-object lookup would hand back
+        // Object.prototype members for "constructor" or "__proto__".
+        const presetFor = (key) =>
+            (Object.prototype.hasOwnProperty.call(_mcpFORMATS, key) ? _mcpFORMATS[key] : undefined);
+        let preset = presetFor(formatSpec);
         if (!preset) {
             // Fall back to a normalized lookup so common variants (e.g. the
             // hyphenated, mixed-case spelling "FP8-E4M3" used in web URLs)
             // resolve to the canonical underscore key "fp8_e4m3".
             const normalized = formatSpec.toLowerCase().replace(/-/g, '_');
-            preset = _mcpFORMATS[normalized];
+            preset = presetFor(normalized);
         }
         if (!preset) {
             throw new Error(`Unknown format preset: "${formatSpec}". Use the list_formats tool to see available presets.`);
@@ -147,27 +151,6 @@ function optionalFlag(spec, name) {
         throw new Error(`"${name}" must be true or false.`);
     }
     return value;
-}
-
-/**
- * Format the actual exponent string (e.g. "128 - 127 = 1").
- */
-function exponentActual(format, exponent, mantissa = 0) {
-    if (format.isInteger) return 'N/A';
-    if (format.exponentBits === 0) return 'N/A';
-    // Subnormals share the smallest normal's exponent, 1 - bias. A format with
-    // no subnormals uses field 0 as a normal binade of its own, so it falls
-    // through to the ordinary formula and reads 0 - bias.
-    if (exponent === 0 && format.hasSubnormals) {
-        return `1 - ${format.bias} = ${1 - format.bias}`;
-    }
-    if (exponent === format.maxExponent) {
-        // Only genuine Infinity/NaN encodings have a "Special" exponent; a
-        // normal value living at maxExponent (OCP-style) shows the real value.
-        const kind = format.classify(0, exponent, mantissa);
-        if (kind === 'Infinity' || kind === 'NaN') return 'Special';
-    }
-    return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
 }
 
 /**
@@ -257,7 +240,11 @@ function buildStats(format, encoded) {
         stats.signed = format.signed;
     } else {
         stats.exponentBiased = exponent;
-        stats.exponentActual = exponentActual(format, exponent, mantissa);
+        // The library's rule, shared with the web UI: readable text, and the
+        // same as a number for scripts (null where the text says N/A or
+        // Special).
+        stats.exponentActual = format.exponentText(exponent, mantissa);
+        stats.exponentUnbiased = format.unbiasedExponent(exponent, mantissa);
         // Exact like actualValue: the double where it is the significand, and
         // the digits where a wide field would round it (to 2 for a 60-bit
         // all-ones normal, a value no normal significand has).
@@ -827,7 +814,6 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         resolveFormat,
-        exponentActual,
         parseValueInput,
         boundValue,
         encodeInput,
