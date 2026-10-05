@@ -11,7 +11,7 @@ engine that powers the [fp-conv web app](https://sw23.github.io/fp-conv/) and th
 [fp-conv MCP server](https://www.npmjs.com/package/fp-conv-mcp), so results are
 identical across all three.
 
-Runs anywhere Node.js 18+ runs: Windows, macOS, and Linux.
+Runs anywhere Node.js 20+ runs: Windows, macOS, and Linux.
 
 ## Installation
 

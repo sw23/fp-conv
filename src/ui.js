@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, sameValue, sameEncoding, normalizedEncoding, conversionLoss, convertEncoded, showsDecodedValue, encodingValueText, showsDecodedSignificand, CONVERSION_LOSS_LABELS, buildSearchParams, parseSearchParams, parseDecimal, modeUrlValue */
+/* global FloatingPoint, Integer, FORMATS, findFloatPresetKey, findIntPresetKey, sameValue, sameEncoding, normalizedEncoding, conversionLoss, convertEncoded, showsDecodedValue, encodingValueText, showsDecodedSignificand, CONVERSION_LOSS_LABELS, buildSearchParams, parseSearchParams, parseDecimal, modeUrlValue */
 // UI code - requires FloatingPoint, Integer, FORMATS and the conversion helpers
 // from floating-point.js, and the URL helpers from url-state.js.
 
@@ -39,61 +39,76 @@ let currentRoundingMode = 'tiesToEven';
 let currentOverflowMode = null;
 let urlSyncEnabled = false; // Suppress URL writes until initial state is loaded
 
-// Helper functions to show/hide format controls for integer vs floating-point
-function updateInputFormatControlsVisibility(isInteger) {
-    const signGroup = document.getElementById('input-sign-bits').closest('.input-group');
-    const expGroup = document.getElementById('input-exponent-bits').closest('.input-group');
-    const infGroup = document.getElementById('input-has-infinity').closest('.input-group');
-    const nanGroup = document.getElementById('input-has-nan').closest('.input-group');
-    const subGroup = document.getElementById('input-has-subnormals').closest('.input-group');
-    const fracGroup = document.getElementById('input-fraction-bits').closest('.input-group');
-    const mantissaLabel = document.querySelector('label[for="input-mantissa-bits"]');
-    
-    if (isInteger) {
-        signGroup.style.display = 'none';
-        expGroup.style.display = 'none';
-        infGroup.style.display = 'none';
-        nanGroup.style.display = 'none';
-        subGroup.style.display = 'none';
-        fracGroup.style.display = '';
-        mantissaLabel.textContent = 'Bits:';
-    } else {
-        signGroup.style.display = '';
-        expGroup.style.display = '';
-        infGroup.style.display = '';
-        nanGroup.style.display = '';
-        subGroup.style.display = '';
-        fracGroup.style.display = 'none';
-        mantissaLabel.textContent = 'Mantissa:';
+// ── The two format panels ─────────────────────────────────────
+// The input and output panels have the same controls, named `${side}-...`
+// with side 'input' or 'output', so everything about a panel is written once
+// and takes the side. These four read and write that side's state.
+function sideFormat(side) {
+    return side === 'input' ? currentFormat : outputFormat;
+}
+
+function setSideFormat(side, format) {
+    if (side === 'input') currentFormat = format;
+    else outputFormat = format;
+}
+
+// The integer preset whose signedness (and symmetry, while the shape matches)
+// the side's integer controls carry, or null on a floating-point layout.
+function sideIntegerKey(side) {
+    return side === 'input' ? currentInputFormatKey : currentOutputFormatKey;
+}
+
+function setSideIntegerKey(side, key) {
+    if (side === 'input') currentInputFormatKey = key;
+    else currentOutputFormatKey = key;
+}
+
+// Show the controls that apply: an integer has a width and an implicit scale,
+// a float its fields and flags.
+function updateFormatControlsVisibility(side, isInteger) {
+    for (const name of ['sign-bits', 'exponent-bits', 'has-infinity', 'has-nan', 'has-subnormals']) {
+        document.getElementById(`${side}-${name}`).closest('.input-group').style.display =
+            isInteger ? 'none' : '';
+    }
+    document.getElementById(`${side}-fraction-bits`).closest('.input-group').style.display =
+        isInteger ? '' : 'none';
+    document.querySelector(`label[for="${side}-mantissa-bits"]`).textContent =
+        isInteger ? 'Bits:' : 'Mantissa:';
+}
+
+// Write a layout into a side's controls. A field left undefined keeps its
+// control's value (a float preset leaves the hidden fraction-bits box alone).
+function setFormatControls(side, fields) {
+    const control = (name) => document.getElementById(`${side}-${name}`);
+    const checks = { 'sign-bits': fields.signBits === undefined ? undefined : fields.signBits === 1,
+        'has-infinity': fields.hasInfinity, 'has-nan': fields.hasNaN, 'has-subnormals': fields.hasSubnormals };
+    for (const [name, checked] of Object.entries(checks)) {
+        if (checked !== undefined) control(name).checked = checked;
+    }
+    const values = { 'exponent-bits': fields.exponentBits, 'mantissa-bits': fields.mantissaBits,
+        'fraction-bits': fields.fractionBits };
+    for (const [name, value] of Object.entries(values)) {
+        if (value !== undefined) control(name).value = value;
     }
 }
 
-function updateOutputFormatControlsVisibility(isInteger) {
-    const signGroup = document.getElementById('output-sign-bits').closest('.input-group');
-    const expGroup = document.getElementById('output-exponent-bits').closest('.input-group');
-    const infGroup = document.getElementById('output-has-infinity').closest('.input-group');
-    const nanGroup = document.getElementById('output-has-nan').closest('.input-group');
-    const subGroup = document.getElementById('output-has-subnormals').closest('.input-group');
-    const fracGroup = document.getElementById('output-fraction-bits').closest('.input-group');
-    const mantissaLabel = document.querySelector('label[for="output-mantissa-bits"]');
-    
-    if (isInteger) {
-        signGroup.style.display = 'none';
-        expGroup.style.display = 'none';
-        infGroup.style.display = 'none';
-        nanGroup.style.display = 'none';
-        subGroup.style.display = 'none';
-        fracGroup.style.display = '';
-        mantissaLabel.textContent = 'Bits:';
-    } else {
-        signGroup.style.display = '';
-        expGroup.style.display = '';
-        infGroup.style.display = '';
-        nanGroup.style.display = '';
-        subGroup.style.display = '';
-        fracGroup.style.display = 'none';
-        mantissaLabel.textContent = 'Mantissa:';
-    }
+// The controls an integer layout of this width and scale shows.
+function integerControls(bits, fractionBits) {
+    return { signBits: 0, exponentBits: 0, mantissaBits: bits, hasInfinity: false,
+        hasNaN: false, hasSubnormals: false, fractionBits: fractionBits || 0 };
+}
+
+// Light the side's preset button that names the live format, and no other.
+// The URL writer asks the same matchers, so a lit button and the link always
+// name the same preset: a flag, a width or a scale that differs from the
+// preset's turns it off, and getting back to the preset's layout by hand
+// turns it on again.
+function updateActiveFormatPreset(side) {
+    const format = sideFormat(side);
+    const key = format.isInteger ? findIntPresetKey(format) : findFloatPresetKey(format);
+    document.querySelectorAll(`.${side}-preset`).forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.format === key);
+    });
 }
 
 // Initialize the application
@@ -142,10 +157,11 @@ function syncUrl() {
             params.set('mode', mode);
         }
 
+        // The fragment is navigation (the About anchor), not state: keep it.
         const query = params.toString();
-        const newUrl = query
+        const newUrl = (query
             ? `${window.location.pathname}?${query}`
-            : window.location.pathname;
+            : window.location.pathname) + window.location.hash;
         history.replaceState(null, '', newUrl);
     } catch {
         // Ignore URL update failures (e.g. sandboxed environments).
@@ -193,68 +209,31 @@ function fallbackCopy(text, onSuccess) {
 }
 
 // Apply a parsed format descriptor to the input or output controls.
-function applyFormatDescriptor(desc, which) {
-    const isInput = which === 'input';
+function applyFormatDescriptor(desc, side) {
     if (desc.presetKey) {
-        if (isInput) {
-            loadInputPreset(desc.presetKey);
-        } else {
-            loadOutputPreset(desc.presetKey);
-        }
+        loadPreset(side, desc.presetKey);
         return;
     }
 
-    const ids = isInput
-        ? { sign: 'input-sign-bits', exp: 'input-exponent-bits', mant: 'input-mantissa-bits', inf: 'input-has-infinity', nan: 'input-has-nan', sub: 'input-has-subnormals', frac: 'input-fraction-bits', preset: '.input-preset' }
-        : { sign: 'output-sign-bits', exp: 'output-exponent-bits', mant: 'output-mantissa-bits', inf: 'output-has-infinity', nan: 'output-has-nan', sub: 'output-has-subnormals', frac: 'output-fraction-bits', preset: '.output-preset' };
-
-    if (desc.kind === 'int') {
-        // Use a matching-signedness integer preset as the signedness carrier so
-        // the existing integer code path builds Integer(bits, signed) correctly.
-        const carrier = desc.signed ? 'int8' : 'uint8';
-        if (isInput) {
-            currentInputFormatKey = carrier;
-        } else {
-            currentOutputFormatKey = carrier;
-        }
-        document.getElementById(ids.sign).checked = false;
-        document.getElementById(ids.exp).value = 0;
-        document.getElementById(ids.mant).value = desc.bits;
-        document.getElementById(ids.inf).checked = false;
-        document.getElementById(ids.nan).checked = false;
-        document.getElementById(ids.sub).checked = false;
-        document.getElementById(ids.frac).value = desc.fractionBits || 0;
-        document.querySelectorAll(ids.preset).forEach(btn => btn.classList.remove('active'));
-        if (isInput) {
-            updateInputFormatControlsVisibility(true);
-            updateFormat();
-        } else {
-            updateOutputFormatControlsVisibility(true);
-            updateOutputFormat();
-        }
-        return;
-    }
-
-    // Custom floating-point format.
-    if (isInput) {
-        currentInputFormatKey = null;
+    const isInteger = desc.kind === 'int';
+    if (isInteger) {
+        // A matching-signedness integer preset carries the signedness, so the
+        // integer path builds Integer(bits, signed) correctly.
+        setSideIntegerKey(side, desc.signed ? 'int8' : 'uint8');
+        setFormatControls(side, integerControls(desc.bits, desc.fractionBits));
     } else {
-        currentOutputFormatKey = null;
+        setSideIntegerKey(side, null);
+        setFormatControls(side, {
+            signBits: desc.signBits,
+            exponentBits: desc.exponentBits,
+            mantissaBits: desc.mantissaBits,
+            hasInfinity: desc.hasInfinity,
+            hasNaN: desc.hasNaN,
+            hasSubnormals: desc.hasSubnormals !== false,
+        });
     }
-    document.getElementById(ids.sign).checked = desc.signBits === 1;
-    document.getElementById(ids.exp).value = desc.exponentBits;
-    document.getElementById(ids.mant).value = desc.mantissaBits;
-    document.getElementById(ids.inf).checked = desc.hasInfinity;
-    document.getElementById(ids.nan).checked = desc.hasNaN;
-    document.getElementById(ids.sub).checked = desc.hasSubnormals !== false;
-    document.querySelectorAll(ids.preset).forEach(btn => btn.classList.remove('active'));
-    if (isInput) {
-        updateInputFormatControlsVisibility(false);
-        updateFormat();
-    } else {
-        updateOutputFormatControlsVisibility(false);
-        updateOutputFormat();
-    }
+    updateFormatControlsVisibility(side, isInteger);
+    updateSideFormat(side);
 }
 
 // Restore state from the page URL. Returns true if any parameter was applied.
@@ -391,80 +370,36 @@ function setupEventListeners() {
     window.addEventListener('modechange', syncUrl);
 }
 
-function loadInputPreset(formatKey) {
+// Load a named preset into a side's controls. The button highlight follows
+// from the format it builds (see updateActiveFormatPreset()).
+function loadPreset(side, formatKey) {
+    if (!Object.prototype.hasOwnProperty.call(FORMATS, formatKey)) return;
     const format = FORMATS[formatKey];
-    if (!format) return;
 
-    // Handle integer formats
     if (format.isInteger) {
-        document.getElementById('input-sign-bits').checked = false;
-        document.getElementById('input-exponent-bits').value = 0;
-        document.getElementById('input-mantissa-bits').value = format.bits;
-        document.getElementById('input-has-infinity').checked = false;
-        document.getElementById('input-has-nan').checked = false;
-        document.getElementById('input-has-subnormals').checked = false;
-        document.getElementById('input-fraction-bits').value = format.fractionBits || 0;
-        
-        // Store the integer format key for reference
-        currentInputFormatKey = formatKey;
-        updateInputFormatControlsVisibility(true);
+        setFormatControls(side, integerControls(format.bits, format.fractionBits));
+        setSideIntegerKey(side, formatKey);
     } else {
-        document.getElementById('input-sign-bits').checked = format.sign === 1;
-        document.getElementById('input-exponent-bits').value = format.exponent;
-        document.getElementById('input-mantissa-bits').value = format.mantissa;
-        document.getElementById('input-has-infinity').checked = format.hasInfinity !== false;
-        document.getElementById('input-has-nan').checked = format.hasNaN !== false;
-        document.getElementById('input-has-subnormals').checked = format.hasSubnormals !== false;
-        
-        currentInputFormatKey = null;
-        updateInputFormatControlsVisibility(false);
+        setFormatControls(side, {
+            signBits: format.sign,
+            exponentBits: format.exponent,
+            mantissaBits: format.mantissa,
+            hasInfinity: format.hasInfinity !== false,
+            hasNaN: format.hasNaN !== false,
+            hasSubnormals: format.hasSubnormals !== false,
+        });
+        setSideIntegerKey(side, null);
     }
+    updateFormatControlsVisibility(side, !!format.isInteger);
+    updateSideFormat(side);
+}
 
-    // Update active button
-    document.querySelectorAll('.input-preset').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.querySelector(`.input-preset[data-format="${formatKey}"]`).classList.add('active');
-
-    updateFormat();
+function loadInputPreset(formatKey) {
+    loadPreset('input', formatKey);
 }
 
 function loadOutputPreset(formatKey) {
-    const format = FORMATS[formatKey];
-    if (!format) return;
-
-    // Handle integer formats
-    if (format.isInteger) {
-        document.getElementById('output-sign-bits').checked = false;
-        document.getElementById('output-exponent-bits').value = 0;
-        document.getElementById('output-mantissa-bits').value = format.bits;
-        document.getElementById('output-has-infinity').checked = false;
-        document.getElementById('output-has-nan').checked = false;
-        document.getElementById('output-has-subnormals').checked = false;
-        document.getElementById('output-fraction-bits').value = format.fractionBits || 0;
-        
-        // Store the integer format key for reference
-        currentOutputFormatKey = formatKey;
-        updateOutputFormatControlsVisibility(true);
-    } else {
-        document.getElementById('output-sign-bits').checked = format.sign === 1;
-        document.getElementById('output-exponent-bits').value = format.exponent;
-        document.getElementById('output-mantissa-bits').value = format.mantissa;
-        document.getElementById('output-has-infinity').checked = format.hasInfinity !== false;
-        document.getElementById('output-has-nan').checked = format.hasNaN !== false;
-        document.getElementById('output-has-subnormals').checked = format.hasSubnormals !== false;
-        
-        currentOutputFormatKey = null;
-        updateOutputFormatControlsVisibility(false);
-    }
-
-    // Update active button
-    document.querySelectorAll('.output-preset').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    document.querySelector(`.output-preset[data-format="${formatKey}"]`).classList.add('active');
-
-    updateOutputFormat();
+    loadPreset('output', formatKey);
 }
 
 // Lock the flag checkboxes the library decides for itself (the rule is the
@@ -486,83 +421,75 @@ function lockDecidedFlags(prefix, format) {
     document.getElementById(`${prefix}-has-subnormals`).disabled = fixed;
 }
 
-function updateFormat() {
-    const signBits = document.getElementById('input-sign-bits').checked ? 1 : 0;
-    const exponentBitsInput = document.getElementById('input-exponent-bits').value;
-    const exponentBits = exponentBitsInput === '' ? 8 : clampFieldInt(exponentBitsInput, 0, 15, 8);
-    const mantissaBitsInput = document.getElementById('input-mantissa-bits').value;
-    const mantissaBits = mantissaBitsInput === '' ? 23 : clampFieldInt(mantissaBitsInput, 0, 112, 23);
-    const hasInfinity = document.getElementById('input-has-infinity').checked;
-    const hasNaN = document.getElementById('input-has-nan').checked;
-    const hasSubnormals = document.getElementById('input-has-subnormals').checked;
-    const fractionBitsInput = document.getElementById('input-fraction-bits').value;
+// Build a side's format from its controls and refresh everything that shows
+// it. A blank or unparseable width keeps the side's last one rather than
+// jumping to some default while the user retypes it.
+//
+// There is no bias control: every layout takes the default bias, which every
+// float preset also uses (tests/ui.test.js holds the presets to that).
+function updateSideFormat(side) {
+    const control = (name) => document.getElementById(`${side}-${name}`);
+    const previous = sideFormat(side);
+    const intKey = sideIntegerKey(side);
+    const intPreset = intKey && FORMATS[intKey] && FORMATS[intKey].isInteger ? FORMATS[intKey] : null;
 
-    // Check if this matches an integer format
-    if (currentInputFormatKey && FORMATS[currentInputFormatKey] && FORMATS[currentInputFormatKey].isInteger) {
-        const intFormat = FORMATS[currentInputFormatKey];
-        // Use the bits from UI input, but preserve signedness from the preset.
-        // Integer widths are clamped to [1, 64] (the Integer/resolveFormat/URL
-        // range) rather than the float mantissa's [0, 112].
-        const bitsFromUI = clampFieldInt(mantissaBitsInput, 1, 64, intFormat.bits);
-        const presetFractionBits = intFormat.fractionBits || 0;
-        const fractionBits = clampFieldInt(fractionBitsInput, 0, bitsFromUI - 1, 0);
+    let format;
+    if (intPreset) {
+        // The width comes from the controls and the signedness from the
+        // preset. Integer widths are clamped to [1, 64] (the
+        // Integer/resolveFormat/URL range) rather than the float mantissa's
+        // [0, 112].
+        const bits = clampFieldInt(control('mantissa-bits').value, 1, 64,
+            previous.isInteger ? previous.bits : intPreset.bits);
+        const fractionBits = clampFieldInt(control('fraction-bits').value, 0, bits - 1,
+            Math.min(previous.isInteger ? previous.fractionBits : 0, bits - 1));
         // Symmetry is a property of the NAMED preset, not of a bit width, and
         // the custom integer URL grammar (i{bits}q{frac}) has no slot for it.
         // Keeping it once the user edits the shape would produce a live format
         // whose range the generated link cannot reproduce, so it is dropped the
         // moment the visible shape stops matching the preset exactly.
         const matchesPresetShape =
-            bitsFromUI === intFormat.bits && fractionBits === presetFractionBits;
-        currentFormat = new Integer(bitsFromUI, intFormat.signed, {
+            bits === intPreset.bits && fractionBits === (intPreset.fractionBits || 0);
+        format = new Integer(bits, intPreset.signed, {
             fractionBits,
-            symmetric: intFormat.symmetric && matchesPresetShape,
+            symmetric: intPreset.symmetric && matchesPresetShape,
         });
-
-        // Custom shape: this is no longer the named preset.
-        if (!matchesPresetShape) {
-            document.querySelectorAll('.input-preset').forEach(btn => btn.classList.remove('active'));
-        }
     } else {
-        // Reset integer format key if UI changed
-        currentInputFormatKey = null;
-        
-        // Find matching format to get bias
-        // NaN is the user's choice only without an Infinity (see
-        // lockDecidedFlags()); with one the constructor decides it, and the
-        // locked box may still hold a choice the constructor refuses.
-        let formatOptions = {
-            hasInfinity: hasInfinity,
-            hasNaN: hasInfinity ? undefined : hasNaN,
-            hasSubnormals: hasSubnormals
-        };
-        const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
-            !f.isInteger && f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
-        );
-        
-        if (matchingFormat) {
-            const [_key, format] = matchingFormat;
-            if (format.bias !== undefined) formatOptions.bias = format.bias;
-        }
-
-        currentFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
-
-        lockDecidedFlags('input', currentFormat);
+        setSideIntegerKey(side, null);
+        const hasInfinity = control('has-infinity').checked;
+        format = new FloatingPoint(
+            control('sign-bits').checked ? 1 : 0,
+            clampFieldInt(control('exponent-bits').value, 0, 15, previous.exponentBits),
+            clampFieldInt(control('mantissa-bits').value, 0, 112, Math.min(previous.mantissaBits, 112)),
+            {
+                hasInfinity,
+                // NaN is the user's choice only without an Infinity (see
+                // lockDecidedFlags()); with one the constructor decides it,
+                // and the locked box may still hold a choice it refuses.
+                hasNaN: hasInfinity ? undefined : control('has-nan').checked,
+                hasSubnormals: control('has-subnormals').checked,
+            });
+        lockDecidedFlags(side, format);
     }
+    setSideFormat(side, format);
 
-    // Update total bits display
-    document.getElementById('input-total-bits').textContent = currentFormat.totalBits;
-
-    // Clear active preset if custom
-    const isPreset = Object.values(FORMATS).some(f =>
-        f.isInteger ? false : (f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits)
-    );
-    if (!isPreset && !currentInputFormatKey) {
-        document.querySelectorAll('.input-preset').forEach(btn => btn.classList.remove('active'));
-    }
-
-    updateValuePresetButtons();
+    control('total-bits').textContent = format.totalBits;
+    updateActiveFormatPreset(side);
     updateOverflowModeUi();
-    updateValue();
+    if (side === 'input') {
+        updateValuePresetButtons();
+        updateValue();
+    } else {
+        updateOutput();
+    }
+}
+
+function updateFormat() {
+    updateSideFormat('input');
+}
+
+function updateOutputFormat() {
+    updateSideFormat('output');
 }
 
 // Why the format resolves the way it does, so "Output format's default" is
@@ -596,80 +523,6 @@ function updateValuePresetButtons() {
         btn.disabled = getPresetEncoding(key, currentFormat) === null &&
             getPresetValue(key, currentFormat) === null;
     });
-}
-
-function updateOutputFormat() {
-    const signBits = document.getElementById('output-sign-bits').checked ? 1 : 0;
-    const exponentBitsInput = document.getElementById('output-exponent-bits').value;
-    const exponentBits = exponentBitsInput === '' ? 5 : clampFieldInt(exponentBitsInput, 0, 15, 5);
-    const mantissaBitsInput = document.getElementById('output-mantissa-bits').value;
-    const mantissaBits = mantissaBitsInput === '' ? 10 : clampFieldInt(mantissaBitsInput, 0, 112, 10);
-    const hasInfinity = document.getElementById('output-has-infinity').checked;
-    const hasNaN = document.getElementById('output-has-nan').checked;
-    const hasSubnormals = document.getElementById('output-has-subnormals').checked;
-    const fractionBitsInput = document.getElementById('output-fraction-bits').value;
-
-    // Check if this matches an integer format
-    if (currentOutputFormatKey && FORMATS[currentOutputFormatKey] && FORMATS[currentOutputFormatKey].isInteger) {
-        const intFormat = FORMATS[currentOutputFormatKey];
-        // Use the bits from UI input, but preserve signedness from the preset.
-        // Integer widths are clamped to [1, 64] (the Integer/resolveFormat/URL
-        // range) rather than the float mantissa's [0, 112].
-        const bitsFromUI = clampFieldInt(mantissaBitsInput, 1, 64, intFormat.bits);
-        const presetFractionBits = intFormat.fractionBits || 0;
-        const fractionBits = clampFieldInt(fractionBitsInput, 0, bitsFromUI - 1, 0);
-        // Same exact-shape rule as updateFormat(); see the comment there.
-        const matchesPresetShape =
-            bitsFromUI === intFormat.bits && fractionBits === presetFractionBits;
-        outputFormat = new Integer(bitsFromUI, intFormat.signed, {
-            fractionBits,
-            symmetric: intFormat.symmetric && matchesPresetShape,
-        });
-
-        // Custom shape: this is no longer the named preset.
-        if (!matchesPresetShape) {
-            document.querySelectorAll('.output-preset').forEach(btn => btn.classList.remove('active'));
-        }
-    } else {
-        // Reset integer format key if UI changed
-        currentOutputFormatKey = null;
-        
-        // Find matching format to get bias
-        // NaN is the user's choice only without an Infinity (see
-        // lockDecidedFlags()); with one the constructor decides it, and the
-        // locked box may still hold a choice the constructor refuses.
-        let formatOptions = {
-            hasInfinity: hasInfinity,
-            hasNaN: hasInfinity ? undefined : hasNaN,
-            hasSubnormals: hasSubnormals
-        };
-        const matchingFormat = Object.entries(FORMATS).find(([_key, f]) =>
-            !f.isInteger && f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits
-        );
-        
-        if (matchingFormat) {
-            const [_key, format] = matchingFormat;
-            if (format.bias !== undefined) formatOptions.bias = format.bias;
-        }
-
-        outputFormat = new FloatingPoint(signBits, exponentBits, mantissaBits, formatOptions);
-
-        lockDecidedFlags('output', outputFormat);
-    }
-
-    // Update total bits display
-    document.getElementById('output-total-bits').textContent = outputFormat.totalBits;
-
-    // Clear active preset if custom
-    const isPreset = Object.values(FORMATS).some(f =>
-        f.isInteger ? false : (f.sign === signBits && f.exponent === exponentBits && f.mantissa === mantissaBits)
-    );
-    if (!isPreset && !currentOutputFormatKey) {
-        document.querySelectorAll('.output-preset').forEach(btn => btn.classList.remove('active'));
-    }
-
-    updateOverflowModeUi();
-    updateOutput();
 }
 
 // Record a value that came from a value preset. There is no decimal literal
@@ -793,38 +646,33 @@ function updateRepresentation() {
 
 // The input's bit checkboxes for currentEncoded.
 function updateBitCheckboxes() {
-    const { sign, exponent, mantissa } = currentEncoded;
+    renderBits('input', currentEncoded);
+}
 
-    // Get section containers
-    const signSection = document.querySelector('#input-binary-sign-checks').closest('.bit-section-container');
-    const expSection = document.querySelector('#input-binary-exponent-checks').closest('.bit-section-container');
-
-    // For integer formats, show single contiguous field
-    if (currentFormat.isInteger) {
-        // Hide sign and exponent sections entirely
-        signSection.style.display = 'none';
-        expSection.style.display = 'none';
-        createBinaryCheckboxes('sign', '');
-        createBinaryCheckboxes('exponent', '');
-        // Show all bits in mantissa section
-        const allBits = mantissa.toString(2).padStart(currentFormat.bits, '0');
-        createBinaryCheckboxes('mantissa', allBits);
-    } else {
-        // Show sign and exponent sections
-        signSection.style.display = '';
-        expSection.style.display = '';
-        
-        // Binary representation with checkboxes
-        const signBin = currentFormat.signBits ? sign.toString() : '';
-        const expBin = currentFormat.exponentBits > 0 ?
-            exponent.toString(2).padStart(currentFormat.exponentBits, '0') : '';
-        const mantBin = currentFormat.mantissaBits > 0 ?
-            mantissa.toString(2).padStart(currentFormat.mantissaBits, '0') : '';
-
-        createBinaryCheckboxes('sign', signBin);
-        createBinaryCheckboxes('exponent', expBin);
-        createBinaryCheckboxes('mantissa', mantBin);
+// Draw a side's bits: checkboxes the user can toggle on the input, read-only
+// cells on the output. An integer is one contiguous field shown under the
+// mantissa; a float splits its binary string at the field widths.
+function renderBits(side, encoded) {
+    const format = sideFormat(side);
+    const binary = format.toBinaryString(encoded.sign, encoded.exponent, encoded.mantissa);
+    const signWidth = format.isInteger ? 0 : format.signBits;
+    const exponentWidth = format.isInteger ? 0 : format.exponentBits;
+    const fields = {
+        sign: binary.slice(0, signWidth),
+        exponent: binary.slice(signWidth, signWidth + exponentWidth),
+        mantissa: binary.slice(signWidth + exponentWidth),
+    };
+    for (const section of ['sign', 'exponent']) {
+        document.getElementById(bitContainerId(side, section)).closest('.bit-section-container')
+            .style.display = format.isInteger ? 'none' : '';
     }
+    for (const section of ['sign', 'exponent', 'mantissa']) {
+        renderBitSection(side, section, fields[section]);
+    }
+}
+
+function bitContainerId(side, section) {
+    return `${side}-binary-${section}-${side === 'input' ? 'checks' : 'values'}`;
 }
 
 function calculateBitStartPosition(format, section) {
@@ -842,48 +690,36 @@ function calculateBitStartPosition(format, section) {
     }
 }
 
-function createBinaryCheckboxes(section, binaryString) {
-    const checksContainer = document.getElementById(`input-binary-${section}-checks`);
-    const positionsContainer = document.getElementById(`input-binary-${section}-positions`);
-
-    // Clear existing
-    checksContainer.innerHTML = '';
+function renderBitSection(side, section, binaryString) {
+    const bitsContainer = document.getElementById(bitContainerId(side, section));
+    const positionsContainer = document.getElementById(`${side}-binary-${section}-positions`);
+    bitsContainer.innerHTML = '';
     positionsContainer.innerHTML = '';
+    // An empty field (no sign bit, no exponent, an integer's sign and
+    // exponent) draws nothing.
+    if (binaryString === '') return;
 
-    // Handle empty binary string (for integer formats clearing sign/exponent)
-    if (binaryString === '') {
-        return;
-    }
-
-    if (section === 'sign' && !currentFormat.signBits) {
-        return; // No sign bit
-    }
-
-    if (section === 'exponent' && currentFormat.exponentBits === 0) {
-        return; // No exponent bits
-    }
-
-    if (section === 'mantissa' && currentFormat.mantissaBits === 0 && !currentFormat.isInteger) {
-        return; // No mantissa bits (but allow for integers)
-    }
-
-    const startPosition = calculateBitStartPosition(currentFormat, section);
-
-    // Create checkboxes and positions for each bit
+    const startPosition = calculateBitStartPosition(sideFormat(side), section);
     for (let i = 0; i < binaryString.length; i++) {
-        // Create checkbox
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'bit';
-        checkbox.id = `input-binary-${section}-bit-${i}`;
-        checkbox.checked = binaryString[i] === '1';
-        checkbox.dataset.section = section;
-        checkbox.dataset.index = String(i);
-        checkbox.autocomplete = 'off';
-        checkbox.addEventListener('change', handleBinaryCheckboxChange);
-        checksContainer.appendChild(checkbox);
+        const isSet = binaryString[i] === '1';
+        let bit;
+        if (side === 'input') {
+            bit = document.createElement('input');
+            bit.type = 'checkbox';
+            bit.className = 'bit';
+            bit.id = `input-binary-${section}-bit-${i}`;
+            bit.checked = isSet;
+            bit.dataset.section = section;
+            bit.dataset.index = String(i);
+            bit.autocomplete = 'off';
+            bit.addEventListener('change', handleBinaryCheckboxChange);
+        } else {
+            bit = document.createElement('div');
+            bit.className = isSet ? 'bit checked' : 'bit';
+            bit.textContent = binaryString[i];
+        }
+        bitsContainer.appendChild(bit);
 
-        // Create position label
         const position = document.createElement('div');
         position.className = 'bit-position';
         position.textContent = startPosition - i;
@@ -893,10 +729,9 @@ function createBinaryCheckboxes(section, binaryString) {
 
 function handleBinaryCheckboxChange(e) {
     const section = e.target.dataset.section;
-    const _index = parseInt(e.target.dataset.index);
 
-    // Get all checkboxes for this section
-    const checkboxes = document.querySelectorAll(`[data-section="${section}"]`);
+    // Every checkbox of this section, most significant first.
+    const checkboxes = document.querySelectorAll(`#${bitContainerId('input', section)} input.bit`);
     let binaryString = '';
     checkboxes.forEach(cb => {
         binaryString += cb.checked ? '1' : '0';
@@ -952,34 +787,6 @@ function handleHexInput(e) {
     updateActiveValuePreset();
 }
 
-function formatExponentActual(format, exponent, mantissa) {
-    // Integer formats don't have exponents
-    if (format.isInteger) {
-        return 'N/A';
-    }
-    
-    if (format.exponentBits === 0) {
-        return 'N/A';
-    }
-    // Subnormals share the smallest normal's exponent, 1 - bias. A format with
-    // no subnormals uses field 0 as a normal binade of its own, so it falls
-    // through to the ordinary formula and reads 0 - bias.
-    if (exponent === 0 && format.hasSubnormals) {
-        return `1 - ${format.bias} = ${1 - format.bias}`;
-    } else if (exponent === format.maxExponent) {
-        // Only genuine Infinity/NaN encodings are "Special"; a normal value at
-        // maxExponent (OCP-style) shows the real exponent. Sign is irrelevant
-        // to the classification here.
-        const kind = format.classify(0, exponent, mantissa);
-        if (kind === 'Infinity' || kind === 'NaN') {
-            return 'Special';
-        }
-        return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
-    } else {
-        return `${exponent} - ${format.bias} = ${exponent - format.bias}`;
-    }
-}
-
 function updateComponentsDisplay(format, encoded, idPrefix) {
     const { sign, exponent, mantissa } = encoded;
 
@@ -987,7 +794,7 @@ function updateComponentsDisplay(format, encoded, idPrefix) {
         format.signBits ? sign : 'N/A';
     document.getElementById(`${idPrefix}-comp-exp-biased`).textContent = exponent;
     document.getElementById(`${idPrefix}-comp-exp-actual`).textContent =
-        formatExponentActual(format, exponent, mantissa);
+        format.exponentText(exponent, mantissa);
     // The type name and the significand come from the library, so every
     // surface names a bit pattern the same way.
     document.getElementById(`${idPrefix}-comp-type`).textContent =
@@ -1156,33 +963,7 @@ function updateOutput() {
     document.getElementById('output-decimal').textContent =
         encodingValueText(outputFormat, outputEncoded);
 
-    // Get output section containers
-    const outputSignSection = document.querySelector('#output-binary-sign-values').closest('.bit-section-container');
-    const outputExpSection = document.querySelector('#output-binary-exponent-values').closest('.bit-section-container');
-
-    // Update binary display (read-only)
-    if (outputFormat.isInteger) {
-        // For integers, hide sign and exponent sections, show single contiguous field
-        outputSignSection.style.display = 'none';
-        outputExpSection.style.display = 'none';
-        createOutputBinaryDisplay('sign', '');
-        createOutputBinaryDisplay('exponent', '');
-        createOutputBinaryDisplay('mantissa', outputEncoded.mantissa.toString(2).padStart(outputFormat.bits, '0'));
-    } else {
-        // Show sign and exponent sections for floating-point
-        outputSignSection.style.display = '';
-        outputExpSection.style.display = '';
-        
-        const signBin = outputFormat.signBits ? outputEncoded.sign.toString() : '';
-        const expBin = outputFormat.exponentBits > 0 ?
-            outputEncoded.exponent.toString(2).padStart(outputFormat.exponentBits, '0') : '';
-        const mantBin = outputFormat.mantissaBits > 0 ?
-            outputEncoded.mantissa.toString(2).padStart(outputFormat.mantissaBits, '0') : '';
-
-        createOutputBinaryDisplay('sign', signBin);
-        createOutputBinaryDisplay('exponent', expBin);
-        createOutputBinaryDisplay('mantissa', mantBin);
-    }
+    renderBits('output', outputEncoded);
 
     // Update hex display
     document.getElementById('output-hex').textContent =
@@ -1227,49 +1008,6 @@ function updateOutput() {
     syncUrl();
 }
 
-function createOutputBinaryDisplay(section, binaryString) {
-    const valuesContainer = document.getElementById(`output-binary-${section}-values`);
-    const positionsContainer = document.getElementById(`output-binary-${section}-positions`);
-
-    // Clear existing
-    valuesContainer.innerHTML = '';
-    positionsContainer.innerHTML = '';
-
-    // Handle empty binary string (for integer formats clearing sign/exponent)
-    if (binaryString === '') {
-        return;
-    }
-
-    if (section === 'sign' && !outputFormat.signBits) {
-        return; // No sign bit
-    }
-
-    if (section === 'exponent' && outputFormat.exponentBits === 0) {
-        return; // No exponent bits
-    }
-
-    if (section === 'mantissa' && outputFormat.mantissaBits === 0 && !outputFormat.isInteger) {
-        return; // No mantissa bits (but allow for integers)
-    }
-
-    const startPosition = calculateBitStartPosition(outputFormat, section);
-
-    // Create value displays and positions for each bit
-    for (let i = 0; i < binaryString.length; i++) {
-        // Create value display
-        const value = document.createElement('div');
-        value.className = binaryString[i] === '1' ? 'bit checked' : 'bit';
-        value.textContent = binaryString[i];
-        valuesContainer.appendChild(value);
-
-        // Create position label
-        const position = document.createElement('div');
-        position.className = 'bit-position';
-        position.textContent = startPosition - i;
-        positionsContainer.appendChild(position);
-    }
-}
-
 // Initialize with FP16 input and BF16 output presets
 loadInputPreset('fp16');
 loadOutputPreset('bf16');
@@ -1279,8 +1017,7 @@ loadOutputPreset('bf16');
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         clampFieldInt,
-        updateInputFormatControlsVisibility,
-        updateOutputFormatControlsVisibility,
+        updateFormatControlsVisibility,
         applyFormatDescriptor,
         applyStateFromUrl,
         enableUrlSync,
@@ -1294,9 +1031,7 @@ if (typeof module !== 'undefined' && module.exports) {
         updateInputRepresentedValue,
         updateOutput,
         handleHexInput,
-        encodingValueText,
         mantissaDecimalText,
-        formatExponentActual,
         calculateBitStartPosition,
         getPresetValue,
         getPresetEncoding,

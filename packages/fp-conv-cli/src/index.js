@@ -68,41 +68,89 @@ const OPTIONS = {
     version: { type: "boolean", short: "v", default: false },
 };
 
+// What each command takes: its positional arguments after the command name,
+// and the options that mean something to it. --json, --help and --version
+// apply everywhere. Anything else is refused rather than dropped, so a typo
+// ("encode 1 2", "encode 1 --format fp32 --to fp16") is reported, not
+// silently ignored.
+const COMMANDS = {
+    encode: { args: ["value"], options: ["format", "rounding", "overflow"] },
+    decode: { args: ["bits"], options: ["format"] },
+    convert: { args: ["value"], options: ["from", "to", "rounding", "overflow"] },
+    info: { args: ["format"], options: [] },
+    list: { args: [], options: [] },
+};
+
 /**
  * Parse CLI arguments into command, positionals, and option values.
  *
  * Node's util.parseArgs treats any token beginning with "-" as an option, so a
  * bare negative number ("encode -1.5") or "-inf" would be rejected as an
- * unknown option. We pull those value-looking tokens out as positionals before
- * delegating, so negative values work naturally without requiring a "--".
+ * unknown option. Those value-looking tokens are held out before delegating
+ * and merged back by their position in argv, so negative values work without
+ * "--" and keep their place among the other positionals.
  * @param {string[]} argv
  * @returns {{command: string|undefined, positionals: string[], values: object}}
  */
 export function parseArgs(argv) {
     const NEGATIVE_VALUE = /^-(?:\d.*|\.\d.*|inf(?:inity)?|nan)$/i;
     const forwarded = [];
-    const extraPositionals = [];
+    const argvIndex = []; // argv position of each forwarded token
+    const held = []; // { index, value } of each negative value held out
     for (let i = 0; i < argv.length; i++) {
         const token = argv[i];
         if (token === "--") {
             // Everything after "--" is already positional; forward verbatim.
-            forwarded.push(...argv.slice(i));
+            for (let j = i; j < argv.length; j++) {
+                forwarded.push(argv[j]);
+                argvIndex.push(j);
+            }
             break;
         }
         if (NEGATIVE_VALUE.test(token)) {
-            extraPositionals.push(token);
+            held.push({ index: i, value: token });
             continue;
         }
         forwarded.push(token);
+        argvIndex.push(i);
     }
 
-    const { values, positionals } = nodeParseArgs({
+    const { values, tokens } = nodeParseArgs({
         args: forwarded,
         options: OPTIONS,
         allowPositionals: true,
+        tokens: true,
     });
-    const allPositionals = [...positionals, ...extraPositionals];
-    return { command: allPositionals[0], positionals: allPositionals, values };
+    const positionals = tokens
+        .filter((t) => t.kind === "positional")
+        .map((t) => ({ index: argvIndex[t.index], value: t.value }))
+        .concat(held)
+        .sort((a, b) => a.index - b.index)
+        .map((p) => p.value);
+    return { command: positionals[0], positionals, values };
+}
+
+/**
+ * Refuse arguments the command does not take.
+ * @param {string} command - A key of COMMANDS.
+ * @param {string[]} positionals - Including the command itself.
+ * @param {object} values
+ */
+function checkUsage(command, positionals, values) {
+    const { args, options } = COMMANDS[command];
+    const surplus = positionals.slice(1 + args.length);
+    if (surplus.length > 0) {
+        const takes = args.length === 0
+            ? "takes no arguments"
+            : `takes ${args.map((a) => `<${a}>`).join(" ")}`;
+        throw new Error(`Unexpected argument "${surplus[0]}": ${command} ${takes}.`);
+    }
+    for (const [key, value] of Object.entries(values)) {
+        if (OPTIONS[key].type !== "string" || value === undefined) continue;
+        if (!options.includes(key)) {
+            throw new Error(`Option --${key} does not apply to ${command}.`);
+        }
+    }
 }
 
 /**
@@ -167,6 +215,10 @@ function output(data, json, renderText) {
  * @param {{command: string|undefined, positionals: string[], values: object}} parsed
  */
 function dispatch({ command, positionals, values }) {
+    if (!Object.prototype.hasOwnProperty.call(COMMANDS, command)) {
+        throw new Error(`Unknown command: ${command}`);
+    }
+    checkUsage(command, positionals, values);
     switch (command) {
         case "encode": {
             const value = requirePositional(positionals, 1, "value");
@@ -222,6 +274,7 @@ function dispatch({ command, positionals, values }) {
             output(data, values.json, () => renderList(data));
             break;
         }
+        /* istanbul ignore next -- every COMMANDS key has a case above */
         default:
             throw new Error(`Unknown command: ${command}`);
     }

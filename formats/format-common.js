@@ -256,7 +256,12 @@ function renderRangeTable(containerId, config) {
         let html = '<table class="info-table">';
         html += '<tr><th>Property</th>';
         if (config.signed) {
-            html += `<th>${config.label || 'Signed (INT' + config.totalBits + ')'}</th><th>Unsigned (UINT${config.totalBits})</th>`;
+            // The unsigned column keeps the page's implicit scale, so on a
+            // fixed-point page it is not UINTn and must not be named as one.
+            const unsignedLabel = config.fractionBits
+                ? `Unsigned (${config.totalBits}-bit, 2^-${config.fractionBits} scale)`
+                : `Unsigned (UINT${config.totalBits})`;
+            html += `<th>${config.label || 'Signed (INT' + config.totalBits + ')'}</th><th>${unsignedLabel}</th>`;
         } else {
             html += `<th>Value</th>`;
         }
@@ -275,11 +280,18 @@ function renderRangeTable(containerId, config) {
         ];
 
         if (config.fractionBits) {
+            // Each column describes its own format: both carry the page's
+            // scale, so the unsigned bounds (3.984375 for MXINT8) agree with
+            // its fraction bits and step.
+            const scaleRows = (f) => [f.fractionBits, `2^-${f.fractionBits}`, 1 / f.scale];
+            const [bits, scale, step] = scaleRows(fmt);
+            const [uBits, uScale, uStep] = fmtU ? scaleRows(fmtU) : [];
+            const cells = (signedCell, unsignedCell) => (fmtU ? [signedCell, unsignedCell] : [signedCell]);
             rows.splice(1, 0,
-                ['Fraction Bits', config.fractionBits, 0],
-                ['Implicit Scale', `2^-${config.fractionBits}`, '1']);
-            rows.push(['Step (ULP)', 1 / fmt.scale, 1]);
-            rows.push(['Symmetric Range', fmt.symmetric ? 'Yes' : 'No', 'N/A']);
+                ['Fraction Bits', ...cells(bits, uBits)],
+                ['Implicit Scale', ...cells(scale, uScale)]);
+            rows.push(['Step (ULP)', ...cells(step, uStep)]);
+            rows.push(['Symmetric Range', ...cells(fmt.symmetric ? 'Yes' : 'No', 'N/A')]);
         }
 
         for (const row of rows) {
@@ -322,9 +334,6 @@ function renderRangeTable(containerId, config) {
         ? Math.floor(fp.mantissaBits * Math.log10(2) * 10) / 10
         : 0;
 
-    // Count representable values
-    const totalBitPatterns = Math.pow(2, fp.totalBits);
-
     const rows = [
         ['Max Positive (Normal)', formatValue(maxNormVal)],
         ['Min Positive (Normal)', formatValue(minNormVal)],
@@ -342,7 +351,7 @@ function renderRangeTable(containerId, config) {
         ['Exponent Bias', fp.bias.toString()],
         ['Exponent Range',
             `2^${(fp.hasSubnormals ? 1 : 0) - fp.bias} to 2^${maxNorm.exponent - fp.bias}`],
-        ['Total Bit Patterns', totalBitPatterns.toLocaleString()],
+        ['Total Bit Patterns', patternCountText(fp.totalBits)],
         ['Supports Infinity', fp.hasInfinity ? 'Yes' : 'No'],
         ['Supports NaN', fp.hasNaN ? 'Yes' : 'No'],
     );
@@ -454,16 +463,22 @@ function renderIntegerSpecialValues(container, config) {
         { name: 'Max Unsigned', raw: fmtU.maxMantissa },
     ];
     if (config.totalBits > 1) {
-        // The sign bit on its own, from the library's bounds so it stays exact
-        // past 53 bits. Shown even where a symmetric format (MX §5.3.4) leaves
-        // it unused, since decode() is total over the bit space.
-        const minSignedRaw = fmtU.maxMantissa - fmtS.maxValue;
+        // Raw patterns come from the library's bounds so they stay exact past
+        // 53 bits. Min Signed is the format's minimum, as in the range table:
+        // a symmetric format (MX §5.3.4) leaves the sign bit on its own
+        // unused, so its minimum is one step above that pattern, which is
+        // still listed, as unused, since decode() is total over the bit space.
+        const signBitRaw = fmtU.maxMantissa - fmtS.maxValue;
+        const minSignedRaw = fmtS.getMinValue().mantissa;
         entries.push({ name: 'Max Signed', raw: fmtS.maxValue });
         entries.push({ name: `All Ones (${-1 / scale === -1 ? '-1' : formatValue(-1 / scale)})`, raw: fmtU.maxMantissa });
         entries.push({
             name: `Min Signed (${formatValue(fmtS.decode(0, 0, minSignedRaw))})`,
             raw: minSignedRaw
         });
+        if (fmtS.symmetric) {
+            entries.push({ name: 'Sign Bit Only (unused)', raw: signBitRaw });
+        }
     }
 
     let html = '<table class="info-table special-table">';
@@ -716,6 +731,7 @@ function initVisualizer(config) {
         if (decimalInput && document.activeElement !== decimalInput) {
             decimalInput.value = formatValue(decoded);
             decimalEdited = false;
+            markInvalid(decimalInput, false);
         }
 
         // Update bits display
@@ -752,17 +768,17 @@ function initVisualizer(config) {
         // Update hex
         if (hexInput && document.activeElement !== hexInput) {
             hexInput.value = format.toHexString(currentSign, currentExponent, currentMantissa);
+            markInvalid(hexInput, false);
         }
 
         // Update components
         if (componentsContainer && !isInteger) {
-            // A format with no subnormals uses exponent field 0 as an ordinary
-            // normal binade, so it takes neither the 1-bias offset nor the
-            // missing implicit leading bit.
-            const fieldZeroIsSubnormal = currentExponent === 0 && format.hasSubnormals;
-            const expActual = fieldZeroIsSubnormal
-                ? 1 - format.bias
-                : currentExponent - format.bias;
+            // The library's rule, shared with the converter: 1 - bias in the
+            // subnormal regime, 0 - bias for E8M0's field 0, and "Special"
+            // for Infinity and NaN, which have no exponent.
+            const exponentValue = format.unbiasedExponent(currentExponent, currentMantissa);
+            const expActual = exponentValue !== null ? exponentValue
+                : (format.exponentBits === 0 ? 'N/A' : 'Special');
 
             // The library's 0.x/1.x rule, shared with the converter.
             const mantDec = format.significand(currentExponent, currentMantissa);
@@ -842,34 +858,53 @@ function initVisualizer(config) {
 
     // Accept what the converter accepts: the library's keywords ("inf",
     // "-nan", ...) and plain decimals, which are encoded as text so the exact
-    // decimal rounds once. Anything else (including "1.5abc") is ignored.
+    // decimal rounds once. Anything else (including "1.5abc") changes nothing.
+    // Returns whether the text was taken.
     function encodeFromDecimal(str) {
         decimalEdited = false;
         const keyword = _fcValueKeyword(str);
-        if (keyword === null && !_fcFloatingPoint.isDecimalLiteral(str)) return;
+        if (keyword === null && !_fcFloatingPoint.isDecimalLiteral(str)) return false;
 
         const encoded = format.encode(keyword === null ? str.trim() : keyword);
         currentSign = encoded.sign;
         currentExponent = encoded.exponent;
         currentMantissa = encoded.mantissa;
         updateDisplay();
+        return true;
     }
 
     // The format reads the pattern, so this box accepts exactly what the
     // converter's hex box and the decode tool accept: a pattern that does not
     // fit (FP6's "0xFF") is ignored rather than sliced to width, and the
-    // fields stay exact past 53 bits. Anything else, an empty box on blur
-    // included, is ignored too.
+    // fields stay exact past 53 bits. Anything else, an empty box included,
+    // changes nothing. Returns whether the pattern was taken.
     function encodeFromHex(str) {
         let fields;
         try {
             fields = format.fromHexString(str);
         } catch (e) {
-            if (e instanceof RangeError) return;
+            if (e instanceof RangeError) return false;
             throw e;
         }
         ({ sign: currentSign, exponent: currentExponent, mantissa: currentMantissa } = fields);
         updateDisplay();
+        return true;
+    }
+
+    // What a box shows once text it refused is committed. Enter keeps the
+    // text, marked invalid, so a typo can be fixed in place; leaving the box
+    // puts back the spelling of the bits it no longer matches, which would
+    // otherwise sit beside them as if it had been read.
+    function markInvalid(input, invalid) {
+        if (invalid) input.setAttribute('aria-invalid', 'true');
+        else input.removeAttribute('aria-invalid');
+    }
+    function restoreInput(input) {
+        markInvalid(input, false);
+        input.value = input === hexInput
+            ? format.toHexString(currentSign, currentExponent, currentMantissa)
+            : formatValue(format.decode(currentSign, currentExponent, currentMantissa));
+        if (input === decimalInput) decimalEdited = false;
     }
 
     // Decimal input handler. Blur commits only text the user edited: the box
@@ -879,26 +914,33 @@ function initVisualizer(config) {
     if (decimalInput) {
         decimalInput.addEventListener('input', () => {
             decimalEdited = true;
+            markInvalid(decimalInput, false);
         });
         decimalInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                encodeFromDecimal(decimalInput.value);
+                markInvalid(decimalInput, !encodeFromDecimal(decimalInput.value));
             }
         });
         decimalInput.addEventListener('blur', () => {
-            if (decimalEdited) encodeFromDecimal(decimalInput.value);
+            // Unedited text is the display's own spelling and stays; edited
+            // or flagged text is committed, and put back if refused.
+            const pending = decimalEdited || decimalInput.getAttribute('aria-invalid') === 'true';
+            if (pending && !encodeFromDecimal(decimalInput.value)) restoreInput(decimalInput);
         });
     }
 
     // Hex input handler
     if (hexInput) {
+        hexInput.addEventListener('input', () => {
+            markInvalid(hexInput, false);
+        });
         hexInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                encodeFromHex(hexInput.value);
+                markInvalid(hexInput, !encodeFromHex(hexInput.value));
             }
         });
         hexInput.addEventListener('blur', () => {
-            encodeFromHex(hexInput.value);
+            if (!encodeFromHex(hexInput.value)) restoreInput(hexInput);
         });
     }
 
@@ -1148,6 +1190,41 @@ function initValueDistribution(config) {
     var currentIndex = 0;
     var currentSign = 0;
     var syncing = false; // prevent infinite loops in bidirectional sync
+    // The encoding the visualizer handed over, while the cursor only
+    // approximates it: the charts plot finite values, sampled on a wide
+    // format, so Infinity, NaN and an unsampled pattern sit on the nearest
+    // plotted point. The readout describes this encoding, not that point.
+    // Null once the explorer itself moves the cursor.
+    var shown = null;
+
+    function currentEncoding() {
+        if (shown) return shown;
+        var d = data[currentIndex];
+        return { sign: currentSign, exponent: d.exponent, mantissa: d.mantissa };
+    }
+
+    // Infinity and NaN are on neither chart, so they get no cursor.
+    function showsSpecial() {
+        if (!shown) return false;
+        var kind = fp.classify(shown.sign, shown.exponent, shown.mantissa);
+        return kind === 'Infinity' || kind === 'NaN';
+    }
+
+    // The data point matching (exp, mant), or the nearest by global index.
+    function nearestIndex(exp, mant) {
+        var gi = exp * mantCount + mant;
+        var best = 0;
+        var bestDist = Infinity;
+        for (var i = 0; i < data.length; i++) {
+            if (data[i].exponent === exp && data[i].mantissa === mant) return i;
+            var dist = Math.abs(data[i].globalIndex - gi);
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = i;
+            }
+        }
+        return best;
+    }
 
     // ── Weighted slider mapping ──
     // Slider covers full signed range: negative (left) → zero (center) → positive (right).
@@ -1220,28 +1297,32 @@ function initValueDistribution(config) {
     updateSliderGradient();
 
     function updateReadout() {
-        var d = data[currentIndex];
-        var displayVal = currentSign === 1 && d.value !== 0 ? -d.value : d.value;
-        roVal.textContent = formatValue(displayVal);
+        var enc = currentEncoding();
+        var kind = fp.classify(enc.sign, enc.exponent, enc.mantissa);
+        roVal.textContent = formatValue(fp.decode(enc.sign, enc.exponent, enc.mantissa));
 
-        var expActual = (d.exponent === 0 && fp.hasSubnormals) ? (1 - fp.bias) : (d.exponent - fp.bias);
-        roExp.textContent = d.exponent + ' (2^' + expActual + ')';
+        // The library's exponent rule, shared with the visualizer.
+        var expActual = fp.unbiasedExponent(enc.exponent, enc.mantissa);
+        roExp.textContent = enc.exponent + (expActual === null ? ' (Special)' : ' (2^' + expActual + ')');
 
         var typeStr;
-        if (d.value === 0) typeStr = currentSign === 1 ? '\u22120' : 'Zero';
-        else if (d.isSubnormal) typeStr = currentSign === 1 ? '\u2212 Subnormal' : 'Subnormal';
-        else typeStr = currentSign === 1 ? '\u2212 Normal' : 'Normal';
+        if (kind === 'NaN') typeStr = 'NaN';
+        else if (kind === 'Infinity') typeStr = enc.sign === 1 ? '\u2212Infinity' : '+Infinity';
+        else if (kind === 'Zero') typeStr = enc.sign === 1 ? '\u22120' : 'Zero';
+        else typeStr = enc.sign === 1 ? '\u2212 ' + kind : kind;
         roType.textContent = typeStr;
 
-        // Highlight active chart column
-        var inSub = currentIndex < normalStartIdx;
+        // Highlight active chart column; neither holds Infinity or NaN.
+        var special = kind === 'Infinity' || kind === 'NaN';
+        var inSub = !special && currentIndex < normalStartIdx;
+        var inNorm = !special && !inSub;
         if (subCol) {
             subCol.classList.toggle('vd-active', inSub);
             subCol.classList.toggle('vd-inactive', !inSub);
         }
         if (normCol) {
-            normCol.classList.toggle('vd-active', !inSub);
-            normCol.classList.toggle('vd-inactive', inSub);
+            normCol.classList.toggle('vd-active', inNorm);
+            normCol.classList.toggle('vd-inactive', !inNorm);
         }
     }
 
@@ -1316,7 +1397,7 @@ function initValueDistribution(config) {
         }
 
         // Cursor (only if currently in subnormal range)
-        if (currentIndex < normalStartIdx) {
+        if (currentIndex < normalStartIdx && !showsSpecial()) {
             var ci = currentIndex;
             var cx = xScale(ci);
             var cy = yScale(subData[ci].value);
@@ -1548,7 +1629,7 @@ function initValueDistribution(config) {
         }
 
         // Cursor (only if in normal range)
-        if (currentIndex >= normalStartIdx) {
+        if (currentIndex >= normalStartIdx && !showsSpecial()) {
             var ni = currentIndex - normalStartIdx;
             var cx = xScale(ni);
             var cy = yLogScale(normData[ni].value);
@@ -1660,6 +1741,7 @@ function initValueDistribution(config) {
     }
 
     function setIndex(idx) {
+        shown = null;
         currentIndex = Math.max(0, Math.min(data.length - 1, idx));
         slider.value = signedStateToSlider(currentSign, currentIndex);
         render();
@@ -1680,6 +1762,7 @@ function initValueDistribution(config) {
     // Slider
     slider.addEventListener('input', function() {
         var state = sliderToSignedState(parseInt(slider.value));
+        shown = null;
         currentSign = state.sign;
         currentIndex = state.index;
         render();
@@ -1691,7 +1774,13 @@ function initValueDistribution(config) {
     container.querySelectorAll('.vd-step-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var dir = parseInt(btn.dataset.dir);
-            if (currentSign === 0) {
+            if (showsSpecial()) {
+                // Infinity and NaN sit past the largest magnitude, where the
+                // cursor already waits: a step toward zero lands on it, and
+                // there is nothing further out.
+                var towardZero = currentSign === 0 ? dir === -1 : dir === 1;
+                if (!towardZero) return;
+            } else if (currentSign === 0) {
                 // Positive side
                 if (dir === -1 && currentIndex === 0) {
                     // Cross from +0 to -0
@@ -1711,6 +1800,7 @@ function initValueDistribution(config) {
                     currentIndex = Math.max(0, Math.min(data.length - 1, currentIndex - dir));
                 }
             }
+            shown = null;
             slider.value = signedStateToSlider(currentSign, currentIndex);
             render();
             updateReadout();
@@ -1769,33 +1859,23 @@ function initValueDistribution(config) {
     // src/theme.js switches themes.
     window.addEventListener('themechange', function() { render(); });
 
+    // Put the cursor on the visualizer's encoding, or the nearest plotted
+    // point to it, and describe the encoding itself in the readout.
+    function followEncoding(sign, exp, mant) {
+        shown = { sign: sign, exponent: exp, mantissa: mant };
+        currentSign = sign;
+        currentIndex = nearestIndex(exp, mant);
+        slider.value = signedStateToSlider(currentSign, currentIndex);
+        render();
+        updateReadout();
+    }
+
     // Expose API for bidirectional sync from visualizer
     window._vdApi = {
         setEncoding: function(sign, exp, mant) {
             if (syncing) return;
             syncing = true;
-            currentSign = sign;
-            // Find closest data point matching (exp, mant)
-            var best = 0;
-            var bestDist = Infinity;
-            for (var i = 0; i < data.length; i++) {
-                // Exact match preferred
-                if (data[i].exponent === exp && data[i].mantissa === mant) {
-                    best = i;
-                    break;
-                }
-                // Nearest by global index
-                var gi = exp * mantCount + mant;
-                var dist = Math.abs(data[i].globalIndex - gi);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    best = i;
-                }
-            }
-            currentIndex = best;
-            slider.value = signedStateToSlider(currentSign, currentIndex);
-            render();
-            updateReadout();
+            followEncoding(sign, exp, mant);
             syncing = false;
         },
     };
@@ -1805,25 +1885,7 @@ function initValueDistribution(config) {
     // visualizer to zero by pushing index 0 into it.
     if (window._vizApi && window._vizApi.getState) {
         var vs = window._vizApi.getState();
-        currentSign = vs.sign;
-        var gi = vs.exponent * mantCount + vs.mantissa;
-        var best = 0;
-        var bestDist = Infinity;
-        for (var vi = 0; vi < data.length; vi++) {
-            if (data[vi].exponent === vs.exponent && data[vi].mantissa === vs.mantissa) {
-                best = vi;
-                break;
-            }
-            var vdist = Math.abs(data[vi].globalIndex - gi);
-            if (vdist < bestDist) {
-                bestDist = vdist;
-                best = vi;
-            }
-        }
-        currentIndex = best;
-        slider.value = signedStateToSlider(currentSign, currentIndex);
-        render();
-        updateReadout();
+        followEncoding(vs.sign, vs.exponent, vs.mantissa);
     } else {
         slider.value = SLIDER_MID;
         render();

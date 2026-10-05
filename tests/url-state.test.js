@@ -2,14 +2,13 @@
 // Licensed under the MIT License.
 
 // URL state serialization tests
-const { FloatingPoint, Integer } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, FORMATS } = require('../lib/floating-point.js');
 const {
     ROUNDING_MODE_VALUES,
     DEFAULT_ROUNDING_MODE,
     OVERFLOW_MODE_VALUES,
     formatToParam,
     parseFormatParam,
-    descriptorToFormat,
     decimalToString,
     parseDecimal,
     valueToParam,
@@ -121,37 +120,35 @@ describe('parseFormatParam', () => {
     });
 });
 
-describe('descriptorToFormat', () => {
-    test('builds preset formats', () => {
-        const fp = descriptorToFormat({ presetKey: 'fp16' });
-        expect(fp.exponentBits).toBe(5);
-        expect(fp.mantissaBits).toBe(10);
-        const int = descriptorToFormat({ presetKey: 'int8' });
-        expect(int.isInteger).toBe(true);
-        expect(int.bits).toBe(8);
-        expect(int.signed).toBe(true);
+// The format a parsed descriptor denotes, for checking what a link would
+// load. The page builds formats from its controls instead (see
+// applyFormatDescriptor() in ui.js), so this lives with the tests.
+function descriptorToFormat(desc) {
+    if (desc.presetKey) {
+        const preset = FORMATS[desc.presetKey];
+        return preset.isInteger
+            ? new Integer(preset.bits, preset.signed, preset)
+            : FloatingPoint.fromFormat(desc.presetKey);
+    }
+    if (desc.kind === 'int') {
+        return new Integer(desc.bits, desc.signed, { fractionBits: desc.fractionBits });
+    }
+    return new FloatingPoint(desc.signBits, desc.exponentBits, desc.mantissaBits, {
+        hasInfinity: desc.hasInfinity,
+        hasNaN: desc.hasNaN,
+        hasSubnormals: desc.hasSubnormals,
     });
+}
 
-    test('builds custom formats', () => {
-        const fp = descriptorToFormat({ kind: 'fp', signBits: 1, exponentBits: 6, mantissaBits: 9, hasInfinity: false, hasNaN: true });
-        expect(fp.exponentBits).toBe(6);
-        expect(fp.hasInfinity).toBe(false);
-        const int = descriptorToFormat({ kind: 'int', bits: 6, signed: false });
-        expect(int.bits).toBe(6);
-        expect(int.signed).toBe(false);
-    });
-
-    test('returns null for empty descriptor', () => {
-        expect(descriptorToFormat(null)).toBeNull();
-    });
-
-    test('round-trips through formatToParam/parseFormatParam', () => {
+describe('format parameters round-trip', () => {
+    test('formatToParam -> parseFormatParam names the same format', () => {
         const cases = [
             new FloatingPoint(1, 8, 23),
             new FloatingPoint(1, 6, 9),
             new FloatingPoint(1, 5, 2, { hasInfinity: false }),
             new Integer(8, true),
             new Integer(6, false),
+            new Integer(8, true, { fractionBits: 6, symmetric: true }),
         ];
         for (const format of cases) {
             const param = formatToParam(format);
@@ -212,6 +209,26 @@ describe('decimalToString / parseDecimal', () => {
 });
 
 describe('valueToParam', () => {
+    // The reader encodes the link's text, so the check must too: a format
+    // finer than a double puts the double 0.1 and the decimal 0.1 on
+    // different patterns.
+    test('falls back to hex when the decimal text would land on other bits', () => {
+        const wide = new FloatingPoint(1, 11, 60);
+        const doubleBits = wide.fromHexString('0x3FB999999999999A00');
+        const value = wide.decode(doubleBits.sign, doubleBits.exponent, doubleBits.mantissa);
+        expect(value).toBe(0.1);
+
+        const param = valueToParam(wide, value, doubleBits);
+        expect(param).toEqual({ key: 'hex', value: '0x3FB999999999999A00' });
+        const reread = wide.fromHexString(param.value);
+        expect(wide.toHexString(reread.sign, reread.exponent, reread.mantissa)).toBe('0x3FB999999999999A00');
+
+        // The pattern the decimal 0.1 does round to keeps its short link.
+        const decimalBits = wide.encode('0.1');
+        const decimalValue = wide.decode(decimalBits.sign, decimalBits.exponent, decimalBits.mantissa);
+        expect(valueToParam(wide, decimalValue, decimalBits)).toEqual({ key: 'val', value: '0.1' });
+    });
+
     test('uses decimal when re-encoding reproduces the bits', () => {
         const format = new FloatingPoint(1, 5, 10);
         const encoded = format.encode(1.0, { roundingMode: DEFAULT_ROUNDING_MODE });

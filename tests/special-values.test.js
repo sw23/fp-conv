@@ -763,9 +763,11 @@ describe('conversionLoss()', () => {
     });
 
     test('convertEncoded() is exact however far the exponent range reaches', () => {
-        // Max normals near 2^66533 and 2^200000: far past what a decimal string
-        // parses, so a conversion routed through one lost the value.
-        for (const bias of [-34000, -200000]) {
+        // Max normals near 2^65533 and 2^-32768 at the smallest subnormal: the
+        // far edges the bias bound allows, where the BigInts are widest. (A
+        // bias past the bound, which used to reach 2^200000, is refused; see
+        // tests/fixed-point.test.js.)
+        for (const bias of [-32767, 32767]) {
             const withInfinity = new FloatingPoint(1, 15, 10, { bias });
             const saturating = new FloatingPoint(1, 15, 10, { bias, hasInfinity: false, hasNaN: false });
             const inEncoded = withInfinity.getMaxNormal(false);

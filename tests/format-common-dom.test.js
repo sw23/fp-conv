@@ -304,6 +304,40 @@ describe('renderRangeTable', () => {
         expect(rows.find(r => r[0] === 'Minimum Value').slice(1)).toEqual(['-1.984375', '0']);
         expect(rows.find(r => r[0] === 'Maximum Value').slice(1)).toEqual(['1.984375', '3.984375']);
     });
+
+    // The unsigned column's bounds are on the 2^-6 grid, so its fraction bits,
+    // scale and step must say so too, and its header must not call it UINT8.
+    test('a fixed-point page describes its unsigned column at the same scale', () => {
+        createContainer('range-table');
+        renderRangeTable('range-table', { isInteger: true, totalBits: 8, signed: true, fractionBits: 6, symmetric: true, label: 'MXINT8' });
+        const headers = Array.from(document.querySelectorAll('th')).map(th => th.textContent);
+        expect(headers).toEqual(['Property', 'MXINT8', 'Unsigned (8-bit, 2^-6 scale)']);
+        const rows = Array.from(document.querySelectorAll('tr')).map(tr =>
+            Array.from(tr.querySelectorAll('td')).map(td => td.textContent));
+        const row = (label) => rows.find(r => r[0] === label).slice(1);
+        expect(row('Fraction Bits')).toEqual(['6', '6']);
+        expect(row('Implicit Scale')).toEqual(['2^-6', '2^-6']);
+        expect(row('Step (ULP)')).toEqual(['0.015625', '0.015625']);
+        expect(row('Maximum Value')).toEqual(['1.984375', '3.984375']);
+        expect(row('Symmetric Range')).toEqual(['Yes', 'N/A']);
+    });
+
+    test('an unsigned fixed-point page has one column throughout', () => {
+        createContainer('range-table');
+        renderRangeTable('range-table', { isInteger: true, totalBits: 8, signed: false, fractionBits: 4 });
+        const rows = Array.from(document.querySelectorAll('tr')).slice(1).map(tr =>
+            Array.from(tr.querySelectorAll('td')).map(td => td.textContent));
+        for (const r of rows) expect(r).toHaveLength(2);
+        expect(rows.find(r => r[0] === 'Maximum Value')[1]).toBe('15.9375');
+    });
+
+    test('a float page counts its bit patterns exactly past 53 bits', () => {
+        createContainer('range-table');
+        renderRangeTable('range-table', { signBits: 1, exponentBits: 11, mantissaBits: 52 });
+        const rows = Array.from(document.querySelectorAll('tr')).map(tr =>
+            Array.from(tr.querySelectorAll('td')).map(td => td.textContent));
+        expect(rows.find(r => r[0] === 'Total Bit Patterns')[1]).toBe((2n ** 64n).toLocaleString());
+    });
 });
 
 // ── renderSpecialValues ──────────────────────────────────────
@@ -712,6 +746,27 @@ describe('initVisualizer', () => {
         expect(components.innerHTML).toContain('Zero');
     });
 
+    // The visualizer had its own exponent arithmetic, which gave Infinity and
+    // NaN a number; it now asks the library, like the converter and WebMCP.
+    test('the components read the library\'s exponent, Special for Infinity', () => {
+        setupVisualizer({
+            signBits: 1, exponentBits: 5, mantissaBits: 10,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 1,
+        });
+        const actual = () => Array.from(document.querySelectorAll('.viz-component'))
+            .find(c => c.textContent.includes('Exponent (actual)'))
+            .querySelector('.viz-comp-value').textContent;
+        expect(actual()).toBe('0');
+        const hex = document.getElementById('viz-hex');
+        hex.value = '0x7C00';
+        hex.dispatchEvent(new Event('blur'));
+        expect(actual()).toBe('Special');
+        hex.value = '0x0001';
+        hex.dispatchEvent(new Event('blur'));
+        expect(actual()).toBe('-14');
+    });
+
     test('hex input blur decodes the value', () => {
         setupVisualizer({
             signBits: 1, exponentBits: 5, mantissaBits: 10,
@@ -752,12 +807,81 @@ describe('initVisualizer', () => {
         hex.value = 'FF';
         hex.dispatchEvent(new Event('blur'));
         expect(decimal.value).toBe('1');
-        expect(hex.value).toBe('FF');
+        // The refused text does not stay beside bits it does not spell.
+        expect(hex.value).toBe('0x0C');
         // What fits is read, leading zero digits included.
         hex.value = '0x03F';
         hex.dispatchEvent(new Event('blur'));
         expect(decimal.value).toBe('NaN');
         expect(hex.value).toBe('0x3F');
+    });
+
+    // Refused text used to stay in the box after blur, beside bits it did not
+    // spell, with nothing to say it had not been read.
+    describe('refused input', () => {
+        const fp16 = () => setupVisualizer({
+            signBits: 1, exponentBits: 5, mantissaBits: 10,
+            hasInfinity: true, hasNaN: true,
+            initialValue: 1,
+        });
+        const type = (input, value) => {
+            input.value = value;
+            input.dispatchEvent(new Event('input'));
+        };
+        const enter = (input) => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+        test('decimal text is put back to the value on blur', () => {
+            fp16();
+            const decimal = document.getElementById('viz-decimal');
+            const hex = document.getElementById('viz-hex');
+            type(decimal, '1.5abc');
+            decimal.dispatchEvent(new Event('blur'));
+            expect(decimal.value).toBe('1');
+            expect(hex.value).toBe('0x3C00');
+            expect(decimal.hasAttribute('aria-invalid')).toBe(false);
+        });
+
+        test('hex typed into the decimal box is refused like any other text', () => {
+            fp16();
+            const decimal = document.getElementById('viz-decimal');
+            type(decimal, '0x7f');
+            decimal.dispatchEvent(new Event('blur'));
+            expect(decimal.value).toBe('1');
+        });
+
+        test('Enter keeps refused text, flagged, until it is fixed', () => {
+            fp16();
+            const decimal = document.getElementById('viz-decimal');
+            decimal.focus();
+            type(decimal, '2.5x');
+            enter(decimal);
+            expect(decimal.value).toBe('2.5x');
+            expect(decimal.getAttribute('aria-invalid')).toBe('true');
+            type(decimal, '2.5');
+            expect(decimal.hasAttribute('aria-invalid')).toBe(false);
+            enter(decimal);
+            expect(document.getElementById('viz-hex').value).toBe('0x4100');
+        });
+
+        test('a flagged box left without retyping is put back', () => {
+            fp16();
+            const hex = document.getElementById('viz-hex');
+            hex.focus();
+            hex.value = '0xZZ';
+            enter(hex);
+            expect(hex.getAttribute('aria-invalid')).toBe('true');
+            hex.blur();
+            expect(hex.value).toBe('0x3C00');
+            expect(hex.hasAttribute('aria-invalid')).toBe(false);
+        });
+
+        test('an accepted value still commits on blur', () => {
+            fp16();
+            const decimal = document.getElementById('viz-decimal');
+            type(decimal, '-2');
+            decimal.dispatchEvent(new Event('blur'));
+            expect(document.getElementById('viz-hex').value).toBe('0xC000');
+        });
     });
 
     test('decimal input blur accepts "nan"', () => {
@@ -989,6 +1113,68 @@ describe('initValueDistribution', () => {
             const state = window._vizApi.getState();
             expect(state).toBeDefined();
         });
+
+        function readout(container) {
+            return {
+                value: container.querySelector('.vd-ro-val').textContent,
+                exponent: container.querySelector('.vd-ro-exp').textContent,
+                type: container.querySelector('.vd-ro-type').textContent,
+                activeColumns: container.querySelectorAll('.vd-active').length,
+            };
+        }
+
+        // NaN is on neither chart, so the cursor waits on the nearest plotted
+        // point, 0x7E (448); the readout used to describe that point instead.
+        test('the readout describes NaN, not the nearest plotted value', () => {
+            const container = setupDistribution();
+            window._vizApi.setState(0, 15, 7);
+            expect(readout(container)).toEqual({
+                value: 'NaN', exponent: '15 (Special)', type: 'NaN', activeColumns: 0,
+            });
+        });
+
+        test('a step toward zero leaves NaN for the largest value, and a step out does nothing', () => {
+            const container = setupDistribution();
+            window._vizApi.setState(1, 15, 7);
+            const [left, right] = container.querySelectorAll('.vd-step-btn');
+
+            left.click(); // away from zero on the negative side
+            expect(readout(container).type).toBe('NaN');
+            expect(window._vizApi.getState()).toEqual(
+                expect.objectContaining({ sign: 1, exponent: 15, mantissa: 7 }));
+
+            right.click();
+            expect(readout(container)).toEqual({
+                value: '-448', exponent: '15 (2^8)', type: '− Normal', activeColumns: 1,
+            });
+            expect(window._vizApi.getState()).toEqual(
+                expect.objectContaining({ sign: 1, exponent: 15, mantissa: 6 }));
+        });
+
+        test('the readout describes an encoding the sampled chart does not plot', () => {
+            const viz = document.createElement('div');
+            viz.id = 'visualizer';
+            viz.innerHTML = '<div class="viz-binary"></div><div class="viz-components"></div>';
+            document.body.appendChild(viz);
+            const fp32 = { signBits: 1, exponentBits: 8, mantissaBits: 23,
+                hasInfinity: true, hasNaN: true, initialValue: 0 };
+            initVisualizer(fp32);
+            createContainer('value-distribution');
+            initValueDistribution({ ...fp32, valueDistributionId: 'value-distribution' });
+            const container = document.getElementById('value-distribution');
+
+            // 1.1 in FP32 (0x3F8CCCCD); the chart samples only a few
+            // mantissas per binade, so this pattern is not one of them.
+            window._vizApi.setState(0, 127, 0x0CCCCD);
+            expect(readout(container)).toEqual({
+                value: '1.100000024', exponent: '127 (2^0)', type: 'Normal', activeColumns: 1,
+            });
+
+            window._vizApi.setState(1, 255, 0);
+            expect(readout(container)).toEqual({
+                value: '-Infinity', exponent: '255 (Special)', type: '−Infinity', activeColumns: 0,
+            });
+        });
     });
 });
 
@@ -1150,6 +1336,28 @@ describe('the visualizer and the special-value tables are exact at any width', (
         expect(patterns.get('Min Signed')).toBe('1' + '0'.repeat(63));
         expect(patterns.get('Max Unsigned')).toBe('1'.repeat(64));
         expect(patterns.get('All Ones')).toBe('1'.repeat(64));
+    });
+
+    // MXINT8's range table says its minimum is -1.984375; this table used to
+    // call the unused 0x80 (decoding as -2) its "Min Signed".
+    test('a symmetric format names its real minimum and lists the sign bit alone as unused', () => {
+        const container = createContainer('int-special');
+        renderIntegerSpecialValues(container, { totalBits: 8, fractionBits: 6, symmetric: true });
+        const rows = new Map();
+        for (const row of container.querySelectorAll('tr')) {
+            const cells = Array.from(row.querySelectorAll('td')).map(td => td.textContent);
+            if (cells.length) rows.set(cells[0], cells.slice(1));
+        }
+        expect(rows.get('Min Signed (-1.984375)')).toEqual(['10000001', '-1.984375', '2.015625']);
+        expect(rows.get('Sign Bit Only (unused)')).toEqual(['10000000', '-2', '2']);
+        expect([...rows.keys()].some(k => k.startsWith('Min Signed (-2'))).toBe(false);
+
+        // A two's-complement format without the symmetric range is unchanged.
+        const plain = createContainer('int-special-plain');
+        renderIntegerSpecialValues(plain, { totalBits: 8 });
+        const labels = Array.from(plain.querySelectorAll('td.text-cell')).map(td => td.textContent);
+        expect(labels).toContain('Min Signed (-128)');
+        expect(labels).not.toContain('Sign Bit Only (unused)');
     });
 
     test('clicking the lowest bit of a 60-bit mantissa flips that bit', () => {

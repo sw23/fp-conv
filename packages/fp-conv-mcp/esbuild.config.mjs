@@ -22,7 +22,7 @@ await build({
     bundle: true,
     platform: "node",
     format: "esm",
-    target: "node18",
+    target: "node20",
     packages: "external",
     define: {
         __SERVER_VERSION__: JSON.stringify(pkg.version),

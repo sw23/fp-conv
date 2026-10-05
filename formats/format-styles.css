@@ -553,6 +553,12 @@ header .subtitle {
     border-color: var(--primary-color);
 }
 
+/* Text the visualizer refused on Enter; it is put back on blur. */
+.viz-input-row input[type="text"][aria-invalid="true"] {
+    border-color: var(--warning-color);
+    background: var(--warning-tint);
+}
+
 .viz-presets {
     display: flex;
     gap: 4px;
