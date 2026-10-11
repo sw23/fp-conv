@@ -2,7 +2,7 @@
 
 This tool implements the [WebMCP API](https://github.com/webmachinelearning/webmcp) ([draft spec](https://webmachinelearning.github.io/webmcp/), checked 2026-09-26) so that AI agents (browser assistants, copilots, etc.) can perform floating-point and integer conversions without manual UI interaction.
 
-When the page is loaded in a browser that supports WebMCP, five tools are automatically registered via `document.modelContext.registerTool()`. Early Chrome previews exposed the API as `navigator.modelContext`, which is used as a fallback. See the WebMCP [implementation status](https://github.com/webmachinelearning/webmcp/blob/main/implementation-status.md) for browser support, including the Chrome flag for local testing.
+When the page is loaded in a browser that supports WebMCP, five tools are automatically registered via `document.modelContext.registerTool()`. Early Chrome previews exposed the API as `navigator.modelContext`, which is used as a fallback. See the WebMCP [implementation status](https://github.com/webmachinelearning/webmcp/blob/main/implementation-status.md) for browser support, including the Chrome flag for local testing. The live site at `https://sw23.github.io` is enrolled in Chrome's WebMCP origin trial (Chrome 149–162, token expires 2027-03-30), so the tools register there in Chrome without any flag; the token is a `<meta http-equiv="origin-trial">` tag in `index.html`.
 
 Every tool is a pure computation, so each is registered with a `title` and `annotations: { readOnlyHint: true }`. Invalid arguments come back as a result with `isError: true` and an `Error: …` message rather than as a rejected call, because WebMCP does not pass a rejection's reason on to the agent.
 
