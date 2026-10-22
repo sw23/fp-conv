@@ -37,7 +37,7 @@ fp-conv <command> [options]
 | ----------------- | ------------------------------------------------------ |
 | `encode <value>`  | Encode a decimal/keyword value into a format.          |
 | `decode <bits>`   | Decode a binary or hex bit-pattern in a format.        |
-| `convert <value>` | Convert a value from one format to another.            |
+| `convert <value>` | Convert a value (or a `--bits` pattern) from one format to another. |
 | `info <format>`   | Show range, bias, and special-value details.           |
 | `list`            | List all available preset formats.                     |
 
@@ -50,14 +50,22 @@ fp-conv <command> [options]
 | `--to <fmt>`           | Target format for `convert`.                                                |
 | `-r, --rounding <m>`   | Rounding for the encoded format, or the destination of `convert`: `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative`. |
 | `--overflow <m>`       | Overflow behavior for the encoded format, or the destination of `convert`: `overflow` (Infinity or NaN) or `saturate` (max normal). |
+| `--bits <pattern>`     | Source of `convert` as a bit pattern in the `--from` format, binary or hex, in place of `<value>`. |
+| `--nan <m>`            | What a NaN source of `convert` becomes: `canonical` (default, the target's canonical quiet NaN) or `preserve` (keep the sign and as many high-order payload bits as fit, quieted). |
 | `--json`               | Emit machine-readable JSON instead of formatted text.                       |
 | `-h, --help`           | Show help.                                                                  |
 | `-v, --version`        | Show version.                                                               |
 
-Values accept a number, hex (e.g. `0xFF`), or keyword (`infinity`, `-infinity`,
-`nan`). Bit-patterns accept a binary string (e.g. `0100000`) or hex (e.g. `0x40`).
-For `convert`, the source operand is constructed using the source format's standard
-defaults; `--rounding` and `--overflow` apply only when encoding the destination.
+Values accept a number, hex (e.g. `0xFF`, which is 255), or keyword (`infinity`,
+`-infinity`, `nan`). Bit-patterns accept a binary string (e.g. `0100000`) or hex
+(e.g. `0x40`). For `convert`, give either `<value>` or `--bits`, not both. A `<value>`
+is constructed using the source format's standard defaults; a `--bits` pattern is the
+source encoding, used exactly as given. `--rounding`, `--overflow` and `--nan` apply
+only when encoding the destination.
+
+A NaN's sign and payload exist only in its bit pattern, so `--nan preserve` needs the
+NaN given with `--bits`: a typed `nan` or `-nan` is the canonical quiet NaN under both
+modes. See [NaN behavior](https://github.com/sw23/fp-conv/blob/main/docs/nan-behavior.md).
 
 ## Examples
 
@@ -77,6 +85,11 @@ fp-conv convert 3.14 --from fp32 --to fp16
 
 # Inspect a format's range and special-value support
 fp-conv info bf16
+
+# Convert an exact bit pattern; keep a NaN's sign and payload
+fp-conv convert --bits 0x3C00 --from fp16 --to fp32                     # 1
+fp-conv convert --bits 0xFFC00000 --from fp32 --to fp16                 # 0x7E00
+fp-conv convert --bits 0xFFC00000 --from fp32 --to fp16 --nan preserve  # 0xFE00
 
 # Saturate instead of overflowing to Infinity
 fp-conv encode 1e40 --format fp32 --overflow saturate   # 3.4028234663852886e+38

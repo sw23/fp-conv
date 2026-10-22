@@ -18,12 +18,14 @@ while inspecting binary representations and precision loss.
 - **Rounding modes:** Implements IEEE 754 rounding modes (ties to even, ties away
   from zero, toward zero, toward +inf, and toward −inf)
 - **Overflow behavior:** Configurable overflow (Infinity/NaN vs. max normal).
+- **NaN handling:** Convert a NaN to the output's canonical quiet NaN, or keep its sign
+  and payload as IEEE 754 §6.2.3 describes ([details](docs/nan-behavior.md))
 - **Fixed-point mode:** Set exponent bits to 0 for fractional representations
 - **Light and dark modes:** Switch between light and dark themes based on your preference
 - **Basic and advanced views:** Additional details shown in advanced mode. Defaults based
   on the screen width until you choose
 - **Shareable links:** Bookmark or share a conversion via URL parameters (input/output
-  format, value, rounding mode, overflow behavior, and view mode)
+  format, value, rounding mode, overflow behavior, NaN handling, and view mode)
 - **Mobile-friendly:** Works on screens of all sizes
 - **WebMCP API:** AI agents can perform conversions via [WebMCP](docs/webmcp.md)
 

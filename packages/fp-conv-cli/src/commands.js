@@ -47,18 +47,22 @@ export function runDecode({ bits, format }) {
 }
 
 /**
- * Convert a value from one format to another.
- * @param {{value: string, from: string|object, to: string|object, roundingMode?: string, overflowMode?: string}} params
+ * Convert a value, or a bit pattern in the source format, from one format to
+ * another. Exactly one of `value` and `bits` is given; `nanMode` decides what
+ * a NaN source becomes, and only a `bits` source has a payload for it to keep.
+ * @param {{value?: string, bits?: string, from: string|object, to: string|object, roundingMode?: string, overflowMode?: string, nanMode?: string}} params
  * @returns {object}
  */
-export function runConvert({ value, from, to, roundingMode, overflowMode }) {
+export function runConvert({ value, bits, from, to, roundingMode, overflowMode, nanMode }) {
     return unwrap(
         convertFormat({
             value,
+            bits,
             inputFormat: from,
             outputFormat: to,
             roundingMode,
             overflowMode,
+            nanMode,
         })
     );
 }

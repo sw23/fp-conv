@@ -26,7 +26,8 @@ Usage:
 Commands:
   encode <value>     Encode a decimal/keyword value into a format.
   decode <bits>      Decode a binary or hex bit-pattern in a format.
-  convert <value>    Convert a value from one format to another.
+  convert <value>    Convert a value from one format to another (or a bit
+                     pattern given with --bits).
   info <format>      Show range, bias, and special-value details for a format.
   list               List all available preset formats.
 
@@ -38,11 +39,18 @@ Options:
   -r, --rounding <m>   Rounding mode: tiesToEven (default), tiesToAway,
                        towardZero, towardPositive, towardNegative.
       --overflow <m>   Overflow behavior: overflow or saturate.
+      --bits <pattern> Source bit pattern for convert, binary or hex, in place
+                       of <value>: the way to convert an exact encoding, such
+                       as a NaN with a payload.
+      --nan <m>        What a NaN source becomes in convert: canonical
+                       (default, the target's quiet NaN) or preserve (keep
+                       its sign and as much payload as fits).
       --json           Emit machine-readable JSON instead of formatted text.
   -h, --help           Show this help.
   -v, --version        Show version.
 
 Values accept a number, hex (e.g. 0xFF), or keyword (infinity, -infinity, nan).
+A hex value is a number (0xFF is 255); to convert a bit pattern, use --bits.
 Bit-patterns accept a binary string (e.g. 0100000) or hex (e.g. 0x40).
 Negative values work directly (e.g. "encode -1.5 --format fp16"); if a value is
 ever mistaken for an option, place it after "--" (e.g. "encode --format fp16 -- -1.5").
@@ -53,6 +61,7 @@ Examples:
   fp-conv encode 1e40 --format fp32 --overflow saturate
   fp-conv decode 0x4048 --format fp16
   fp-conv convert 3.14 --from fp32 --to fp16
+  fp-conv convert --bits 0xFFC00000 --from fp32 --to fp16 --nan preserve
   fp-conv info bf16
   fp-conv list
   fp-conv encode 1.5 --format '{"signBits":1,"exponentBits":8,"mantissaBits":7}'`;
@@ -63,6 +72,8 @@ const OPTIONS = {
     to: { type: "string" },
     rounding: { type: "string", short: "r" },
     overflow: { type: "string" },
+    bits: { type: "string" },
+    nan: { type: "string" },
     json: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
@@ -76,7 +87,7 @@ const OPTIONS = {
 const COMMANDS = {
     encode: { args: ["value"], options: ["format", "rounding", "overflow"] },
     decode: { args: ["bits"], options: ["format"] },
-    convert: { args: ["value"], options: ["from", "to", "rounding", "overflow"] },
+    convert: { args: ["value"], options: ["from", "to", "rounding", "overflow", "bits", "nan"] },
     info: { args: ["format"], options: [] },
     list: { args: [], options: [] },
 };
@@ -240,15 +251,30 @@ function dispatch({ command, positionals, values }) {
             break;
         }
         case "convert": {
-            const value = requirePositional(positionals, 1, "value");
+            // --bits names the source in place of <value>. Given both, neither
+            // is quietly preferred: the call is ambiguous, so it is refused.
+            const bits = values.bits;
+            let value;
+            if (bits === undefined) {
+                if (positionals[1] === undefined) {
+                    throw new Error("Missing required argument: <value> (or --bits <pattern>)");
+                }
+                value = positionals[1];
+            } else if (positionals[1] !== undefined) {
+                throw new Error(
+                    `Unexpected argument "${positionals[1]}": convert takes <value> or ` +
+                    "--bits <pattern>, not both.");
+            }
             const from = parseFormatSpec(requireOption(values.from, "--from"));
             const to = parseFormatSpec(requireOption(values.to, "--to"));
             const data = runConvert({
                 value,
+                bits,
                 from,
                 to,
                 roundingMode: values.rounding,
                 overflowMode: values.overflow,
+                nanMode: values.nan,
             });
             output(data, values.json, () =>
                 renderConvert(data, {

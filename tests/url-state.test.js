@@ -2,11 +2,12 @@
 // Licensed under the MIT License.
 
 // URL state serialization tests
-const { FloatingPoint, Integer, FORMATS } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, FORMATS, NAN_MODES, DEFAULT_NAN_MODE } = require('../lib/floating-point.js');
 const {
     ROUNDING_MODE_VALUES,
     DEFAULT_ROUNDING_MODE,
     OVERFLOW_MODE_VALUES,
+    NAN_MODE_VALUES,
     formatToParam,
     parseFormatParam,
     decimalToString,
@@ -435,6 +436,82 @@ describe('overflow mode in the URL', () => {
         expect(query).toContain('val=0.1');
         expect(query).toContain('rm=towardZero');
         expect(query).not.toContain('hex=');
+    });
+});
+
+// ── NaN mode ──────────────────────────────────────────────────
+
+describe('NaN mode in the URL', () => {
+    const baseState = () => {
+        const inputFormat = FloatingPoint.fromFormat('fp32');
+        const currentValue = 1.5;
+        return {
+            inputFormat,
+            outputFormat: FloatingPoint.fromFormat('fp16'),
+            currentValue,
+            currentEncoded: inputFormat.encode(currentValue),
+            roundingMode: 'tiesToEven',
+            overflowMode: null,
+        };
+    };
+
+    test('exposes the canonical NaN mode list, matching the library', () => {
+        expect(NAN_MODE_VALUES).toEqual(['canonical', 'preserve']);
+        expect(NAN_MODE_VALUES).toEqual(Object.keys(NAN_MODES));
+    });
+
+    // Omitted at the default like rm, so every link written before the mode
+    // existed is still exactly the link the page writes for that state.
+    test('nm is omitted at the default (canonical) and when unset', () => {
+        expect(buildSearchParams({ ...baseState(), nanMode: 'canonical' })).not.toContain('nm=');
+        expect(buildSearchParams({ ...baseState(), nanMode: DEFAULT_NAN_MODE })).not.toContain('nm=');
+        expect(buildSearchParams(baseState())).not.toContain('nm=');
+    });
+
+    test('nm is emitted for preserve', () => {
+        const query = buildSearchParams({ ...baseState(), nanMode: 'preserve' });
+        expect(new URLSearchParams(query).get('nm')).toBe('preserve');
+    });
+
+    test('nm round-trips through parseSearchParams', () => {
+        const query = buildSearchParams({ ...baseState(), nanMode: 'preserve' });
+        expect(parseSearchParams(`?${query}`).nanMode).toBe('preserve');
+        // canonical is never written, but a hand-written one is still valid.
+        expect(parseSearchParams('?nm=canonical').nanMode).toBe('canonical');
+    });
+
+    test('an invalid nm is discarded silently', () => {
+        expect(parseSearchParams('?in=fp16&nm=bogus').nanMode).toBeNull();
+        expect(parseSearchParams('?in=fp16&nm=Preserve').nanMode).toBeNull();
+        expect(parseSearchParams('?nm=bogus')).toBeNull();
+    });
+
+    test('nm alone is enough to count as state', () => {
+        const parsed = parseSearchParams('?nm=preserve');
+        expect(parsed).not.toBeNull();
+        expect(parsed.nanMode).toBe('preserve');
+        expect(parsed.input).toBeNull();
+    });
+
+    test('a link without nm parses to nanMode null', () => {
+        expect(parseSearchParams('?in=fp32').nanMode).toBeNull();
+    });
+
+    // The payload is in the INPUT's bits, which the link carries as hex
+    // whatever the mode: the mode changes only what the output makes of them.
+    test('NaN mode does not affect source-value serialization', () => {
+        // FP32 0xFFC00000: a negative quiet NaN, which no typed value spells.
+        const encoded = { sign: 1, exponent: 255, mantissa: 1 << 22 };
+        for (const nanMode of NAN_MODE_VALUES) {
+            const params = new URLSearchParams(buildSearchParams({
+                ...baseState(),
+                currentValue: NaN,
+                currentEncoded: encoded,
+                nanMode,
+            }));
+            expect(params.get('hex')).toBe('0xFFC00000');
+            expect(params.has('val')).toBe(false);
+        }
     });
 });
 

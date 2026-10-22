@@ -37,6 +37,7 @@ Verify the page renders correctly and all sections are present.
    - All integer format labels: INT32, UINT32, INT16, UINT16, INT8, UINT8, INT4, UINT4
    - Value preset labels: 0, 1, Max Norm, Min Norm, Max Sub, Min Sub, +Inf, -Inf, NaN, 1s
    - Rounding mode options: Nearest Ties to Even, Ties Away, Toward Zero, Toward +Infinity, Toward -Infinity
+   - NaN mode options: Canonical quiet NaN, Preserve sign and payload
 4. Verify the default initial state matches:
    - Input format: FP16 (total bits = 16)
    - Output format: BF16 (total bits = 16)

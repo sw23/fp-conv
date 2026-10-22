@@ -483,7 +483,8 @@ section h3 {
 }
 
 .rounding-mode-group,
-.overflow-mode-group {
+.overflow-mode-group,
+.nan-mode-group {
     min-width: 0;
 }
 
@@ -496,22 +497,27 @@ section h3 {
     margin: auto;
 }
 
-/* The two mode selects pair up whenever the row is wide enough for both to hold
-   their flex-basis, and stack once it is not. Basis rather than a media query,
-   because this section is a column of a responsive grid - its width does not
-   track the viewport. */
+/* The three mode selects sit side by side when the row is wide enough for all of
+   them at their minimum track width, two to a row when it is not, and stack on a
+   phone. A minimum rather than a media query, because this section is a column of
+   a responsive grid - its width does not track the viewport.
+
+   230px is about what "Nearest, Ties Away from Zero" needs, and narrower tracks
+   would mostly clip the overflow select's default option, whose whole job is to
+   name the output format's behavior. So in the two-column desktop layout (a row
+   of roughly 520-600px) the NaN select takes a second row. A grid rather than
+   flex-wrap so that it lines up under the rounding select at the same width
+   instead of stretching across the whole row; auto-fit collapses the unused
+   tracks so a single-column page wide enough for three still fills the row. */
 .mode-row {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
     gap: var(--gap-3);
     margin-top: var(--gap-3);
     padding-top: var(--gap-3);
     border-top: 1px solid var(--border);
 }
 
-.mode-row .input-group {
-    flex: 1 1 230px;
-}
 
 .total-bits-display {
     padding: 5px 8px;
