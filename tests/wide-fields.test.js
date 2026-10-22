@@ -422,6 +422,7 @@ beforeAll(() => {
     global.CONVERSION_LOSS_LABELS = require('../lib/floating-point.js').CONVERSION_LOSS_LABELS;
     global.conversionLoss = require('../lib/floating-point.js').conversionLoss;
     global.convertEncoded = require('../lib/floating-point.js').convertEncoded;
+    global.DEFAULT_NAN_MODE = require('../lib/floating-point.js').DEFAULT_NAN_MODE;
     global.showsDecodedValue = require('../lib/floating-point.js').showsDecodedValue;
     global.encodingValueText = require('../lib/floating-point.js').encodingValueText;
     global.showsDecodedSignificand = require('../lib/floating-point.js').showsDecodedSignificand;

@@ -154,6 +154,72 @@ describe("main: text output", () => {
     });
 });
 
+// A NaN's payload exists only in its bit pattern, so --nan is reached through
+// --bits; the rule itself is pinned at the library level.
+describe("convert --bits and --nan", () => {
+    test("runConvert forwards bits and nanMode", () => {
+        const args = { bits: "0xFFC00000", from: "fp32", to: "fp16" };
+        expect(runConvert(args).output.hex).toBe("0x7E00");
+        expect(runConvert({ ...args, nanMode: "canonical" }).output.hex).toBe("0x7E00");
+        expect(runConvert({ ...args, nanMode: "preserve" }).output.hex).toBe("0xFE00");
+    });
+
+    test("a signalling NaN becomes a quiet NaN under preserve, not Infinity", () => {
+        const result = runConvert({ bits: "0x7F800001", from: "fp32", to: "fp16", nanMode: "preserve" });
+        expect(result.output.hex).toBe("0x7E00");
+    });
+
+    test("--bits converts the pattern exactly", async () => {
+        const { stdout, exitCodes } = await runCli(main, [
+            "convert", "--bits", "0x3C00", "--from", "fp16", "--to", "fp32", "--json",
+        ]);
+        expect(exitCodes).toEqual([]);
+        const parsed = JSON.parse(stdout);
+        expect(parsed.input.hex).toBe("0x3C00");
+        expect(parsed.output.actualValue).toBe(1);
+    });
+
+    test("a hex <value> is still a number, not a pattern", async () => {
+        const { stdout } = await runCli(main, ["convert", "0x3C00", "--from", "fp16", "--to", "fp32", "--json"]);
+        expect(JSON.parse(stdout).input.actualValue).toBe(15360);
+    });
+
+    test("--nan preserve keeps a NaN's sign in the rendered output", async () => {
+        const args = ["convert", "--bits", "0xFFC00000", "--from", "fp32", "--to", "fp16"];
+        const canonical = await runCli(main, args);
+        const preserve = await runCli(main, [...args, "--nan", "preserve"]);
+        expect(canonical.exitCodes).toEqual([]);
+        expect(preserve.exitCodes).toEqual([]);
+        const outputHex = (stdout) => stdout.split("Output (fp16):")[1].match(/Hex:\s+(\S+)/)[1];
+        expect(outputHex(canonical.stdout)).toBe("0x7E00");
+        expect(outputHex(preserve.stdout)).toBe("0xFE00");
+    });
+
+    test("an unknown --nan mode is refused", async () => {
+        const { stderr, exitCodes } = await runCli(main, [
+            "convert", "--bits", "0x7E01", "--from", "fp16", "--to", "fp32", "--nan", "bogus",
+        ]);
+        expect(stderr).toMatch(/Unknown NaN mode: "bogus"\. Valid modes: canonical, preserve\./);
+        expect(exitCodes).toContain(1);
+    });
+
+    test("a bad --bits pattern is refused as decode refuses it", async () => {
+        const { stderr, exitCodes } = await runCli(main, [
+            "convert", "--bits", "0x1FFFF", "--from", "fp16", "--to", "fp32",
+        ]);
+        expect(stderr).toMatch(/does not fit the 16-bit/);
+        expect(exitCodes).toContain(1);
+    });
+
+    test("info points at --nan only where the format has a NaN", async () => {
+        const withNaN = await runCli(main, ["info", "fp16"]);
+        expect(withNaN.stdout).toMatch(/NaN input: \u2192 NaN; convert --nan preserve/);
+        const without = await runCli(main, ["info", "fp4_e2m1"]);
+        expect(without.stdout).toMatch(/NaN input: \u2192 largest finite value$/m);
+        expect(without.stdout).not.toMatch(/--nan/);
+    });
+});
+
 describe("main: JSON output", () => {
     test("encode --json emits valid JSON", async () => {
         const { stdout } = await runCli(main, ["encode", "3.14", "--format", "fp32", "--json"]);

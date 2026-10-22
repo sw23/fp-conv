@@ -1,9 +1,9 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES, conversionLoss, convertEncoded, valueKeyword, showsDecodedValue, encodingValueText, showsDecodedSignificand, normalizedEncoding */
-// WebMCP integration - requires FloatingPoint, Integer, FORMATS, ROUNDING_MODES
-// and the conversion helpers from floating-point.js
+/* global FloatingPoint, Integer, FORMATS, ROUNDING_MODES, NAN_MODES, DEFAULT_NAN_MODE, conversionLoss, convertEncoded, valueKeyword, showsDecodedValue, encodingValueText, showsDecodedSignificand, normalizedEncoding */
+// WebMCP integration - requires FloatingPoint, Integer, FORMATS, ROUNDING_MODES,
+// NAN_MODES and the conversion helpers from floating-point.js
 
 // In Node.js (testing), import from the library; in browser, rely on globals.
 //
@@ -13,6 +13,7 @@
 // them is a redeclaration and throws SyntaxError before the second file runs at
 // all. tests/browser-scripts.test.js enforces that the names stay disjoint.
 let _mcpFloatingPoint, _mcpInteger, _mcpFORMATS, _mcpROUNDING_MODES,
+    _mcpNAN_MODES, _mcpDEFAULT_NAN_MODE,
     _mcpConversionLoss, _mcpConvertEncoded, _mcpValueKeyword, _mcpShowsDecodedValue,
     _mcpEncodingValueText, _mcpShowsDecodedSignificand, _mcpNormalizedEncoding;
 if (typeof require !== 'undefined') {
@@ -21,6 +22,8 @@ if (typeof require !== 'undefined') {
     _mcpInteger = lib.Integer;
     _mcpFORMATS = lib.FORMATS;
     _mcpROUNDING_MODES = lib.ROUNDING_MODES;
+    _mcpNAN_MODES = lib.NAN_MODES;
+    _mcpDEFAULT_NAN_MODE = lib.DEFAULT_NAN_MODE;
     _mcpConversionLoss = lib.conversionLoss;
     _mcpConvertEncoded = lib.convertEncoded;
     _mcpValueKeyword = lib.valueKeyword;
@@ -37,6 +40,10 @@ if (typeof require !== 'undefined') {
     _mcpFORMATS = FORMATS;
     /* istanbul ignore next */
     _mcpROUNDING_MODES = ROUNDING_MODES;
+    /* istanbul ignore next */
+    _mcpNAN_MODES = NAN_MODES;
+    /* istanbul ignore next */
+    _mcpDEFAULT_NAN_MODE = DEFAULT_NAN_MODE;
     /* istanbul ignore next */
     _mcpConversionLoss = conversionLoss;
     /* istanbul ignore next */
@@ -372,9 +379,20 @@ function decodeBits({ bits, format: formatSpec }) {
     }
 
     const format = resolveFormat(formatSpec);
-    const bitString = String(bits);
+    const stats = buildStats(format, parseBitPattern(bits, format));
 
-    let sign, exponent, mantissa;
+    return toolResult(stats);
+}
+
+/**
+ * Read a binary or hex bit pattern as an encoding of `format`, by the rule
+ * decode_bits documents. convert_format's `bits` goes through here too, so a
+ * pattern one tool accepts the other reads the same way.
+ *
+ * @returns {{sign: number, exponent: number, mantissa: number|bigint}}
+ */
+function parseBitPattern(bits, format) {
+    const bitString = String(bits);
 
     if (bitString.toLowerCase().startsWith('0x')) {
         const hexDigits = bitString.substring(2).trim();
@@ -384,8 +402,9 @@ function decodeBits({ bits, format: formatSpec }) {
         // The format reads the pattern, by the rule every surface shares:
         // leading zero digits are fine, and a pattern whose bits do not fit
         // is refused (the RangeError names the width).
-        ({ sign, exponent, mantissa } = format.fromHexString('0x' + hexDigits));
-    } else if (/^[01]+$/.test(bitString)) {
+        return format.fromHexString('0x' + hexDigits);
+    }
+    if (/^[01]+$/.test(bitString)) {
         // A binary pattern is an exact bit layout: reject anything wider than
         // the format (a caller passing a 32-bit string to fp16 almost certainly
         // meant fp32). Leading zeros are only tolerated for hex input above.
@@ -395,15 +414,9 @@ function decodeBits({ bits, format: formatSpec }) {
                 `which does not fit the ${format.totalBits}-bit format.`);
         }
         const padded = bitString.padStart(format.totalBits, '0');
-        ({ sign, exponent, mantissa } = extractComponents(padded, format));
-    } else {
-        throw new Error('Parameter "bits" must be a binary string (e.g. "01000000") or hex string (e.g. "0x40").');
+        return extractComponents(padded, format);
     }
-
-    const encoded = { sign, exponent, mantissa };
-    const stats = buildStats(format, encoded);
-
-    return toolResult(stats);
+    throw new Error('Parameter "bits" must be a binary string (e.g. "01000000") or hex string (e.g. "0x40").');
 }
 
 /**
@@ -417,9 +430,15 @@ function extractComponents(binary, format) {
 /**
  * convert_format – Convert a value between two formats.
  */
-function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec, roundingMode, overflowMode }) {
-    if (value === undefined || value === null) {
-        throw new Error('Parameter "value" is required.');
+function convertFormat({
+    value, bits, inputFormat: inputSpec, outputFormat: outputSpec, roundingMode, overflowMode, nanMode,
+}) {
+    // Two ways to name the source, and a call that gives both is ambiguous
+    // about which one it meant, so it is refused rather than one winning.
+    const hasValue = value !== undefined && value !== null;
+    const hasBits = bits !== undefined && bits !== null;
+    if (hasValue === hasBits) {
+        throw new Error('Provide exactly one of "value" or "bits".');
     }
     if (!inputSpec) {
         throw new Error('Parameter "inputFormat" is required.');
@@ -430,15 +449,21 @@ function convertFormat({ value, inputFormat: inputSpec, outputFormat: outputSpec
 
     const inFmt = resolveFormat(inputSpec);
     const outFmt = resolveFormat(outputSpec);
-    const numericValue = parseValueInput(value);
     const outputEncodeOptions = {};
     if (roundingMode) outputEncodeOptions.roundingMode = roundingMode;
     if (overflowMode) outputEncodeOptions.overflowMode = overflowMode;
+    if (nanMode) outputEncodeOptions.nanMode = nanMode;
 
-    // Construct the source operand using the input format's standard defaults.
-    // Rounding and overflow options describe the conversion to the destination;
-    // changing them must not mutate the value being converted.
-    const inputEncoded = inFmt.encode(encodeInput(value, numericValue));
+    // A `bits` source IS the input encoding, used exactly as given: it is the
+    // only way to hand this tool a NaN's sign and payload, which a value
+    // cannot carry (a hex `value` is an integer, and "nan" is the canonical
+    // NaN). A `value` is constructed using the input format's standard
+    // defaults: rounding and overflow options describe the conversion to the
+    // destination, and changing them must not mutate the value being
+    // converted.
+    const inputEncoded = hasBits
+        ? parseBitPattern(bits, inFmt)
+        : inFmt.encode(encodeInput(value, parseValueInput(value)));
 
     // Convert from the source encoding's exact value, not its decoded double,
     // which rounds a field wider than 53 bits.
@@ -653,15 +678,26 @@ function buildToolDescriptors() {
             name: 'convert_format',
             title: 'Convert format',
             description:
-                'Convert a value from one floating-point or integer format to another. ' +
-                'Returns full encoding details for both formats and precision loss analysis.',
+                'Convert a value or bit pattern from one floating-point or integer format to ' +
+                'another. Returns full encoding details for both formats and precision loss analysis.',
             inputSchema: {
                 type: 'object',
                 properties: {
                     value: {
                         type: ['number', 'string'],
                         description:
-                            'The value to convert. Accepts a number, hex string, or keyword.',
+                            'The value to convert. Accepts a number, hex string (read as an ' +
+                            'integer, e.g. "0xFF" is 255), or keyword. Exactly one of "value" ' +
+                            'and "bits" is required.',
+                    },
+                    bits: {
+                        type: 'string',
+                        description:
+                            'The source as a bit pattern in the input format, binary ' +
+                            '(e.g. "0011110000000000") or hex with 0x prefix (e.g. "0x3C00"), ' +
+                            'read as decode_bits reads it and converted exactly as given. Use it ' +
+                            'to convert an exact encoding such as a NaN with a sign and payload. ' +
+                            'Exactly one of "value" and "bits" is required.',
                     },
                     inputFormat: {
                         type: ['string', 'object'],
@@ -692,8 +728,18 @@ function buildToolDescriptors() {
                             'IEEE 754 §7.4 directed rounding still clamps finite overflow regardless.',
                         enum: ['saturate', 'overflow'],
                     },
+                    nanMode: {
+                        type: 'string',
+                        description:
+                            'What a NaN source operand becomes; it has no effect on any other ' +
+                            'input. "canonical" gives the output format\'s canonical quiet NaN. ' +
+                            '"preserve" keeps the sign and as many high-order payload bits as ' +
+                            'fit, and quiets the result (IEEE 754-2019 §6.2.3). Default ' +
+                            `"${_mcpDEFAULT_NAN_MODE}". Only a "bits" source has a payload to keep.`,
+                        enum: Object.keys(_mcpNAN_MODES),
+                    },
                 },
-                required: ['value', 'inputFormat', 'outputFormat'],
+                required: ['inputFormat', 'outputFormat'],
             },
             execute: (params) => convertFormat(params),
             annotations: { readOnlyHint: true },

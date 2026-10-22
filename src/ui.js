@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, findFloatPresetKey, findIntPresetKey, sameValue, sameEncoding, normalizedEncoding, conversionLoss, convertEncoded, showsDecodedValue, encodingValueText, showsDecodedSignificand, CONVERSION_LOSS_LABELS, buildSearchParams, parseSearchParams, parseDecimal, modeUrlValue */
+/* global FloatingPoint, Integer, FORMATS, findFloatPresetKey, findIntPresetKey, sameValue, sameEncoding, normalizedEncoding, conversionLoss, convertEncoded, showsDecodedValue, encodingValueText, showsDecodedSignificand, CONVERSION_LOSS_LABELS, DEFAULT_NAN_MODE, buildSearchParams, parseSearchParams, parseDecimal, modeUrlValue */
 // UI code - requires FloatingPoint, Integer, FORMATS and the conversion helpers
 // from floating-point.js, and the URL helpers from url-state.js.
 
@@ -37,6 +37,12 @@ let currentRoundingMode = 'tiesToEven';
 // a two-valued control could not express "whatever this format normally does"
 // without silently changing one of them.
 let currentOverflowMode = null;
+// What a NaN input's sign and payload become. A plain two-state default, unlike
+// overflow: the default is the same for every format (canonical, what every
+// conversion produced before the mode existed), so there is no "whatever this
+// format does" to defer to. Only read when converting the input ENCODING, which
+// is the one place the page holds a payload.
+let currentNanMode = DEFAULT_NAN_MODE;
 let urlSyncEnabled = false; // Suppress URL writes until initial state is loaded
 
 // ── The two format panels ─────────────────────────────────────
@@ -148,6 +154,7 @@ function syncUrl() {
             currentEncoded: currentEncoded,
             roundingMode: currentRoundingMode,
             overflowMode: currentOverflowMode,
+            nanMode: currentNanMode,
         }));
 
         // A display preference rather than conversion state, so mode.js owns
@@ -251,6 +258,12 @@ function applyStateFromUrl() {
         currentOverflowMode = parsed.overflowMode;
         const select = document.getElementById('overflow-mode');
         if (select) select.value = parsed.overflowMode;
+    }
+
+    if (parsed.nanMode) {
+        currentNanMode = parsed.nanMode;
+        const select = document.getElementById('nan-mode');
+        if (select) select.value = parsed.nanMode;
     }
 
     if (parsed.input) applyFormatDescriptor(parsed.input, 'input');
@@ -364,6 +377,13 @@ function setupEventListeners() {
     document.getElementById('overflow-mode').addEventListener('change', (e) => {
         currentOverflowMode = e.target.value || null;
         updateOverflowModeUi();
+        updateOutput();
+    });
+
+    // NaN handling. Only the output can change: the input's bits are what
+    // carry the payload, and they stay as they are.
+    document.getElementById('nan-mode').addEventListener('change', (e) => {
+        currentNanMode = e.target.value;
         updateOutput();
     });
 
@@ -958,6 +978,7 @@ function updateOutput() {
     const outputEncoded = convertEncoded(currentFormat, currentEncoded, outputFormat, {
         roundingMode: currentRoundingMode,
         overflowMode: currentOverflowMode || undefined,
+        nanMode: currentNanMode,
     });
     // Spelled like the input box (see encodingValueText()).
     document.getElementById('output-decimal').textContent =

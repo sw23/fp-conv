@@ -136,6 +136,11 @@ not settle them: substituting a signed zero for a NaN, refusing the conversion o
 and making −Infinity into E8M0 a NaN whatever the overflow mode are all answers in
 circulation. Compare against CUDA if you need to match hardware.
 
+Where the target does have a NaN, the table's "NaN" is the target's canonical quiet NaN
+by default. Converting a NaN *bit pattern* can instead keep its sign and payload, as
+IEEE 754-2019 §6.2.3 describes; see [NaN behavior](nan-behavior.md). That setting
+changes nothing in the rows above that have no NaN.
+
 ### Only an actual infinity is reflected
 
 The reflection rule above is about the *value* −Infinity, not about "a negative that does

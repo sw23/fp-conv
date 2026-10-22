@@ -3,9 +3,9 @@
 
 // Basic/advanced view mode for the converter.
 //
-// Basic hides the format-authoring controls (custom bit widths, rounding and
-// overflow selection) and the component breakdowns, leaving the preset formats,
-// the value, and the precision loss readout. Advanced shows everything.
+// Basic hides the format-authoring controls (custom bit widths, rounding,
+// overflow and NaN selection) and the component breakdowns, leaving the preset
+// formats, the value, and the precision loss readout. Advanced shows everything.
 //
 // Three states, like the theme: an explicit choice (stored or carried by a
 // link) pins the mode; with no choice the viewport decides, so a screen too

@@ -166,11 +166,12 @@ Same as input controls with `output-` prefix:
 - `#output-sign-bits`, `#output-exponent-bits`, `#output-mantissa-bits`
 - `#output-has-infinity`, `#output-has-nan`, `#output-total-bits`
 
-## Rounding Mode
+## Rounding and NaN Modes
 
 | Element | Selector | Options |
 |---------|----------|---------|
 | Rounding mode | `#rounding-mode` | `tiesToEven`, `tiesToAway`, `towardZero`, `towardPositive`, `towardNegative` |
+| NaN mode | `#nan-mode` | `canonical` (default, "Canonical quiet NaN"), `preserve` ("Preserve sign and payload") |
 
 ## Default Initial State
 
@@ -179,6 +180,7 @@ On page load:
 - Output format: **BF16** (1 sign, 8 exponent, 7 mantissa = 16 bits)
 - Decimal value: **3.140625**
 - Rounding mode: **tiesToEven**
+- NaN mode: **canonical**
 
 ## Format Category Behavior
 

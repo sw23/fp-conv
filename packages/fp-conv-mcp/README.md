@@ -21,9 +21,19 @@ overflow (saturation) behavior, and calculates precision loss.
 | `decode_bits` | Decode a binary or hex bit-pattern into a format. Returns the decimal value and components. |
 | `convert_format` | Convert a value from one format to another. |
 
-For `convert_format`, the source operand is constructed using the input format's
-standard defaults. Its `roundingMode` and `overflowMode` parameters apply only when
-encoding the output format. `encode_number` applies those parameters to its sole format.
+For `convert_format`, the source is either a `value`, constructed using the input
+format's standard defaults, or `bits`, a binary or hex bit pattern in the input format
+used exactly as given; exactly one of the two is required. Its `roundingMode` and
+`overflowMode` parameters apply only when encoding the output format. `encode_number`
+applies those parameters to its sole format.
+
+`convert_format` also takes `nanMode`, which decides what a NaN source becomes:
+`canonical` (default) gives the output format's canonical quiet NaN, and `preserve` keeps
+the sign and as many high-order payload bits as fit, quieted (IEEE 754-2019 §6.2.3). A
+NaN's sign and payload exist only in its bit pattern, so give it as `bits`:
+`{ "bits": "0xFFC00000", "inputFormat": "fp32", "outputFormat": "fp16", "nanMode": "preserve" }`
+returns `0xFE00`, where `canonical` returns `0x7E00`. See
+[NaN behavior](https://github.com/sw23/fp-conv/blob/main/docs/nan-behavior.md).
 
 ## Formats
 

@@ -40,6 +40,15 @@ describe("parseArgs", () => {
         expect(parsed.values.rounding).toBe("towardZero");
     });
 
+    test("parses convert --bits and --nan", () => {
+        const parsed = parseArgs([
+            "convert", "--bits", "0xFFC00000", "--from", "fp32", "--to", "fp16", "--nan", "preserve",
+        ]);
+        expect(parsed.positionals).toEqual(["convert"]);
+        expect(parsed.values.bits).toBe("0xFFC00000");
+        expect(parsed.values.nan).toBe("preserve");
+    });
+
     test("parses --json, --help, --version booleans", () => {
         expect(parseArgs(["list", "--json"]).values.json).toBe(true);
         expect(parseArgs(["-h"]).values.help).toBe(true);
@@ -100,6 +109,15 @@ describe("main: help and version", () => {
         expect(stdout).toMatch(/fp-conv/);
     });
 
+    test("--help documents --bits and --nan, with an example", async () => {
+        const { stdout } = await runCli(main, ["--help"]);
+        expect(stdout).toMatch(/--bits <pattern>/);
+        expect(stdout).toMatch(/--nan <m> .*canonical/);
+        expect(stdout).toMatch(/preserve \(keep/);
+        expect(stdout).toContain(
+            "fp-conv convert --bits 0xFFC00000 --from fp32 --to fp16 --nan preserve");
+    });
+
     test("no command prints help", async () => {
         const { stdout } = await runCli(main, []);
         expect(stdout).toMatch(/Commands:/);
@@ -156,6 +174,18 @@ describe("main: arguments a command does not take", () => {
         [["convert", "1", "--from", "fp32", "--to", "fp16", "--format", "fp8_e4m3"], /Option --format does not apply to convert\./],
         [["info", "fp16", "--overflow", "saturate"], /Option --overflow does not apply to info\./],
         [["list", "--from", "fp32"], /Option --from does not apply to list\./],
+        // A typed value has no payload, so only convert takes --nan, and only
+        // convert reads a source pattern with --bits.
+        [["encode", "nan", "-f", "fp16", "--nan", "preserve"], /Option --nan does not apply to encode\./],
+        [["encode", "-f", "fp16", "--bits", "0x7E01"], /Option --bits does not apply to encode\./],
+        [["decode", "0x7E01", "-f", "fp16", "--nan", "preserve"], /Option --nan does not apply to decode\./],
+        [["info", "fp16", "--bits", "0x7E01"], /Option --bits does not apply to info\./],
+        [["convert", "1", "--bits", "0x3C00", "--from", "fp16", "--to", "fp32"],
+            /Unexpected argument "1": convert takes <value> or --bits <pattern>, not both\./],
+        [["convert", "-nan", "--bits", "0x7E01", "--from", "fp16", "--to", "fp32"],
+            /Unexpected argument "-nan": convert takes <value> or --bits <pattern>, not both\./],
+        [["convert", "--from", "fp16", "--to", "fp32"],
+            /Missing required argument: <value> \(or --bits <pattern>\)/],
     ])("%j is refused", async (args, message) => {
         const { stdout, stderr, exitCodes } = await runCli(main, args);
         expect(stderr).toMatch(message);

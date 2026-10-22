@@ -175,8 +175,13 @@ export function renderInfo(info, labels) {
     lines.push(`Overflow:  default "${info.defaultOverflowMode}" \u2014 ` +
         `--overflow overflow \u2192 ${TARGET_TEXT[info.overflowTarget.overflow]}, ` +
         `--overflow saturate \u2192 ${TARGET_TEXT[info.overflowTarget.saturate]}`);
-    // Where a NaN input lands, whatever the overflow mode.
-    lines.push(`NaN input: \u2192 ${TARGET_TEXT[info.nanTarget]}`);
+    // Where a NaN input lands, whatever the overflow mode. Only a format
+    // with a NaN has a payload for --nan to keep, so only there is the flag
+    // worth pointing at.
+    const nanFlag = info.nanTarget === "nan"
+        ? "; convert --nan preserve keeps what fits of its sign and payload"
+        : "";
+    lines.push(`NaN input: \u2192 ${TARGET_TEXT[info.nanTarget]}${nanFlag}`);
 
     return lines.join("\n");
 }

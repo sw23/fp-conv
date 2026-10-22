@@ -42,15 +42,24 @@ Decode a binary or hex bit-pattern in a given format.
 
 ### `convert_format`
 
-Convert a value from one format to another, with precision loss analysis.
+Convert a value, or a bit pattern, from one format to another, with precision loss analysis.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `value` | number \| string | The value to convert |
+| `value` | number \| string | The value to convert, read as `encode_number` reads it (a hex string is an integer: `"0xFF"` is 255). Give this or `bits`. |
+| `bits` | string | The source as a bit pattern in `inputFormat`, binary or hex, read as `decode_bits` reads it. Give this or `value`. |
 | `inputFormat` | string \| object | Source format |
 | `outputFormat` | string \| object | Target format |
 | `roundingMode` | string | Optional. Rounding mode for the conversion into `outputFormat`: `tiesToEven` (default), `tiesToAway`, `towardZero`, `towardPositive`, or `towardNegative`. Source construction uses the input format's defaults. |
 | `overflowMode` | string | Optional. Overflow behavior for the conversion into `outputFormat`: `overflow` or `saturate`; see `encode_number` above. Source construction uses the input format's default. |
+| `nanMode` | string | Optional. What a NaN source becomes: `canonical` (default; the output format's canonical quiet NaN) or `preserve` (keep the sign and as many high-order payload bits as fit, quieted). Inert for any other source. See [NaN behavior](nan-behavior.md). |
+
+Exactly one of `value` and `bits` is required; giving both, or neither, is an error. A
+`value` is encoded into `inputFormat` with that format's defaults before it is converted,
+so `roundingMode` and `overflowMode` describe only the conversion. A `bits` pattern **is**
+the source encoding, used exactly as given, and it is the only way to hand the tool a
+NaN's sign and payload: a typed `"nan"` carries neither, so it converts to the canonical
+quiet NaN under both modes.
 
 **Returns:** Full encoding stats for both input and output, plus `precisionLoss` with `kind`, `absolute`, `relativePercent`, and a `lossless` flag.
 
@@ -66,7 +75,7 @@ surfaces always describe a conversion the same way:
 
 | `kind` | Meaning |
 |---|---|
-| `exact` | The output value **is** the input value, NaN carried through to NaN included. So is −0 into a signed integer format: two's complement has a single zero, so there is no sign on it to lose. Nothing was lost; `lossless` is true only here. |
+| `exact` | The output value **is** the input value, NaN carried through to NaN included (whatever `nanMode` did to its payload: see [NaN behavior](nan-behavior.md#caveat-payload-loss-is-not-reported-as-precision-loss)). So is −0 into a signed integer format: two's complement has a single zero, so there is no sign on it to lose. Nothing was lost; `lossless` is true only here. |
 | `rounded` | Finite in, a different finite value out, and not a clamp: ordinary precision loss. |
 | `overflow` | The value became an Infinity or a NaN it was not — a finite input that ran off the top of the range, or an infinite one that a NaN-but-no-Infinity format (E4M3, E8M0) turned into NaN. |
 | `saturated` | An input the format cannot hold was clamped to an **edge of its range**. Which edge is visible from the output: a magnitude past the maximum lands on the maximum, while a negative value an unsigned format cannot hold lands on its minimum, which is zero rather than a large magnitude (or 2^−127 for E8M0, which has no zero). Infinite inputs clamp this way under `saturate`, and so does a finite input that rounds past the format's largest finite magnitude under the conversion's rounding mode. One that merely rounds down onto the maximum (FP32 65510 → FP16 65504) is `rounded`, and so is a negative that rounds to zero on its own (FP32 −0.3 → UINT8, or −0.001 → an unsigned fixed-point layout): it is the sign, not the rounding, that a clamp to zero discards. |
@@ -211,4 +220,24 @@ Or convert 1.5 from FP16 to a custom 8-bit floating-point format:
 // input:  { actualValue: 1.5, binary: "0011111000000000", hex: "0x3E00", type: "Normal", ... }
 // output: { actualValue: 1.5, binary: "00111100", hex: "0x3C", type: "Normal", ... }
 // precisionLoss: { kind: "exact", absolute: 0, relativePercent: 0, lossless: true }
+```
+
+Or carry a negative NaN from FP32 to FP16 with its sign, which only a bit pattern can
+express:
+
+```js
+// Agent calls the convert_format tool with:
+{
+  "bits": "0xFFC00000",
+  "inputFormat": "fp32",
+  "outputFormat": "fp16",
+  "nanMode": "preserve"
+}
+
+// Response includes:
+// input:  { actualValue: "NaN", hex: "0xFFC00000", sign: 1, type: "NaN", ... }
+// output: { actualValue: "NaN", hex: "0xFE00", sign: 1, type: "NaN", ... }
+// precisionLoss: { kind: "exact", absolute: 0, relativePercent: 0, lossless: true }
+//
+// Without "nanMode" (or with "canonical") the output is 0x7E00, sign 0.
 ```

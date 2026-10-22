@@ -296,6 +296,14 @@
                             <option value="saturate">Saturate to largest finite value</option>
                         </select>
                     </div>
+
+                    <div class="input-group nan-mode-group">
+                        <label for="nan-mode">On NaN Input:</label>
+                        <select id="nan-mode" autocomplete="off">
+                            <option value="canonical" selected>Canonical quiet NaN</option>
+                            <option value="preserve">Preserve sign and payload</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
@@ -492,6 +500,14 @@
                 overflow to the largest finite value no matter which overflow behavior is selected.
             </p>
             <p>
+                A NaN input can be converted two ways. By default it becomes the output format's canonical quiet NaN, whatever
+                its sign and payload were, which is what Arm calls Default NaN. <em>Preserve sign and payload</em> follows
+                IEEE 754-2019 &sect;6.2.3 instead, as x86 conversions do and AArch64 ones with Default NaN off: the sign is kept,
+                as many of the payload's leading bits as fit are carried over, and the result is always a quiet NaN. A NaN typed as
+                text has no payload of its own, so the option matters once you set a NaN's bits in binary or hexadecimal. Formats
+                without NaN, such as FP4 and the integers, substitute the same value under both options.
+            </p>
+            <p>
                 The tool also reports the precision loss of each conversion as the absolute and relative error between the input value
                 and its output representation. Value presets let you explore special cases like zero, infinity, NaN, subnormals, and the
                 smallest and largest representable numbers.
@@ -500,7 +516,7 @@
                 Two buttons at the top of the Input Format panel control how the page looks and how much of it is shown. The first
                 switches between <em>Basic</em> and <em>Advanced</em> mode. Basic keeps things focused on the essentials: the format
                 presets, the value in decimal, binary, and hexadecimal, and the precision loss. Advanced adds everything else, including
-                custom bit layouts, the sign/exponent/mantissa breakdown for both formats, and the rounding and overflow controls. Until
+                custom bit layouts, the sign/exponent/mantissa breakdown for both formats, and the rounding, overflow and NaN controls. Until
                 you press the button the choice follows your screen, so a wide window starts in Advanced and a phone starts in Basic. The
                 second button switches between light and dark themes; leave it untouched and the page simply follows your operating
                 system's preference. Either choice, once made, is remembered on your next visit, and a chosen view mode travels with a
@@ -528,7 +544,7 @@
                     </li>
                     <li>
                         <strong>Bookmark or Share Your Conversion</strong>
-                        The address bar automatically updates to reflect your current input format, output format, value, rounding mode, and overflow behavior. Copy the link to share an exact conversion, or bookmark the page to return to it later.
+                        The address bar automatically updates to reflect your current input format, output format, value, rounding mode, overflow behavior, and NaN handling. Copy the link to share an exact conversion, or bookmark the page to return to it later.
                     </li>
                 </ol>
             </div>
@@ -590,7 +606,8 @@
             <h3>Shareable Links</h3>
             <p>
                 Every conversion is encoded in the page URL, so a conversion is easy to bookmark or share. As you change the
-                input format, output format, value, or rounding mode, the address bar updates automatically. Copy it to share
+                input format, output format, value, rounding mode, overflow behavior, or NaN handling, the address bar
+                updates automatically. Copy it to share
                 the exact state you are looking at, or click the button below to copy it to your clipboard.
             </p>
             <button type="button" id="copy-link-btn" class="copy-link-btn">Copy Link</button>

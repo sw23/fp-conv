@@ -32,6 +32,7 @@ beforeAll(() => {
     global.CONVERSION_LOSS_LABELS = floatingPoint.CONVERSION_LOSS_LABELS;
     global.conversionLoss = floatingPoint.conversionLoss;
     global.convertEncoded = floatingPoint.convertEncoded;
+    global.DEFAULT_NAN_MODE = floatingPoint.DEFAULT_NAN_MODE;
     global.showsDecodedValue = floatingPoint.showsDecodedValue;
     global.encodingValueText = floatingPoint.encodingValueText;
     global.showsDecodedSignificand = floatingPoint.showsDecodedSignificand;
@@ -89,6 +90,12 @@ const setOverflowMode = (mode) => {
     const overflow = $('overflow-mode');
     overflow.value = mode;
     overflow.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+const setNanMode = (mode) => {
+    const nan = $('nan-mode');
+    nan.value = mode;
+    nan.dispatchEvent(new Event('change', { bubbles: true }));
 };
 
 describe('ui.js — initialization', () => {
@@ -1376,5 +1383,124 @@ describe('ui.js — the precision-loss row says what the docs say it says', () =
         const loss = lossFor('in=fp32&out=fp8_e4m3&val=0.1');
         expect(loss).toMatch(/^[\d.]+e-\d+ \([\d.]+%\)$/);
         expect(loss).not.toContain('rounded');
+    });
+});
+
+// ── NaN mode ──────────────────────────────────────────────────
+// The control changes only what the OUTPUT makes of a NaN input's bits; see
+// docs/nan-behavior.md for the rule and tests/nan-mode.test.js for the vectors.
+describe('ui.js — the NaN mode select', () => {
+    // Typed into the hex box the way a person would: a typed "nan" has no
+    // payload, so bits are the only way to give the page one.
+    const typeHex = (hex) => {
+        const field = $('input-hex-input');
+        field.value = hex;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+    };
+    const outputNanPreset = () =>
+        document.querySelector('.output-value-preset[data-value="nan"]');
+
+    test('the shipped select defaults to canonical and offers both modes', () => {
+        freshUi();
+        expect($('nan-mode').value).toBe('canonical');
+        expect([...$('nan-mode').options].map((o) => o.value)).toEqual(['canonical', 'preserve']);
+    });
+
+    test('FP32 0xFFC00000 into FP16: canonical 0x7E00, preserve 0xFE00, and back', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp32');
+        ui.loadOutputPreset('fp16');
+        typeHex('0xFFC00000');
+        expect(text('input-comp-type')).toBe('NaN');
+        expect(text('output-hex')).toBe('0x7E00');
+
+        setNanMode('preserve');
+        expect(text('output-hex')).toBe('0xFE00');
+        // The input's bits are where the payload lives; switching never
+        // touches them.
+        expect($('input-hex-input').value).toBe('0xFFC00000');
+
+        setNanMode('canonical');
+        expect(text('output-hex')).toBe('0x7E00');
+    });
+
+    test('the NaN output preset stays lit under both modes', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp32');
+        ui.loadOutputPreset('fp16');
+        typeHex('0xFFC00000');
+        expect(outputNanPreset().classList.contains('active')).toBe(true);
+        setNanMode('preserve');
+        expect(text('output-hex')).toBe('0xFE00');
+        expect(outputNanPreset().classList.contains('active')).toBe(true);
+        expect(document.querySelectorAll('.output-value-preset.active')).toHaveLength(1);
+    });
+
+    // IEEE 754 raises nothing for a NaN's payload, so a NaN that arrives as a
+    // NaN is exact under both modes, payload dropped or not.
+    test('a NaN to NaN conversion reports no precision loss under preserve', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp32');
+        ui.loadOutputPreset('fp16');
+        setNanMode('preserve');
+        typeHex('0x7FC12345');
+        expect(text('output-hex')).toBe('0x7E09');
+        expect(document.querySelector('.precision-loss').style.display).toBe('none');
+    });
+
+    test('a format without NaN substitutes the same value under both modes', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp32');
+        ui.loadOutputPreset('fp4_e2m1');
+        typeHex('0xFFC00001');
+        const canonical = text('output-hex');
+        setNanMode('preserve');
+        expect(text('output-hex')).toBe(canonical);
+        expect(text('output-precision-loss')).toBe('NaN not representable');
+    });
+
+    test('a link with nm=preserve restores the mode and the converted bits', () => {
+        freshUi({ search: 'in=fp32&out=fp16&hex=0xffc00000&nm=preserve' });
+        expect($('nan-mode').value).toBe('preserve');
+        expect($('input-hex-input').value).toBe('0xFFC00000');
+        expect(text('output-hex')).toBe('0xFE00');
+    });
+
+    test('a link without nm, or with a bogus one, stays canonical', () => {
+        freshUi({ search: 'in=fp32&out=fp16&hex=0xffc00000' });
+        expect($('nan-mode').value).toBe('canonical');
+        expect(text('output-hex')).toBe('0x7E00');
+
+        freshUi({ search: 'in=fp32&out=fp16&hex=0xffc00000&nm=bogus' });
+        expect($('nan-mode').value).toBe('canonical');
+        expect(text('output-hex')).toBe('0x7E00');
+    });
+
+    test('the address bar carries nm=preserve only once it is chosen', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('fp32');
+        ui.loadOutputPreset('fp16');
+        typeHex('0xFFC00000');
+        const nm = () => new URLSearchParams(window.location.search).get('nm');
+        expect(nm()).toBeNull();
+
+        setNanMode('preserve');
+        expect(nm()).toBe('preserve');
+
+        setNanMode('canonical');
+        expect(nm()).toBeNull();
+    });
+
+    test('a synced preserve link reloads to the same output', () => {
+        const ui = freshUi({ syncUrl: true });
+        ui.loadInputPreset('fp32');
+        ui.loadOutputPreset('fp16');
+        typeHex('0x7FC12345');
+        setNanMode('preserve');
+        const search = window.location.search.replace(/^\?/, '');
+
+        freshUi({ search });
+        expect($('nan-mode').value).toBe('preserve');
+        expect(text('output-hex')).toBe('0x7E09');
     });
 });

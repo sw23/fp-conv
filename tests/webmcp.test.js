@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 // WebMCP integration tests
-const { FloatingPoint, Integer, FORMATS, CONVERSION_LOSS_KINDS } = require('../lib/floating-point.js');
+const { FloatingPoint, Integer, FORMATS, CONVERSION_LOSS_KINDS, NAN_MODES } = require('../lib/floating-point.js');
 const {
     resolveFormat,
     parseValueInput,
@@ -2002,6 +2002,123 @@ describe('CONVERSION_LOSS_KINDS', () => {
                     expect(CONVERSION_LOSS_KINDS).toContain(result.precisionLoss.kind);
                 }
             }
+        }
+    });
+});
+
+// ── nanMode and the bits source ───────────────────────────────────
+
+// A NaN's sign and payload exist only in its bit pattern, so nanMode is only
+// reachable through convert_format's `bits`; a hex `value` is still an integer.
+// The rule itself is pinned in tests/nan-mode.test.js; these check the tool
+// forwards the mode and reads the pattern exactly.
+describe('convert_format nanMode and bits', () => {
+    const convert = (params) => JSON.parse(convertFormat(params).content[0].text);
+    const fp32ToFp16 = (bits, nanMode) =>
+        convert({ bits, inputFormat: 'fp32', outputFormat: 'fp16', nanMode });
+
+    test('a negative quiet NaN keeps its sign only under preserve', () => {
+        expect(fp32ToFp16('0xFFC00000').output.hex).toBe('0x7E00');
+        expect(fp32ToFp16('0xFFC00000', 'canonical').output.hex).toBe('0x7E00');
+        expect(fp32ToFp16('0xFFC00000', 'preserve').output.hex).toBe('0xFE00');
+    });
+
+    test('a signalling NaN whose payload does not fit becomes a quiet NaN, not Infinity', () => {
+        const result = fp32ToFp16('0x7F800001', 'preserve');
+        expect(result.output.hex).toBe('0x7E00');
+        expect(result.output.hex).not.toBe('0x7C00');
+        expect(result.output.type).toBe(result.input.type);
+        // Payload loss is not precision loss (docs/nan-behavior.md).
+        expect(result.precisionLoss.kind).toBe('exact');
+    });
+
+    test('a binary pattern is read like a hex one', () => {
+        const result = convert({
+            bits: '0111111000000001', inputFormat: 'fp16', outputFormat: 'fp32', nanMode: 'preserve',
+        });
+        expect(result.output.hex).toBe('0x7FC02000');
+    });
+
+    test('the source is the pattern exactly, not re-encoded', () => {
+        // Encoding the value NaN would give fp32's canonical 0x7FC00000.
+        const result = fp32ToFp16('0x7FC12345', 'preserve');
+        expect(result.input.hex).toBe('0x7FC12345');
+        expect(result.output.hex).toBe('0x7E09');
+    });
+
+    test('a non-NaN pattern converts exactly, whatever the mode', () => {
+        for (const nanMode of [undefined, 'canonical', 'preserve']) {
+            const result = convert({ bits: '0x3C00', inputFormat: 'fp16', outputFormat: 'fp32', nanMode });
+            expect(result.input.hex).toBe('0x3C00');
+            expect(result.input.actualValue).toBe(1);
+            expect(result.output.hex).toBe('0x3F800000');
+            expect(result.output.actualValue).toBe(1);
+        }
+    });
+
+    test('an integer pattern is its two\'s-complement value', () => {
+        const result = convert({ bits: '0xFF', inputFormat: 'int8', outputFormat: 'fp32' });
+        expect(result.input.actualValue).toBe(-1);
+        expect(result.output.actualValue).toBe(-1);
+    });
+
+    test('a hex value is still an integer, not a bit pattern', () => {
+        const result = convert({ value: '0x3C00', inputFormat: 'fp16', outputFormat: 'fp32' });
+        expect(result.input.actualValue).toBe(15360);
+        expect(result.input.hex).not.toBe('0x3C00');
+    });
+
+    test('a bad pattern is refused with decode_bits\'s messages', () => {
+        const params = { inputFormat: 'fp16', outputFormat: 'fp32' };
+        expect(() => convertFormat({ ...params, bits: '0xZZ' })).toThrow(/Invalid hex/);
+        expect(() => convertFormat({ ...params, bits: '0x1FFFF' })).toThrow(/does not fit the 16-bit/);
+        expect(() => convertFormat({ ...params, bits: '1'.repeat(17) })).toThrow(/does not fit the 16-bit/);
+        expect(() => convertFormat({ ...params, bits: 'xyz' })).toThrow(/binary string/);
+    });
+
+    test('an unknown nanMode is refused, NaN source or not', () => {
+        expect(() => fp32ToFp16('0xFFC00000', 'bogus'))
+            .toThrow('Unknown NaN mode: "bogus". Valid modes: canonical, preserve.');
+        expect(() => fp32ToFp16('0x3F800000', 'bogus')).toThrow('Unknown NaN mode');
+        expect(() => convertFormat({ value: 1, inputFormat: 'fp32', outputFormat: 'fp16', nanMode: 'bogus' }))
+            .toThrow('Unknown NaN mode');
+    });
+
+    test('exactly one of value and bits is required', () => {
+        const formats = { inputFormat: 'fp32', outputFormat: 'fp16' };
+        const message = 'Provide exactly one of "value" or "bits".';
+        expect(() => convertFormat({ ...formats, value: 1, bits: '0x3F800000' })).toThrow(message);
+        expect(() => convertFormat(formats)).toThrow(message);
+        expect(() => convertFormat({ ...formats, value: null, bits: null })).toThrow(message);
+    });
+
+    test('the refusal reaches a WebMCP agent as a readable result', async () => {
+        const tool = buildToolDescriptors().find(t => t.name === 'convert_format');
+        const result = await withToolErrors(tool).execute({
+            value: 1, bits: '0x3F800000', inputFormat: 'fp32', outputFormat: 'fp16',
+        });
+        expect(result.isError).toBe(true);
+        expect(result.content[0].text).toBe('Error: Provide exactly one of "value" or "bits".');
+    });
+
+    test('the convert_format schema offers bits and nanMode, and no longer requires value', () => {
+        const tools = buildToolDescriptors();
+        const { inputSchema } = tools.find(t => t.name === 'convert_format');
+        expect(inputSchema.required).toEqual(['inputFormat', 'outputFormat']);
+        expect(inputSchema.properties.bits.type).toBe('string');
+        expect(inputSchema.properties.bits.description).toMatch(/NaN/);
+        expect(inputSchema.properties.nanMode.enum).toEqual(['canonical', 'preserve']);
+        expect(inputSchema.properties.nanMode.enum).toEqual(Object.keys(NAN_MODES));
+        expect(inputSchema.properties.nanMode.description).toMatch(/Default "canonical"/);
+        for (const name of ['value', 'bits']) {
+            expect(inputSchema.properties[name].description).toMatch(/Exactly one of "value" and "bits"/);
+        }
+    });
+
+    test('nanMode is offered by convert_format only', () => {
+        for (const tool of buildToolDescriptors()) {
+            if (tool.name === 'convert_format') continue;
+            expect(tool.inputSchema.properties).not.toHaveProperty('nanMode');
         }
     });
 });

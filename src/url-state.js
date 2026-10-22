@@ -1,7 +1,7 @@
 // Copyright (c) 2025 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, valueKeyword, sameEncoding, showsDecodedValue */
+/* global FloatingPoint, Integer, FORMATS, valueKeyword, sameEncoding, showsDecodedValue, NAN_MODES, DEFAULT_NAN_MODE */
 // URL state serialization for shareable/bookmarkable conversions.
 // Pure (DOM-free) helpers so they can be unit tested under Node.
 // Requires FloatingPoint, Integer, and FORMATS from floating-point.js.
@@ -13,7 +13,8 @@
 // so a top-level `let`/`const`/`class` of the same name in two of them is a
 // redeclaration and throws SyntaxError before the second file runs at all.
 // tests/browser-scripts.test.js enforces that the names stay disjoint.
-let _usFloatingPoint, _usInteger, _usFORMATS, _usValueKeyword, _usSameEncoding, _usShowsDecodedValue;
+let _usFloatingPoint, _usInteger, _usFORMATS, _usValueKeyword, _usSameEncoding, _usShowsDecodedValue,
+    _usNanModes, _usDefaultNanMode;
 if (typeof require !== 'undefined') {
     const lib = require('../lib/floating-point.js');
     _usFloatingPoint = lib.FloatingPoint;
@@ -22,6 +23,8 @@ if (typeof require !== 'undefined') {
     _usValueKeyword = lib.valueKeyword;
     _usSameEncoding = lib.sameEncoding;
     _usShowsDecodedValue = lib.showsDecodedValue;
+    _usNanModes = lib.NAN_MODES;
+    _usDefaultNanMode = lib.DEFAULT_NAN_MODE;
 } else {
     /* istanbul ignore next */
     _usFloatingPoint = FloatingPoint;
@@ -35,6 +38,10 @@ if (typeof require !== 'undefined') {
     _usSameEncoding = sameEncoding;
     /* istanbul ignore next */
     _usShowsDecodedValue = showsDecodedValue;
+    /* istanbul ignore next */
+    _usNanModes = NAN_MODES;
+    /* istanbul ignore next */
+    _usDefaultNanMode = DEFAULT_NAN_MODE;
 }
 
 const ROUNDING_MODE_VALUES = [
@@ -54,6 +61,15 @@ const OVERFLOW_MODE_VALUES = [
     'saturate',
     'overflow',
 ];
+
+// NaN handling. Two-valued, unlike overflow: its default is global (canonical,
+// what every conversion produced before the mode existed), so like rounding it
+// is left out of a link at the default and every older link keeps its meaning.
+// Both the values and the default come from the library, so a mode added
+// there is accepted in a link without a second list to update; neither is
+// redeclared here because this file shares the library's global scope in the
+// browser.
+const NAN_MODE_VALUES = Object.keys(_usNanModes);
 
 /**
  * Find the preset key whose bit signature matches a floating-point format,
@@ -259,7 +275,7 @@ function valueToParam(format, currentValue, currentEncoded, currentValueText = n
 /**
  * Build the query string (without leading "?") describing the current state.
  *
- * @param {object} state - { inputFormat, outputFormat, currentValue, currentEncoded, roundingMode, overflowMode }
+ * @param {object} state - { inputFormat, outputFormat, currentValue, currentEncoded, roundingMode, overflowMode, nanMode }
  * @returns {string}
  */
 function buildSearchParams(state) {
@@ -284,6 +300,11 @@ function buildSearchParams(state) {
         params.set('om', state.overflowMode);
     }
 
+    // Omitted at the default, as `rm` is.
+    if (state.nanMode && state.nanMode !== _usDefaultNanMode) {
+        params.set('nm', state.nanMode);
+    }
+
     return params.toString();
 }
 
@@ -292,12 +313,14 @@ function buildSearchParams(state) {
  * no recognized parameters are present. Unrecognized/malformed values are
  * ignored rather than throwing.
  *
- * @returns {null | { input, output, value, roundingMode, overflowMode }}
+ * @returns {null | { input, output, value, roundingMode, overflowMode, nanMode }}
  */
 function parseSearchParams(search) {
     const params = new URLSearchParams(search || '');
 
-    const result = { input: null, output: null, value: null, roundingMode: null, overflowMode: null };
+    const result = {
+        input: null, output: null, value: null, roundingMode: null, overflowMode: null, nanMode: null,
+    };
 
     if (params.has('in')) result.input = parseFormatParam(params.get('in'));
     if (params.has('out')) result.output = parseFormatParam(params.get('out'));
@@ -334,8 +357,15 @@ function parseSearchParams(search) {
         }
     }
 
+    if (params.has('nm')) {
+        const nm = params.get('nm');
+        if (NAN_MODE_VALUES.includes(nm)) {
+            result.nanMode = nm;
+        }
+    }
+
     const hasAny = result.input || result.output || result.value ||
-        result.roundingMode || result.overflowMode;
+        result.roundingMode || result.overflowMode || result.nanMode;
     return hasAny ? result : null;
 }
 
@@ -345,6 +375,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ROUNDING_MODE_VALUES,
         DEFAULT_ROUNDING_MODE,
         OVERFLOW_MODE_VALUES,
+        NAN_MODE_VALUES,
         findFloatPresetKey,
         findIntPresetKey,
         formatToParam,
