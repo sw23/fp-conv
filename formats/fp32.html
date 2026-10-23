@@ -55,7 +55,45 @@
 </head>
 <body>
     <div class="container">
-        <nav class="format-nav" id="format-nav"></nav>
+        <nav class="format-nav" aria-label="Format guides">
+            <div class="nav-top">
+                <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>
+            </div>
+            <div class="nav-groups">
+                <div class="nav-group">
+                    <span class="nav-group-label">IEEE 754:</span>
+                    <a class="nav-link" href="fp64.html">FP64</a>
+                    <a class="nav-link active" href="fp32.html" aria-current="page">FP32</a>
+                    <a class="nav-link" href="fp16.html">FP16</a>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-label">ML:</span>
+                    <a class="nav-link" href="bf16.html">BF16</a>
+                    <a class="nav-link" href="tf32.html">TF32</a>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-label">OCP:</span>
+                    <a class="nav-link" href="fp8-e5m2.html">FP8 E5M2</a>
+                    <a class="nav-link" href="fp8-e4m3.html">FP8 E4M3</a>
+                    <a class="nav-link" href="fp6-e3m2.html">FP6 E3M2</a>
+                    <a class="nav-link" href="fp6-e2m3.html">FP6 E2M3</a>
+                    <a class="nav-link" href="fp4-e2m1.html">FP4 E2M1</a>
+                    <a class="nav-link" href="e8m0.html">E8M0</a>
+                    <a class="nav-link" href="mxint8.html">MXINT8</a>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-label">Integer:</span>
+                    <a class="nav-link" href="int32.html">INT32</a>
+                    <a class="nav-link" href="uint32.html">UINT32</a>
+                    <a class="nav-link" href="int16.html">INT16</a>
+                    <a class="nav-link" href="uint16.html">UINT16</a>
+                    <a class="nav-link" href="int8.html">INT8</a>
+                    <a class="nav-link" href="uint8.html">UINT8</a>
+                    <a class="nav-link" href="int4.html">INT4</a>
+                    <a class="nav-link" href="uint4.html">UINT4</a>
+                </div>
+            </div>
+        </nav>
 
         <header>
             <h1>FP32 - Single Precision</h1>
@@ -66,7 +104,7 @@
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <p>An FP32 number uses 32 bits divided into three fields:</p>
-            <div id="bit-layout" class="bit-layout"></div>
+            <div id="bit-layout" class="bit-layout"><div class="bit-field sign"><span class="bit-field-label">Sign</span><div class="bit-field-boxes"><div class="bit-box">S</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field exponent"><span class="bit-field-label">Exponent</span><div class="bit-field-boxes"><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div></div><span class="bit-field-width">8 bits</span></div><div class="bit-field-collapsed mantissa"><span class="bit-field-label">Mantissa</span><div class="collapsed-box">23 bits</div><span class="bit-field-width">23 bits</span></div></div>
             <p>The <strong style="color: var(--sign-color)">sign bit</strong> determines positive (0) or negative (1).
                The <strong style="color: var(--exponent-color)">exponent</strong> is stored with a bias of 127.
                The <strong style="color: var(--mantissa-color)">mantissa</strong> (also called significand or fraction) stores the fractional part of the number, with an implicit leading 1 for normal numbers.</p>
@@ -141,21 +179,21 @@
         <!-- Dynamic Range & Precision -->
         <section class="doc-section">
             <h2>Dynamic Range & Precision</h2>
-            <div id="range-table"></div>
+            <div id="range-table"><table class="info-table"><tr><th>Property</th><th>Value</th></tr><tr><td class="text-cell">Max Positive (Normal)</td><td>3.402823466e+38</td></tr><tr><td class="text-cell">Min Positive (Normal)</td><td>1.175494351e-38</td></tr><tr><td class="text-cell">Max Subnormal</td><td>1.175494211e-38</td></tr><tr><td class="text-cell">Min Positive (Subnormal)</td><td>1.401298464e-45</td></tr><tr><td class="text-cell">Machine Epsilon (at 1.0)</td><td>1.192092896e-7</td></tr><tr><td class="text-cell">Approx. Decimal Digits</td><td>~6.9</td></tr><tr><td class="text-cell">Exponent Bias</td><td>127</td></tr><tr><td class="text-cell">Exponent Range</td><td>2^-126 to 2^127</td></tr><tr><td class="text-cell">Total Bit Patterns</td><td>4,294,967,296</td></tr><tr><td class="text-cell">Supports Infinity</td><td>Yes</td></tr><tr><td class="text-cell">Supports NaN</td><td>Yes</td></tr></table></div>
         </section>
 
         <!-- Special Values -->
         <section class="doc-section">
             <h2>Special Values & Bit Patterns</h2>
             <p>Key values and their exact binary representations:</p>
-            <div id="special-table"></div>
+            <div id="special-table"><table class="info-table special-table"><tr><th>Value</th><th>Bit Pattern</th><th>Decimal</th></tr><tr><td class="text-cell">+0</td><td class="bit-pattern"><span class="sign-bits">0</span> <span class="exp-bits">00000000</span> <span class="mant-bits">00000000000000000000000</span></td><td>0</td></tr><tr><td class="text-cell">-0</td><td class="bit-pattern"><span class="sign-bits">1</span> <span class="exp-bits">00000000</span> <span class="mant-bits">00000000000000000000000</span></td><td>-0</td></tr><tr><td class="text-cell">Min Subnormal</td><td class="bit-pattern"><span class="sign-bits">0</span> <span class="exp-bits">00000000</span> <span class="mant-bits">00000000000000000000001</span></td><td>1.401298464e-45</td></tr><tr><td class="text-cell">Max Subnormal</td><td class="bit-pattern"><span class="sign-bits">0</span> <span class="exp-bits">00000000</span> <span class="mant-bits">11111111111111111111111</span></td><td>1.175494211e-38</td></tr><tr><td class="text-cell">Min Normal</td><td class="bit-pattern"><span class="sign-bits">0</span> <span class="exp-bits">00000001</span> <span class="mant-bits">00000000000000000000000</span></td><td>1.175494351e-38</td></tr><tr><td class="text-cell">Max Normal</td><td class="bit-pattern"><span class="sign-bits">0</span> <span class="exp-bits">11111110</span> <span class="mant-bits">11111111111111111111111</span></td><td>3.402823466e+38</td></tr><tr><td class="text-cell">+Infinity</td><td class="bit-pattern"><span class="sign-bits">0</span> <span class="exp-bits">11111111</span> <span class="mant-bits">00000000000000000000000</span></td><td>+Infinity</td></tr><tr><td class="text-cell">-Infinity</td><td class="bit-pattern"><span class="sign-bits">1</span> <span class="exp-bits">11111111</span> <span class="mant-bits">00000000000000000000000</span></td><td>-Infinity</td></tr><tr><td class="text-cell">NaN</td><td class="bit-pattern"><span class="sign-bits">0</span> <span class="exp-bits">11111111</span> <span class="mant-bits">10000000000000000000000</span></td><td>NaN</td></tr></table></div>
         </section>
 
         <!-- Comparison -->
         <section class="doc-section">
             <h2>Format Comparison</h2>
             <p>See how FP32 compares to related floating-point formats:</p>
-            <div id="comparison-table"></div>
+            <div id="comparison-table"><div class="comparison-table"><table class="info-table"><tr><th>Property</th><th class="current-format">FP32</th><th>FP64</th><th>FP16</th><th>BF16</th></tr><tr><td class="text-cell">Total Bits</td><td class="current-format">32</td><td>64</td><td>16</td><td>16</td></tr><tr><td class="text-cell">Sign Bits</td><td class="current-format">1</td><td>1</td><td>1</td><td>1</td></tr><tr><td class="text-cell">Exponent Bits</td><td class="current-format">8</td><td>11</td><td>5</td><td>8</td></tr><tr><td class="text-cell">Mantissa Bits</td><td class="current-format">23</td><td>52</td><td>10</td><td>7</td></tr><tr><td class="text-cell">Bias</td><td class="current-format">127</td><td>1023</td><td>15</td><td>127</td></tr><tr><td class="text-cell">Max Value</td><td class="current-format">3.402823466e+38</td><td>1.797693135e+308</td><td>65504</td><td>3.389531389e+38</td></tr><tr><td class="text-cell">Min Normal</td><td class="current-format">1.175494351e-38</td><td>2.225073859e-308</td><td>0.00006103515625</td><td>1.175494351e-38</td></tr><tr><td class="text-cell">Epsilon</td><td class="current-format">1.192092896e-7</td><td>2.220446049e-16</td><td>0.0009765625</td><td>0.0078125</td></tr><tr><td class="text-cell">~Decimal Digits</td><td class="current-format">~6.9</td><td>~15.7</td><td>~3.0</td><td>~2.1</td></tr><tr><td class="text-cell">Has Infinity</td><td class="current-format">Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr><tr><td class="text-cell">Has NaN</td><td class="current-format">Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr><tr><td class="text-cell">Has Subnormals</td><td class="current-format">Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr></table></div></div>
         </section>
 
         <section class="doc-section">
@@ -170,7 +208,7 @@
         </section>
 
         <footer>
-            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p><a href="../">← Try it in the Converter</a></p>
             <p>© 2026 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
         </footer>
     </div>

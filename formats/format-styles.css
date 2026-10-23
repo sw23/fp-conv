@@ -177,21 +177,9 @@ body {
 .nav-top {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 12px;
     margin-bottom: 8px;
-}
-
-.format-nav .back-link {
-    display: inline-block;
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.format-nav .back-link:hover {
-    text-decoration: underline;
 }
 
 .theme-toggle {

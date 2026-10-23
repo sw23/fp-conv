@@ -9,14 +9,13 @@
 require('jest-canvas-mock');
 
 const {
-    FORMAT_PAGES,
-    renderNav,
     _fcThemeColor,
     _fcChartPalette,
     renderBitLayout,
     renderRangeTable,
     renderSpecialValues,
     renderIntegerSpecialValues,
+    renderValueTable,
     renderComparisonTable,
     initVisualizer,
     initValueDistribution,
@@ -70,71 +69,6 @@ describe('_fcThemeColor', () => {
             expect(typeof palette[key]).toBe('string');
             expect(palette[key].length).toBeGreaterThan(0);
         }
-    });
-});
-
-// ── renderNav ────────────────────────────────────────────────
-
-describe('renderNav', () => {
-    test('renders nothing if #format-nav is missing', () => {
-        renderNav('fp32');
-        expect(document.body.innerHTML).toBe('');
-    });
-
-    test('renders back link and nav groups', () => {
-        createContainer('format-nav');
-        renderNav('fp32');
-        const nav = document.getElementById('format-nav');
-
-        expect(nav.querySelector('.back-link')).toBeTruthy();
-        expect(nav.querySelector('.back-link').getAttribute('href')).toBe('../index.html');
-    });
-
-    test('renders the theme toggle button', () => {
-        createContainer('format-nav');
-        renderNav('fp32');
-        const btn = document.getElementById('theme-toggle');
-
-        expect(btn).toBeTruthy();
-        expect(btn.tagName).toBe('BUTTON');
-        expect(btn.getAttribute('aria-label')).toBe('Switch to dark theme');
-    });
-
-    test('renders all format links', () => {
-        createContainer('format-nav');
-        renderNav('fp32');
-        const links = document.querySelectorAll('.nav-link');
-
-        expect(links.length).toBe(Object.keys(FORMAT_PAGES).length);
-    });
-
-    test('marks current format as active', () => {
-        createContainer('format-nav');
-        renderNav('fp16');
-        const activeLinks = document.querySelectorAll('.nav-link.active');
-
-        expect(activeLinks.length).toBe(1);
-        expect(activeLinks[0].textContent).toBe('FP16');
-    });
-
-    test('renders group labels', () => {
-        createContainer('format-nav');
-        renderNav('fp32');
-        const labels = document.querySelectorAll('.nav-group-label');
-
-        const labelTexts = Array.from(labels).map(l => l.textContent.replace(':', ''));
-        expect(labelTexts).toContain('IEEE 754');
-        expect(labelTexts).toContain('ML');
-        expect(labelTexts).toContain('OCP');
-        expect(labelTexts).toContain('Integer');
-    });
-
-    test('does not render separators between groups', () => {
-        createContainer('format-nav');
-        renderNav('fp32');
-        const separators = document.querySelectorAll('.nav-separator');
-
-        expect(separators.length).toBe(0);
     });
 });
 
@@ -464,6 +398,40 @@ describe('renderIntegerSpecialValues', () => {
 });
 
 // ── renderComparisonTable ────────────────────────────────────
+
+describe('renderValueTable', () => {
+    const FP4 = { signBits: 1, exponentBits: 2, mantissaBits: 1, hasInfinity: false, hasNaN: false };
+
+    test('renders nothing if container is missing', () => {
+        renderValueTable('nonexistent', FP4);
+        expect(document.body.innerHTML).toBe('');
+    });
+
+    test('lists every FP4 E2M1 encoding in order', () => {
+        const container = createContainer('value-table');
+        renderValueTable('value-table', FP4);
+
+        const rows = Array.from(container.querySelectorAll('tr')).slice(1)
+            .map(tr => Array.from(tr.querySelectorAll('td')).map(td => td.textContent));
+        expect(rows.length).toBe(16);
+        expect(rows.map(r => r[1])).toEqual(
+            Array.from({ length: 16 }, (_, i) => '0x' + i.toString(16).toUpperCase()));
+        expect(rows.map(r => r[2])).toEqual([
+            '0', '0.5', '1', '1.5', '2', '3', '4', '6',
+            '-0', '-0.5', '-1', '-1.5', '-2', '-3', '-4', '-6',
+        ]);
+        expect(rows[0]).toEqual(['0 00 0', '0x0', '0', '+Zero']);
+        expect(rows[1][3]).toBe('Subnormal');
+        expect(rows[15]).toEqual(['1 11 1', '0xF', '-6', 'Normal']);
+    });
+
+    test('skips integer formats and anything wider than 8 bits', () => {
+        const container = createContainer('value-table');
+        renderValueTable('value-table', { isInteger: true, totalBits: 4, signed: true });
+        renderValueTable('value-table', { signBits: 1, exponentBits: 5, mantissaBits: 10 });
+        expect(container.innerHTML).toBe('');
+    });
+});
 
 describe('renderComparisonTable', () => {
     test('renders nothing if container is missing', () => {
@@ -1186,28 +1154,14 @@ describe('initPage', () => {
         expect(document.body.innerHTML).toBe('');
     });
 
-    test('wires the theme button that renderNav just created', () => {
-        createContainer('format-nav');
+    test('leaves the theme button to theme.js', () => {
+        // The button is static markup now, so theme.js wires it on its own;
+        // a second listener from here would undo every click.
         global.setupThemeToggle = jest.fn();
         window.FORMAT_CONFIG = { navKey: 'fp16' };
         initPage();
 
-        expect(global.setupThemeToggle).toHaveBeenCalledTimes(1);
-    });
-
-    test('runs fine when theme.js was never loaded', () => {
-        createContainer('format-nav');
-        window.FORMAT_CONFIG = { navKey: 'fp16' };
-        expect(() => initPage()).not.toThrow();
-    });
-
-    test('calls renderNav when navKey is set', () => {
-        createContainer('format-nav');
-        window.FORMAT_CONFIG = { navKey: 'fp16' };
-        initPage();
-
-        const nav = document.getElementById('format-nav');
-        expect(nav.querySelector('.nav-link.active')).toBeTruthy();
+        expect(global.setupThemeToggle).not.toHaveBeenCalled();
     });
 
     test('calls renderBitLayout when bitLayoutId is set', () => {
