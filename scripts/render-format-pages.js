@@ -33,9 +33,7 @@ function renderNav(currentKey) {
 
     const lines = [
         '<nav class="format-nav" aria-label="Format guides">',
-        '    <div class="nav-top">',
-        '        <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>',
-        '    </div>',
+        '    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>',
         '    <div class="nav-groups">',
     ];
     for (const [groupId, items] of groups) {

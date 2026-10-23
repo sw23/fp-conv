@@ -172,14 +172,22 @@ body {
     box-shadow: var(--shadow);
     padding: 12px 20px;
     margin-bottom: 20px;
+    /* The links wrap in the first column; the theme toggle sits at the
+       right of their first row instead of on a row of its own. */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    align-items: start;
 }
 
-.nav-top {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-bottom: 8px;
+.format-nav .nav-groups {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.format-nav .theme-toggle {
+    grid-column: 2;
+    grid-row: 1;
 }
 
 .theme-toggle {
