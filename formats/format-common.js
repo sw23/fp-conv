@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Spencer Williams
 // Licensed under the MIT License.
 
-/* global FloatingPoint, Integer, FORMATS, valueKeyword, sameEncoding, normalizedEncoding, setupThemeToggle */
+/* global FloatingPoint, Integer, FORMATS, valueKeyword, sameEncoding, normalizedEncoding */
 // Shared JavaScript for format documentation pages.
 // Requires floating-point.js to be loaded first.
 
@@ -36,6 +36,8 @@ if (typeof require !== 'undefined') {
 }
 
 // ── Format metadata for navigation and pages ─────────────────
+// Each page carries its nav as static HTML so crawlers see the links without
+// running JS. scripts/render-format-pages.js writes it from this table.
 const FORMAT_PAGES = {
     // IEEE 754
     fp64:         { file: 'fp64.html',      label: 'FP64',      group: 'ieee' },
@@ -87,41 +89,6 @@ function buildFormat(config, signedOverride) {
         hasNaN: config.hasNaN,
         hasSubnormals: config.hasSubnormals,
     });
-}
-
-// ── Navigation renderer ──────────────────────────────────────
-function renderNav(currentKey) {
-    const nav = document.getElementById('format-nav');
-    if (!nav) return;
-
-    let html = '<div class="nav-top">';
-    html += '<a class="back-link" href="../index.html">← Back to Converter</a>';
-    // Rendered here rather than in each page's markup so all 18 pages pick it up.
-    // initPage() wires it afterwards - src/theme.js has already run its own
-    // DOMContentLoaded setup by then, when the button did not yet exist.
-    html += '<button type="button" id="theme-toggle" class="theme-toggle"' +
-        ' aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>';
-    html += '</div>';
-    html += '<div class="nav-groups">';
-
-    const groups = {};
-    for (const [key, info] of Object.entries(FORMAT_PAGES)) {
-        if (!groups[info.group]) groups[info.group] = [];
-        groups[info.group].push({ key, ...info });
-    }
-
-    for (const [groupId, items] of Object.entries(groups)) {
-        html += `<div class="nav-group">`;
-        html += `<span class="nav-group-label">${GROUP_LABELS[groupId]}:</span>`;
-        for (const item of items) {
-            const active = item.key === currentKey ? ' active' : '';
-            html += `<a class="nav-link${active}" href="${item.file}">${item.label}</a>`;
-        }
-        html += '</div>';
-    }
-
-    html += '</div>';
-    nav.innerHTML = html;
 }
 
 // ── Canvas theming ───────────────────────────────────────────
@@ -228,6 +195,13 @@ function formatValue(val) {
     return str;
 }
 
+// Thousands grouping, pinned to en-US: the pages are English and write
+// decimals with a point, and scripts/render-format-pages.js bakes these tables
+// into the HTML, which must come out the same on every machine.
+function groupDigits(n) {
+    return n.toLocaleString('en-US');
+}
+
 // A bound of an integer format as table text. A whole number keeps the
 // thousands grouping the tables have always had, grouped from a BigInt so it
 // stays exact past 53 bits (minRealValue/maxRealValue are doubles, and a
@@ -236,13 +210,13 @@ function formatValue(val) {
 // formatValue() showed for MXINT8 and never rounds at a wider width.
 function integerBoundText(fmt, encoded) {
     const exact = fmt.toExactDecimalString(encoded);
-    return fmt.fractionBits ? exact : BigInt(exact).toLocaleString();
+    return fmt.fractionBits ? exact : groupDigits(BigInt(exact));
 }
 
 // How many patterns a width has, grouped like the bounds and exact at any
 // width (Math.pow(2, 64) is a double too).
 function patternCountText(totalBits) {
-    return (1n << BigInt(totalBits)).toLocaleString();
+    return groupDigits(1n << BigInt(totalBits));
 }
 
 function renderRangeTable(containerId, config) {
@@ -300,9 +274,9 @@ function renderRangeTable(containerId, config) {
             for (let i = 1; i < row.length; i++) {
                 let cell = row[i];
                 if (typeof cell === 'number') {
-                    // toLocaleString truncates fractions to 3 places, which
+                    // Grouping truncates fractions to 3 places, which
                     // would print MXINT8's -1.984375 as "-1.984".
-                    cell = Number.isInteger(cell) ? cell.toLocaleString() : formatValue(cell);
+                    cell = Number.isInteger(cell) ? groupDigits(cell) : formatValue(cell);
                 }
                 html += `<td>${cell}</td>`;
             }
@@ -366,6 +340,23 @@ function renderRangeTable(containerId, config) {
 }
 
 // ── Special values table renderer ────────────────────────────
+// A float encoding as sign, exponent and mantissa fields, each colored.
+function bitPatternHtml(fp, sign, exp, mant) {
+    const signStr = fp.signBits ? sign.toString() : '';
+    const expStr = exp.toString(2).padStart(fp.exponentBits, '0');
+    // (0).toString(2) is "0", so a format with no mantissa field needs an
+    // explicit empty string rather than a padStart(0).
+    const mantStr = fp.mantissaBits > 0
+        ? mant.toString(2).padStart(fp.mantissaBits, '0')
+        : '';
+
+    return `<span class="sign-bits">${signStr}</span>` +
+        (signStr && expStr ? ' ' : '') +
+        `<span class="exp-bits">${expStr}</span>` +
+        (expStr && mantStr ? ' ' : '') +
+        `<span class="mant-bits">${mantStr}</span>`;
+}
+
 function renderSpecialValues(containerId, config) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -424,25 +415,11 @@ function renderSpecialValues(containerId, config) {
     html += '<tr><th>Value</th><th>Bit Pattern</th><th>Decimal</th></tr>';
 
     for (const entry of entries) {
-        const signStr = fp.signBits ? entry.sign.toString() : '';
-        const expStr = entry.exp.toString(2).padStart(fp.exponentBits, '0');
-        // (0).toString(2) is "0", so a format with no mantissa field needs an
-        // explicit empty string rather than a padStart(0).
-        const mantStr = fp.mantissaBits > 0
-            ? entry.mant.toString(2).padStart(fp.mantissaBits, '0')
-            : '';
-
-        const bitPattern = `<span class="sign-bits">${signStr}</span>` +
-            (signStr && expStr ? ' ' : '') +
-            `<span class="exp-bits">${expStr}</span>` +
-            (expStr && mantStr ? ' ' : '') +
-            `<span class="mant-bits">${mantStr}</span>`;
-
         const decoded = fp.decode(entry.sign, entry.exp, entry.mant);
 
         html += `<tr>`;
         html += `<td class="text-cell">${entry.name}</td>`;
-        html += `<td class="bit-pattern">${bitPattern}</td>`;
+        html += `<td class="bit-pattern">${bitPatternHtml(fp, entry.sign, entry.exp, entry.mant)}</td>`;
         html += `<td>${formatValue(decoded)}</td>`;
         html += '</tr>';
     }
@@ -497,6 +474,36 @@ function renderIntegerSpecialValues(container, config) {
         html += '</tr>';
     }
 
+    html += '</table>';
+    container.innerHTML = html;
+}
+
+// ── Complete value table renderer ────────────────────────────
+// Every encoding of a small float format, in encoding order. Capped so a
+// config typo on a wide format cannot emit a 65,536-row table.
+const VALUE_TABLE_MAX_BITS = 8;
+
+function renderValueTable(containerId, config) {
+    const container = document.getElementById(containerId);
+    if (!container || config.isInteger) return;
+
+    const fp = buildFormat(config);
+    if (fp.totalBits > VALUE_TABLE_MAX_BITS) return;
+
+    let html = '<table class="info-table special-table value-table">';
+    html += '<tr><th>Bit Pattern</th><th>Hex</th><th>Value</th><th>Type</th></tr>';
+    for (let sign = 0; sign <= (fp.signBits ? 1 : 0); sign++) {
+        for (let exp = 0; exp <= fp.maxExponent; exp++) {
+            for (let mant = 0; mant <= fp.maxMantissa; mant++) {
+                html += '<tr>';
+                html += `<td class="bit-pattern">${bitPatternHtml(fp, sign, exp, mant)}</td>`;
+                html += `<td>${fp.toHexString(sign, exp, mant)}</td>`;
+                html += `<td>${formatValue(fp.decode(sign, exp, mant))}</td>`;
+                html += `<td class="text-cell">${fp.typeLabel(sign, exp, mant)}</td>`;
+                html += '</tr>';
+            }
+        }
+    }
     html += '</table>';
     container.innerHTML = html;
 }
@@ -1897,19 +1904,24 @@ function initValueDistribution(config) {
 // ── Auto-init on DOMContentLoaded ────────────────────────────
 // Pages should set window.FORMAT_CONFIG before this script runs,
 // or set it and call initPage() manually.
+// The sections that depend on nothing but the page's config. initPage() draws
+// them on load, and scripts/render-format-pages.js writes the same output into
+// the HTML ahead of time so they are there without JS.
+function renderStaticSections(cfg) {
+    if (cfg.bitLayoutId) renderBitLayout(cfg.bitLayoutId, cfg);
+    if (cfg.rangeTableId) renderRangeTable(cfg.rangeTableId, cfg);
+    if (cfg.specialTableId) renderSpecialValues(cfg.specialTableId, cfg);
+    if (cfg.valueTableId) renderValueTable(cfg.valueTableId, cfg);
+    if (cfg.comparisonTableId && cfg.compareWith) {
+        renderComparisonTable(cfg.comparisonTableId, cfg.navKey, cfg.compareWith);
+    }
+}
+
 function initPage() {
     const cfg = window.FORMAT_CONFIG;
     if (!cfg) return;
 
-    if (cfg.navKey) renderNav(cfg.navKey);
-    // renderNav() creates the theme button, so it can only be wired up now.
-    if (typeof setupThemeToggle === 'function') setupThemeToggle();
-    if (cfg.bitLayoutId) renderBitLayout(cfg.bitLayoutId, cfg);
-    if (cfg.rangeTableId) renderRangeTable(cfg.rangeTableId, cfg);
-    if (cfg.specialTableId) renderSpecialValues(cfg.specialTableId, cfg);
-    if (cfg.comparisonTableId && cfg.compareWith) {
-        renderComparisonTable(cfg.comparisonTableId, cfg.navKey, cfg.compareWith);
-    }
+    renderStaticSections(cfg);
     if (cfg.hasVisualizer !== false) initVisualizer(cfg);
     if (cfg.valueDistributionId) initValueDistribution(cfg);
 }
@@ -1923,7 +1935,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         FORMAT_PAGES,
         GROUP_LABELS,
-        renderNav,
+        renderStaticSections,
         _fcThemeColor,
         _fcChartPalette,
         renderBitLayout,
@@ -1931,6 +1943,7 @@ if (typeof module !== 'undefined' && module.exports) {
         renderRangeTable,
         renderSpecialValues,
         renderIntegerSpecialValues,
+        renderValueTable,
         renderComparisonTable,
         initVisualizer,
         generatePositiveValues,

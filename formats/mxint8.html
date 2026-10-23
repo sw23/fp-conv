@@ -55,7 +55,43 @@
 </head>
 <body>
     <div class="container">
-        <nav class="format-nav" id="format-nav"></nav>
+        <nav class="format-nav" aria-label="Format guides">
+            <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" title="Switch to dark theme">Dark</button>
+            <div class="nav-groups">
+                <div class="nav-group">
+                    <span class="nav-group-label">IEEE 754:</span>
+                    <a class="nav-link" href="fp64.html">FP64</a>
+                    <a class="nav-link" href="fp32.html">FP32</a>
+                    <a class="nav-link" href="fp16.html">FP16</a>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-label">ML:</span>
+                    <a class="nav-link" href="bf16.html">BF16</a>
+                    <a class="nav-link" href="tf32.html">TF32</a>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-label">OCP:</span>
+                    <a class="nav-link" href="fp8-e5m2.html">FP8 E5M2</a>
+                    <a class="nav-link" href="fp8-e4m3.html">FP8 E4M3</a>
+                    <a class="nav-link" href="fp6-e3m2.html">FP6 E3M2</a>
+                    <a class="nav-link" href="fp6-e2m3.html">FP6 E2M3</a>
+                    <a class="nav-link" href="fp4-e2m1.html">FP4 E2M1</a>
+                    <a class="nav-link" href="e8m0.html">E8M0</a>
+                    <a class="nav-link active" href="mxint8.html" aria-current="page">MXINT8</a>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-label">Integer:</span>
+                    <a class="nav-link" href="int32.html">INT32</a>
+                    <a class="nav-link" href="uint32.html">UINT32</a>
+                    <a class="nav-link" href="int16.html">INT16</a>
+                    <a class="nav-link" href="uint16.html">UINT16</a>
+                    <a class="nav-link" href="int8.html">INT8</a>
+                    <a class="nav-link" href="uint8.html">UINT8</a>
+                    <a class="nav-link" href="int4.html">INT4</a>
+                    <a class="nav-link" href="uint4.html">UINT4</a>
+                </div>
+            </div>
+        </nav>
 
         <header>
             <h1>MXINT8 - The OCP MX 8-Bit Element Type</h1>
@@ -64,7 +100,7 @@
 
         <section class="doc-section">
             <h2>Bit Layout</h2>
-            <div id="bit-layout" class="bit-layout"></div>
+            <div id="bit-layout" class="bit-layout"><div class="bit-field sign"><span class="bit-field-label">Sign</span><div class="bit-field-boxes"><div class="bit-box">S</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field integer"><span class="bit-field-label">Integer</span><div class="bit-field-boxes"><div class="bit-box">V</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field mantissa"><span class="bit-field-label">Fraction</span><div class="bit-field-boxes"><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div></div><span class="bit-field-width">6 bits</span></div></div>
             <p>MXINT8 stores the same eight <a href="https://en.wikipedia.org/wiki/Two%27s_complement" target="_blank" rel="noopener">two's complement</a> bits as <a href="int8.html">INT8</a>, but the binary point sits after the second bit rather than at the end. The result is a fixed-point format covering &plusmn;1.984375 in steps of 1&frasl;64.</p>
         </section>
 
@@ -128,17 +164,17 @@
 
         <section class="doc-section">
             <h2>Dynamic Range &amp; Precision</h2>
-            <div id="range-table"></div>
+            <div id="range-table"><table class="info-table"><tr><th>Property</th><th>MXINT8</th><th>Unsigned (8-bit, 2^-6 scale)</th></tr><tr><td class="text-cell">Total Bits</td><td>8</td><td>8</td></tr><tr><td class="text-cell">Fraction Bits</td><td>6</td><td>6</td></tr><tr><td class="text-cell">Implicit Scale</td><td>2^-6</td><td>2^-6</td></tr><tr><td class="text-cell">Minimum Value</td><td>-1.984375</td><td>0</td></tr><tr><td class="text-cell">Maximum Value</td><td>1.984375</td><td>3.984375</td></tr><tr><td class="text-cell">Representable Values</td><td>256</td><td>256</td></tr><tr><td class="text-cell">Step (ULP)</td><td>0.015625</td><td>0.015625</td></tr><tr><td class="text-cell">Symmetric Range</td><td>Yes</td><td>N/A</td></tr></table></div>
         </section>
 
         <section class="doc-section">
             <h2>Special Values &amp; Bit Patterns</h2>
-            <div id="special-table"></div>
+            <div id="special-table"><table class="info-table special-table"><tr><th>Value</th><th>Bit Pattern</th><th>Signed</th><th>Unsigned</th></tr><tr><td class="text-cell">Zero</td><td class="bit-pattern"><span class="exp-bits">00000000</span></td><td>0</td><td>0</td></tr><tr><td class="text-cell">One (64 raw)</td><td class="bit-pattern"><span class="exp-bits">01000000</span></td><td>1</td><td>1</td></tr><tr><td class="text-cell">Max Unsigned</td><td class="bit-pattern"><span class="exp-bits">11111111</span></td><td>-0.015625</td><td>3.984375</td></tr><tr><td class="text-cell">Max Signed</td><td class="bit-pattern"><span class="exp-bits">01111111</span></td><td>1.984375</td><td>1.984375</td></tr><tr><td class="text-cell">All Ones (-0.015625)</td><td class="bit-pattern"><span class="exp-bits">11111111</span></td><td>-0.015625</td><td>3.984375</td></tr><tr><td class="text-cell">Min Signed (-1.984375)</td><td class="bit-pattern"><span class="exp-bits">10000001</span></td><td>-1.984375</td><td>2.015625</td></tr><tr><td class="text-cell">Sign Bit Only (unused)</td><td class="bit-pattern"><span class="exp-bits">10000000</span></td><td>-2</td><td>2</td></tr></table></div>
         </section>
 
         <section class="doc-section">
             <h2>Format Comparison</h2>
-            <div id="comparison-table"></div>
+            <div id="comparison-table"><div class="comparison-table"><table class="info-table"><tr><th>Property</th><th class="current-format">MXINT8</th><th>INT8</th><th>INT4</th><th>INT16</th></tr><tr><td class="text-cell">Total Bits</td><td class="current-format">8</td><td>8</td><td>4</td><td>16</td></tr><tr><td class="text-cell">Signed Min</td><td class="current-format">-1.984375</td><td>-128</td><td>-8</td><td>-32,768</td></tr><tr><td class="text-cell">Signed Max</td><td class="current-format">1.984375</td><td>127</td><td>7</td><td>32,767</td></tr><tr><td class="text-cell">Unsigned Max</td><td class="current-format">3.984375</td><td>255</td><td>15</td><td>65,535</td></tr><tr><td class="text-cell">Step (ULP)</td><td class="current-format">0.015625</td><td>1</td><td>1</td><td>1</td></tr><tr><td class="text-cell">Values</td><td class="current-format">256</td><td>256</td><td>16</td><td>65,536</td></tr></table></div></div>
         </section>
 
         <section class="doc-section">
@@ -152,7 +188,7 @@
         </section>
 
         <footer>
-            <p><a href="../index.html">← Try it in the Converter</a></p>
+            <p><a href="../">← Try it in the Converter</a></p>
             <p>© 2026 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
         </footer>
     </div>

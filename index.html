@@ -9,8 +9,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Floating Point Conversion Calculator</title>
-    <meta name="description" content="Floating point conversion calculator between floating point, integer, and custom formats. Interactive tool for ML engineers and developers.">
+    <title>Floating Point Converter: FP32, FP16, BF16, FP8 and FP4</title>
+    <meta name="description" content="Convert between FP64, FP32, FP16, BF16, TF32, FP8, FP6, FP4, MX and integer formats. See bits, hex and precision loss under all five IEEE 754 rounding modes.">
     <meta name="keywords" content="floating point converter, FP64 converter, FP32 converter, FP16 converter, BF16 converter, FP8 converter, FP32 to FP16, FP32 to BF16, FP16 to BF16, FP32 to FP8, IEEE 754 converter">
     <meta name="author" content="Spencer Williams">
     <meta name="robots" content="index, follow">
@@ -34,11 +34,16 @@
     <meta property="og:description" content="Interactive floating point conversion calculator supporting floating point, integer, and custom formats. Visualize binary representations and convert between formats.">
     <meta property="og:url" content="https://sw23.github.io/fp-conv/">
     <meta property="og:site_name" content="Floating Point Conversion Calculator">
+    <meta property="og:image" content="https://sw23.github.io/fp-conv/web-app-manifest-512x512.png">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta property="og:image:alt" content="FP Conv logo">
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Floating Point Conversion Calculator">
     <meta name="twitter:description" content="Interactive floating point conversion calculator supporting floating point, integer, and custom formats. Visualize binary representations and convert between formats.">
+    <meta name="twitter:image" content="https://sw23.github.io/fp-conv/web-app-manifest-512x512.png">
 
     <!-- Google Site Verification -->
     <meta name="google-site-verification" content="UpW0PLNzy5sWz7vqDnOYekVF9vfhzbZZ67WOrId5ZXY" />
@@ -60,15 +65,18 @@
       "name": "Floating Point Conversion Calculator",
       "description": "Interactive floating point conversion calculator supporting floating point, integer, and custom formats. Visualize binary representations and convert between formats.",
       "url": "https://sw23.github.io/fp-conv/",
+      "image": "https://sw23.github.io/fp-conv/web-app-manifest-512x512.png",
       "applicationCategory": "UtilityApplication",
       "operatingSystem": "Any",
       "browserRequirements": "Requires JavaScript. Works with any modern web browser.",
       "author": {
         "@type": "Person",
-        "name": "Spencer Williams"
+        "name": "Spencer Williams",
+        "url": "https://sw23.github.io/"
       },
       "datePublished": "2025-10-25T20:00:37-04:00",
       "inLanguage": "en-US",
+      "isAccessibleForFree": true,
       "keywords": "floating point conversion calculator, FP64 converter, FP32 converter, FP16 converter, BF16 converter, FP8 converter, FP32 to FP16, FP32 to BF16, FP16 to BF16, FP32 to FP8, IEEE 754 converter",
       "offers": {
         "@type": "Offer",
@@ -76,7 +84,9 @@
         "priceCurrency": "USD"
       },
       "featureList": [
-        "Convert between FP64, FP32, FP16, BF16, TF32, FP8 and custom formats",
+        "Convert between FP64, FP32, FP16, BF16, TF32, FP8, FP6, FP4, E8M0, MXINT8, integer and custom formats",
+        "All five IEEE 754 rounding modes, with overflow and NaN handling options",
+        "Results verified against independent implementations including MPFR, LLVM APFloat and glibc",
         "Visualize binary representation of floating-point numbers",
         "Calculate precision loss between formats",
         "Support for custom floating-point formats",
@@ -480,7 +490,7 @@
                 This interactive converter helps you visualize how floating-point and integer numbers are represented at the binary level.
                 This converter follows the <a href="https://en.wikipedia.org/wiki/IEEE_754" target="_blank" rel="noopener">IEEE 754</a>
                 floating-point standard and supports standard formats (FP64, FP32, FP16) as well as specialized formats used in
-                machine learning and AI (BF16, TF32, FP8 E4M3, FP8 E5M2). Integer formats commonly used in ML quantization are also
+                machine learning and AI (BF16, TF32, and the OCP FP8, FP6, FP4, E8M0 and MXINT8 microscaling formats). Integer formats commonly used in ML quantization are also
                 supported (INT32, INT16, INT8, INT4, and their unsigned variants). Custom formats can be used as well by specifying
                 the number of sign, exponent, and mantissa bits. This tool is mobile-friendly and supports screens of all sizes.
             </p>
@@ -602,6 +612,14 @@
                     </li>
                 </ul>
             </div>
+
+            <h3>Verified Results</h3>
+            <p>
+                Conversion results have been checked against more than 30 independent implementations, including MPFR, LLVM APFloat,
+                glibc, AArch64 hardware, QEMU, gfloat and ml_dtypes. Every floating-point and MX format, under all five rounding modes, has
+                been compared against at least one of them, with no unexplained differences: each disagreement traced back to a choice
+                the specification leaves open, or to a bug in the other implementation.
+            </p>
 
             <h3>Shareable Links</h3>
             <p>

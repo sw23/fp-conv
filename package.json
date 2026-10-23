@@ -22,7 +22,8 @@
     "oracle:regen": "python3 tests/oracle-validator.py > tests/oracle-vectors.json",
     "lint": "eslint . && npm run lint:html",
     "lint:fix": "eslint . --fix",
-    "lint:html": "htmlhint index.html 'formats/*.html'"
+    "lint:html": "htmlhint index.html 'formats/*.html'",
+    "render:formats": "node scripts/render-format-pages.js"
   },
   "repository": {
     "type": "git",
