@@ -12,6 +12,15 @@ Both packages are published automatically when a **GitHub Release** is published
 Authentication uses npm [trusted publishing](https://docs.npmjs.com/trusted-publishers)
 (OIDC), so no `NPM_TOKEN` secret is stored in the repository.
 
+`fp-conv-mcp` is also listed in the official
+[MCP Registry](https://registry.modelcontextprotocol.io) as
+`io.github.sw23/fp-conv-mcp`. After the npm publish, a second job in
+`publish-mcp.yml` publishes
+[`packages/fp-conv-mcp/server.json`](../packages/fp-conv-mcp/server.json) using
+`mcp-publisher` and GitHub OIDC, so no registry secret is stored either. The
+registry only accepts it if the `mcpName` in the published `package.json`
+matches the `name` in `server.json`.
+
 Each workflow is keyed to its own release tag prefix, so a release only triggers
 the matching package's pipeline:
 
@@ -51,6 +60,11 @@ Do this once for each package name before the first automated publish.
    Only bump the package(s) you are releasing. The publish workflow runs
    `npm publish` directly, so a release whose version is not bumped fails at the
    publish step (npm rejects republishing an existing version).
+
+   For `fp-conv-mcp`, also set both `version` fields in
+   `packages/fp-conv-mcp/server.json` (the top-level one and the npm entry under
+   `packages`) to the new version. `publish-mcp.yml` stops before the npm publish
+   if they don't match `package.json`.
 
 2. **Verify the build and tests locally:**
 
@@ -94,6 +108,12 @@ Do this once for each package name before the first automated publish.
    npm view fp-conv-cli version
    ```
 
+   For an MCP release, also check the registry listing:
+
+   ```bash
+   curl -s "https://registry.modelcontextprotocol.io/v0.1/servers?search=fp-conv-mcp"
+   ```
+
 ## Manual `workflow_dispatch` publish
 
 You can also trigger a publish without creating a release:
@@ -128,3 +148,8 @@ npm publish --workspace fp-conv-cli --access public
   filename.
 - **Wrong files in the tarball** — adjust the `files` field in the package
   `package.json` and re-run `npm publish --dry-run`.
+- **The `registry` job fails after npm succeeded** — use **Re-run failed jobs**,
+  which retries only the registry publish. Re-running the whole workflow would
+  try to republish the same npm version and fail. Run
+  `mcp-publisher validate packages/fp-conv-mcp/server.json` locally to check
+  the file against the registry.
