@@ -1,5 +1,9 @@
 # Floating Point Conversion Calculator
 
+[![fp-conv-mcp](https://img.shields.io/npm/v/fp-conv-mcp?label=fp-conv-mcp)](https://www.npmjs.com/package/fp-conv-mcp)
+[![fp-conv-cli](https://img.shields.io/npm/v/fp-conv-cli?label=fp-conv-cli)](https://www.npmjs.com/package/fp-conv-cli)
+[![Unit Tests](https://github.com/sw23/fp-conv/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/sw23/fp-conv/actions/workflows/test.yml)
+
 Interactive tool for converting and visualizing floating-point numbers across
 standard and custom formats. Convert between FP32, FP16, BF16, TF32, FP8, etc.
 while inspecting binary representations and precision loss.
