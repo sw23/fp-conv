@@ -121,6 +121,23 @@ jobs:
           tar xzf "$archive" mcp-publisher
           rm -f "$archive" "$archive.sigstore.json"
 
+      - name: Wait for npm to serve the new version
+        # npm can take a minute after a publish before it serves the version,
+        # and the registry rejects a version npm returns 404 for. Runs before
+        # the login so the registry token is fresh when publishing.
+        run: |
+          VERSION="$(jq -r '.version' packages/fp-conv-mcp/package.json)"
+          URL="https://registry.npmjs.org/fp-conv-mcp/$VERSION"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --output /dev/null "$URL"; then
+              echo "npm serves fp-conv-mcp@$VERSION (attempt $attempt)."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::npm still returns an error for fp-conv-mcp@$VERSION after 10 minutes."
+          exit 1
+
       - name: Authenticate to MCP Registry
         # GitHub OIDC grants the io.github.sw23/* namespace; no secret needed.
         run: ./mcp-publisher login github-oidc

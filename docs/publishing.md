@@ -149,7 +149,9 @@ npm publish --workspace fp-conv-cli --access public
 - **Wrong files in the tarball** — adjust the `files` field in the package
   `package.json` and re-run `npm publish --dry-run`.
 - **The `registry` job fails after npm succeeded** — use **Re-run failed jobs**,
-  which retries only the registry publish. Re-running the whole workflow would
+  which retries only the registry publish. The job already waits up to 10
+  minutes for npm to serve the new version, which takes about a minute after
+  a publish. Re-running the whole workflow would
   try to republish the same npm version and fail. Run
   `mcp-publisher validate packages/fp-conv-mcp/server.json` locally to check
   the file against the registry.
