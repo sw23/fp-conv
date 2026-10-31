@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.sw23/fp-conv-mcp",
+  "title": "fp-conv",
+  "description": "Encode, decode, and convert numbers across FP32, FP16, BF16, TF32, FP8/6/4, and integer formats.",
+  "repository": {
+    "url": "https://github.com/sw23/fp-conv",
+    "source": "github",
+    "id": "1083392150",
+    "subfolder": "packages/fp-conv-mcp"
+  },
+  "websiteUrl": "https://github.com/sw23/fp-conv/tree/main/packages/fp-conv-mcp#readme",
+  "version": "1.5.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "fp-conv-mcp",
+      "version": "1.5.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
