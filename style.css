@@ -45,6 +45,8 @@ html {
     --on-accent: #ffffff;
     --radius: 6px;
     --radius-sm: 4px;
+    --bit-size: 24px;
+    --bit-position-height: 12px;
 
     /* Compact spacing scale */
     --gap-1: 3px;
@@ -589,21 +591,27 @@ section h3 {
     min-width: 0;
 }
 
+/* Bit cells are 24px square: the input bits are tap targets, and WCAG 2.5.8
+   wants 24px between them. The output bits match so both rows line up. */
 .bits {
     display: flex;
     gap: 0px;
     flex-wrap: wrap;
+    /* The page ships these empty and ui.js fills them after load. Holding one
+       row open keeps that fill from pushing the rest of the page down. */
+    min-height: var(--bit-size);
 }
 
 .bit-positions {
     display: flex;
     gap: 0px;
     flex-wrap: wrap;
+    min-height: var(--bit-position-height);
 }
 
 .bit-position {
-    width: 18px;
-    height: 12px;
+    width: var(--bit-size);
+    height: var(--bit-position-height);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -613,8 +621,8 @@ section h3 {
 }
 
 .bit {
-    width: 18px;
-    height: 18px;
+    width: var(--bit-size);
+    height: var(--bit-size);
     display: flex;
     align-items: center;
     justify-content: center;
