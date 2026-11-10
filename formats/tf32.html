@@ -98,6 +98,8 @@
             <p class="subtitle">NVIDIA's 19-bit hybrid: FP32 range meets FP16 precision for accelerated tensor math</p>
         </header>
 
+        <main>
+
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <p>A TF32 number uses 19 bits divided into three fields:</p>
@@ -193,6 +195,8 @@
                 TF32 is only used internally by NVIDIA Tensor Cores during specific operations (matmul, convolutions). You cannot store tensors in TF32 or select it as a dtype in frameworks. If you need a 16-bit storage format with similar precision, use FP16 (same 10-bit mantissa) instead.
             </div>
         </section>
+
+        </main>
 
         <footer>
             <p><a href="../">← Try it in the Converter</a></p>

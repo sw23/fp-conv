@@ -98,6 +98,8 @@
             <p class="subtitle">IEEE 754 half-precision floating point: compact and efficient for ML inference and graphics</p>
         </header>
 
+        <main>
+
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <p>An FP16 number uses 16 bits divided into three fields:</p>
@@ -197,6 +199,8 @@
                 FP16 overflows above 65,504 and underflows below ~6×10<sup>-8</sup> (normal range). Loss values, gradient norms, and intermediate activations can exceed these bounds. If you encounter frequent infinities or zeros, consider BF16 (wider range) or add loss scaling.
             </div>
         </section>
+
+        </main>
 
         <footer>
             <p><a href="../">← Try it in the Converter</a></p>

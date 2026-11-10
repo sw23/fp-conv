@@ -98,6 +98,8 @@
             <p class="subtitle">OCP 8-bit format with higher precision: 4 exponent bits, 3 mantissa bits</p>
         </header>
 
+        <main>
+
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <div id="bit-layout" class="bit-layout"><div class="bit-field sign"><span class="bit-field-label">Sign</span><div class="bit-field-boxes"><div class="bit-box">S</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field exponent"><span class="bit-field-label">Exponent</span><div class="bit-field-boxes"><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div></div><span class="bit-field-width">4 bits</span></div><div class="bit-field mantissa"><span class="bit-field-label">Mantissa</span><div class="bit-field-boxes"><div class="bit-box">M</div><div class="bit-box">M</div><div class="bit-box">M</div></div><span class="bit-field-width">3 bits</span></div></div>
@@ -194,6 +196,8 @@
                 <li><strong>NumPy ecosystem:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library provides <code>float8_e4m3fn</code> (and variants <code>float8_e4m3fnuz</code>, <code>float8_e4m3b11fnuz</code>) as NumPy dtype extensions for JAX and TensorFlow. The <a href="https://github.com/onnx/onnx/blob/main/onnx/onnx.proto" target="_blank" rel="noopener">ONNX proto</a> defines <code>FLOAT8E4M3FN = 17</code>.</li>
             </ul>
         </section>
+
+        </main>
 
         <footer>
             <p><a href="../">← Try it in the Converter</a></p>

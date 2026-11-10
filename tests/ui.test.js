@@ -758,6 +758,47 @@ describe('ui.js — binary checkbox toggling', () => {
     });
 });
 
+describe('ui.js — every bit checkbox has an accessible name', () => {
+    const inputBits = () => Array.from(document.querySelectorAll(
+        '#input-binary-sign-checks input, #input-binary-exponent-checks input, ' +
+        '#input-binary-mantissa-checks input'));
+
+    test('FP16 bits are named by field and position, matching the digit under them', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp16');
+        const labels = inputBits().map(cb => cb.getAttribute('aria-label'));
+        expect(labels).toHaveLength(16);
+        expect(labels[0]).toBe('Sign bit 15');
+        expect(labels.slice(1, 6)).toEqual(
+            ['Exponent bit 14', 'Exponent bit 13', 'Exponent bit 12', 'Exponent bit 11', 'Exponent bit 10']);
+        expect(labels[6]).toBe('Mantissa bit 9');
+        expect(labels[15]).toBe('Mantissa bit 0');
+
+        const positions = Array.from(document.querySelectorAll(
+            '#input-binary-sign-positions .bit-position, #input-binary-exponent-positions .bit-position, ' +
+            '#input-binary-mantissa-positions .bit-position')).map(p => p.textContent);
+        expect(labels.map(l => l.split(' ').pop())).toEqual(positions);
+    });
+
+    test('integer bits are not called mantissa bits', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('int8');
+        const labels = inputBits().map(cb => cb.getAttribute('aria-label'));
+        expect(labels).toEqual(
+            ['Bit 7', 'Bit 6', 'Bit 5', 'Bit 4', 'Bit 3', 'Bit 2', 'Bit 1', 'Bit 0']);
+    });
+
+    test('labels follow a format change', () => {
+        const ui = freshUi();
+        ui.loadInputPreset('fp32');
+        const labels = inputBits().map(cb => cb.getAttribute('aria-label'));
+        expect(labels).toHaveLength(32);
+        expect(labels[0]).toBe('Sign bit 31');
+        expect(labels[1]).toBe('Exponent bit 30');
+        expect(labels[31]).toBe('Mantissa bit 0');
+    });
+});
+
 describe('ui.js — URL state restoration', () => {
     // The fragment is navigation (the About anchor), not state.
     test('keeping the URL in sync leaves the fragment alone', () => {

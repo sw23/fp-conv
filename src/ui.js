@@ -710,6 +710,16 @@ function calculateBitStartPosition(format, section) {
     }
 }
 
+// Accessible name for one bit: "Exponent bit 14". An integer keeps all of its
+// bits in the mantissa field, but they are not mantissa bits, so they are just
+// "Bit 7".
+const BIT_SECTION_NAMES = { sign: 'Sign', exponent: 'Exponent', mantissa: 'Mantissa' };
+
+function bitLabel(format, section, position) {
+    if (format.isInteger) return `Bit ${position}`;
+    return `${BIT_SECTION_NAMES[section]} bit ${position}`;
+}
+
 function renderBitSection(side, section, binaryString) {
     const bitsContainer = document.getElementById(bitContainerId(side, section));
     const positionsContainer = document.getElementById(`${side}-binary-${section}-positions`);
@@ -719,7 +729,8 @@ function renderBitSection(side, section, binaryString) {
     // exponent) draws nothing.
     if (binaryString === '') return;
 
-    const startPosition = calculateBitStartPosition(sideFormat(side), section);
+    const format = sideFormat(side);
+    const startPosition = calculateBitStartPosition(format, section);
     for (let i = 0; i < binaryString.length; i++) {
         const isSet = binaryString[i] === '1';
         let bit;
@@ -728,6 +739,9 @@ function renderBitSection(side, section, binaryString) {
             bit.type = 'checkbox';
             bit.className = 'bit';
             bit.id = `input-binary-${section}-bit-${i}`;
+            // A checkbox with no label is announced as a bare "checkbox", so
+            // name each one by its bit position, as the digit under it shows.
+            bit.setAttribute('aria-label', bitLabel(format, section, startPosition - i));
             bit.checked = isSet;
             bit.dataset.section = section;
             bit.dataset.index = String(i);

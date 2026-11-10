@@ -25,6 +25,9 @@ html {
     --surface-alt: #eef2f8;
     --text-primary: #16202e;
     --text-secondary: #5f6d80;
+    /* The bit-position digits are ~10px text on a 16% field tint, where
+       --text-secondary falls to ~4.1:1. This keeps them above 4.5:1. */
+    --bit-position-color: #475569;
     --border: #dde3ec;
     /* Outline for interactive chips. --border is tuned for hairline dividers and
        is too faint to define a button, which made filled buttons look larger
@@ -70,6 +73,7 @@ html {
         --surface-alt: #232d40;
         --text-primary: #e6ebf3;
         --text-secondary: #97a3b6;
+        --bit-position-color: #97a3b6;
         --border: #2a3444;
         --border-strong: #3d4a63;
         --sign-color: #fb7185;
@@ -92,6 +96,7 @@ html {
     --surface-alt: #232d40;
     --text-primary: #e6ebf3;
     --text-secondary: #97a3b6;
+    --bit-position-color: #97a3b6;
     --border: #2a3444;
     --border-strong: #3d4a63;
     --sign-color: #fb7185;
@@ -603,7 +608,7 @@ section h3 {
     align-items: center;
     justify-content: center;
     font-size: 0.62rem;
-    color: var(--text-secondary);
+    color: var(--bit-position-color);
     font-family: ui-monospace, monospace;
 }
 
