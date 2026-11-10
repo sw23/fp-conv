@@ -11,11 +11,12 @@
 // link) pins the mode; with no choice the viewport decides, so a screen too
 // narrow for the two-column layout starts out simplified.
 //
-// index.html loads this file from <head> WITHOUT defer so <html data-mode>
-// is set before the first paint; deferring it would flash the advanced
-// controls. All hiding is done by style.css from that attribute - never write
-// element.style.display from here, because ui.js already owns the inline
-// display of the very controls involved.
+// <html data-mode> has to be set before the first paint, or the advanced
+// controls flash. index.html does that with a small inline bootstrap in <head>
+// that mirrors resolvedMode() (tests/head-bootstrap.test.js keeps the two in
+// step), so this file can load deferred. All hiding is done by style.css from
+// that attribute - never write element.style.display from here, because ui.js
+// already owns the inline display of the very controls involved.
 
 const MODE_STORAGE_KEY = 'fp-conv-mode';
 const MODE_PARAM = 'mode';

@@ -3,10 +3,12 @@
 
 // Light/dark theme toggle.
 //
-// index.html loads this file from <head> WITHOUT defer, so the stored
-// preference lands on <html data-theme> before the first paint - deferring it
-// would flash the other theme. With no stored preference the attribute stays
-// off and style.css decides from prefers-color-scheme.
+// The stored preference has to land on <html data-theme> before the first
+// paint, or the page flashes the other theme. index.html does that with a small
+// inline bootstrap in <head> and loads this file deferred; the format pages
+// load it from <head> without defer, which does the same job. With no stored
+// preference the attribute stays off and style.css decides from
+// prefers-color-scheme.
 
 const THEME_STORAGE_KEY = 'fp-conv-theme';
 const THEME_QUERY = '(prefers-color-scheme: dark)';
