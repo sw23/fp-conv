@@ -45,8 +45,8 @@ describe('index.html pre-paint bootstrap', () => {
     });
 
     test('theme.js and mode.js are deferred, so they no longer block render', () => {
-        expect(head).toMatch(/<script src="src\/theme\.js" defer><\/script>/);
-        expect(head).toMatch(/<script src="src\/mode\.js" defer><\/script>/);
+        expect(head).toMatch(/<script src="src\/theme\.min\.js" defer><\/script>/);
+        expect(head).toMatch(/<script src="src\/mode\.min\.js" defer><\/script>/);
     });
 });
 
