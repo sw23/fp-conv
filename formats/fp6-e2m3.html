@@ -98,6 +98,8 @@
             <p class="subtitle">OCP microscaling format: 2 exponent bits, 3 mantissa bits, precision over range</p>
         </header>
 
+        <main>
+
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <div id="bit-layout" class="bit-layout"><div class="bit-field sign"><span class="bit-field-label">Sign</span><div class="bit-field-boxes"><div class="bit-box">S</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field exponent"><span class="bit-field-label">Exponent</span><div class="bit-field-boxes"><div class="bit-box">E</div><div class="bit-box">E</div></div><span class="bit-field-width">2 bits</span></div><div class="bit-field mantissa"><span class="bit-field-label">Mantissa</span><div class="bit-field-boxes"><div class="bit-box">M</div><div class="bit-box">M</div><div class="bit-box">M</div></div><span class="bit-field-width">3 bits</span></div></div>
@@ -186,6 +188,8 @@
                 Both are 6-bit formats with opposite tradeoffs. E2M3 has higher precision (3 mantissa bits) in a narrow range (max 7.5). E3M2 has wider range (max 28) with lower precision (2 mantissa bits). The choice depends on whether your data's spread or its granularity is the limiting factor.
             </div>
         </section>
+
+        </main>
 
         <footer>
             <p><a href="../">← Try it in the Converter</a></p>

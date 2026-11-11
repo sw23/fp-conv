@@ -98,6 +98,8 @@
             <p class="subtitle">OCP microscaling format: 3 exponent bits, 2 mantissa bits, no infinity or NaN</p>
         </header>
 
+        <main>
+
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <div id="bit-layout" class="bit-layout"><div class="bit-field sign"><span class="bit-field-label">Sign</span><div class="bit-field-boxes"><div class="bit-box">S</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field exponent"><span class="bit-field-label">Exponent</span><div class="bit-field-boxes"><div class="bit-box">E</div><div class="bit-box">E</div><div class="bit-box">E</div></div><span class="bit-field-width">3 bits</span></div><div class="bit-field mantissa"><span class="bit-field-label">Mantissa</span><div class="bit-field-boxes"><div class="bit-box">M</div><div class="bit-box">M</div></div><span class="bit-field-width">2 bits</span></div></div>
@@ -191,6 +193,8 @@
                 E3M2 has wider range (max 28 vs 7.5) but fewer distinct values per interval (4 vs 8). Choose E3M2 when your values span a wider range; choose E2M3 when you need finer granularity within a narrower range.
             </div>
         </section>
+
+        </main>
 
         <footer>
             <p><a href="../">← Try it in the Converter</a></p>

@@ -15,7 +15,7 @@
     <meta name="author" content="Spencer Williams">
     <meta name="robots" content="index, follow">
     <meta name="theme-color" content="#2563eb">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'; manifest-src data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self' 'sha256-n01vfpZ34dOUHZ9lm+Bj44r3IurvemutVuDlV+jpJVA='; img-src 'self'; manifest-src data:;">
     <!-- WebMCP origin trial token for https://sw23.github.io (Chrome 149-162, expires 2027-03-30) -->
     <meta http-equiv="origin-trial" content="ApVdfx59EjQLRzDPIZ0s7XkbsQtn4iTECbJVxeq/jcqFO7qcQ/jx9CXu1D/h/J1VZYVx9P4Dn9yfmgbNBpKbUwQAAABOeyJvcmlnaW4iOiJodHRwczovL3N3MjMuZ2l0aHViLmlvOjQ0MyIsImZlYXR1cmUiOiJXZWJNQ1AiLCJleHBpcnkiOjE4MDYzNjQ4MDB9">
     <link rel="canonical" href="https://sw23.github.io/fp-conv/">
@@ -99,10 +99,34 @@
     }
     </script>
 
-    <link rel="stylesheet" href="style.css">
-    <script src="src/theme.js"></script>
-    <script src="src/mode.js"></script>
-    <script src="lib/floating-point.js" defer></script>
+    <link rel="stylesheet" href="style.min.css">
+    <!-- Pre-paint bootstrap. Puts the stored theme and the resolved view mode on
+         <html> before the first paint, so src/theme.js and src/mode.js can load
+         deferred without the page flashing the wrong theme or the advanced
+         controls. It must decide exactly as readStoredTheme() and resolvedMode()
+         do (tests/head-bootstrap.test.js checks). Its sha256 is in the CSP above:
+         edit one byte and the browser blocks it until the hash is updated
+         (the same test recomputes it). -->
+    <script>
+    (function () {
+        var root = document.documentElement;
+        var theme = null;
+        var mode = null;
+        try { theme = window.localStorage.getItem('fp-conv-theme'); } catch (e) { theme = null; }
+        if (theme === 'light' || theme === 'dark') root.setAttribute('data-theme', theme);
+        try { mode = new URLSearchParams(window.location.search).get('mode'); } catch (e) { mode = null; }
+        if (mode !== 'basic' && mode !== 'advanced') {
+            try { mode = window.localStorage.getItem('fp-conv-mode'); } catch (e) { mode = null; }
+        }
+        if (mode !== 'basic' && mode !== 'advanced') {
+            mode = window.matchMedia && !window.matchMedia('(max-width: 1120px)').matches ? 'advanced' : 'basic';
+        }
+        root.setAttribute('data-mode', mode);
+    })();
+    </script>
+    <script src="src/theme.min.js" defer></script>
+    <script src="src/mode.min.js" defer></script>
+    <script src="lib/floating-point.min.js" defer></script>
 </head>
 <body>
     <div class="container">
@@ -112,6 +136,7 @@
             <p class="help-link"><a href="#about">Need help? Learn how to use this tool →</a></p>
         </header>
 
+        <main>
         <div class="main-content">
             <!-- Input Format -->
             <section class="format-config" aria-labelledby="input-format-heading">
@@ -630,14 +655,15 @@
             </p>
             <button type="button" id="copy-link-btn" class="copy-link-btn">Copy Link</button>
         </section>
+        </main>
 
         <footer>
             <p>© 2025 <a href="https://sw23.github.io/" target="_blank" rel="noopener">Spencer Williams</a> | <a href="https://github.com/sw23/fp-conv" target="_blank" rel="noopener">GitHub</a></p>
         </footer>
     </div>
 
-    <script src="src/url-state.js" defer></script>
-    <script src="src/ui.js" defer></script>
-    <script src="src/webmcp.js" defer></script>
+    <script src="src/url-state.min.js" defer></script>
+    <script src="src/ui.min.js" defer></script>
+    <script src="src/webmcp.min.js" defer></script>
 </body>
 </html>

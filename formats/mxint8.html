@@ -98,6 +98,8 @@
             <p class="subtitle">Two's complement with an implicit 2<sup>-6</sup> scale: one sign bit, one integer bit, six fraction bits</p>
         </header>
 
+        <main>
+
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <div id="bit-layout" class="bit-layout"><div class="bit-field sign"><span class="bit-field-label">Sign</span><div class="bit-field-boxes"><div class="bit-box">S</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field integer"><span class="bit-field-label">Integer</span><div class="bit-field-boxes"><div class="bit-box">V</div></div><span class="bit-field-width">1 bit</span></div><div class="bit-field mantissa"><span class="bit-field-label">Fraction</span><div class="bit-field-boxes"><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div><div class="bit-box">F</div></div><span class="bit-field-width">6 bits</span></div></div>
@@ -186,6 +188,8 @@
                 <li><strong>Plain INT8 comparison:</strong> the same bits without an implicit scale are ordinary <a href="int8.html">INT8</a>, which ML pipelines pair with an explicit per-tensor or per-channel scale factor instead of a per-block one.</li>
             </ul>
         </section>
+
+        </main>
 
         <footer>
             <p><a href="../">← Try it in the Converter</a></p>

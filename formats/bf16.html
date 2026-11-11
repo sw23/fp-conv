@@ -98,6 +98,8 @@
             <p class="subtitle">Google Brain's 16-bit format: same range as FP32, designed for deep learning</p>
         </header>
 
+        <main>
+
         <section class="doc-section">
             <h2>Bit Layout</h2>
             <p>A BF16 number uses 16 bits divided into three fields:</p>
@@ -190,6 +192,8 @@
                 <li><strong>NumPy ecosystem:</strong> The <a href="https://github.com/jax-ml/ml_dtypes" target="_blank" rel="noopener">ml_dtypes</a> library registers <code>bfloat16</code> as a NumPy custom dtype for JAX and TensorFlow interop, since NumPy does not yet include a <a href="https://github.com/numpy/numpy/issues/30659" target="_blank" rel="noopener">native BF16 type</a>.</li>
             </ul>
         </section>
+
+        </main>
 
         <footer>
             <p><a href="../">← Try it in the Converter</a></p>

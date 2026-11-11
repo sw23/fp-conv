@@ -23,7 +23,8 @@
     "lint": "eslint . && npm run lint:html",
     "lint:fix": "eslint . --fix",
     "lint:html": "htmlhint index.html 'formats/*.html'",
-    "render:formats": "node scripts/render-format-pages.js"
+    "render:formats": "node scripts/render-format-pages.js",
+    "build:min": "node scripts/build-min.js"
   },
   "repository": {
     "type": "git",
@@ -52,6 +53,7 @@
   "homepage": "https://sw23.github.io/fp-conv/",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "esbuild": "0.28.2",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
     "htmlhint": "^1.9.2",

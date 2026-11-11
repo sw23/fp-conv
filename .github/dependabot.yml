@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # esbuild writes the committed .min files (scripts/build-min.js), and
+    # tests/min-assets.test.js compares them byte for byte. A bump can change
+    # that output, so it is done by hand together with `npm run build:min`.
+    ignore:
+      - dependency-name: "esbuild"
     groups:
       npm-dependencies:
         patterns:
