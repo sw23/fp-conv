@@ -418,9 +418,58 @@ describe('encodeString - long fractions are precision, not magnitude', () => {
         expect(fp4.decode(viaDouble.sign, viaDouble.exponent, viaDouble.mantissa)).toBe(1);
     });
 
-    test('pathologically long input still falls back rather than hanging', () => {
-        // The remaining cap is a cost guard, deliberately far above any real input.
-        expect(FloatingPoint.isDecimalLiteral('0.' + '9'.repeat(100001))).toBe(false);
+    test('pathologically long input stays on the exact path', () => {
+        // The remaining cap bounds the BigInt (sticky truncation), not the input.
+        expect(FloatingPoint.isDecimalLiteral('0.' + '9'.repeat(100001))).toBe(true);
+    });
+});
+
+describe('encodeString - past MAX_DECIMAL_DIGITS significant digits', () => {
+    // Expected values follow from the definitions: each input is the exact
+    // decimal of a grid point or midpoint, nudged by a digit past position
+    // 100000, so only the side of the nudge decides the result.
+    const fp4 = makeFormat('fp4_e2m1');
+    const fp32 = makeFormat('fp32');
+    const fp64 = makeFormat('fp64');
+    const fp32Bits = (e) => ((e.sign << 31) | (e.exponent << 23) | e.mantissa) >>> 0;
+    const LONG = 100010;
+
+    test.each([100001, 150000])('0.749...9 with %i fraction digits is below the midpoint', (n) => {
+        const encoded = fp4.encodeString('0.74' + '9'.repeat(n - 2));
+        expect(fp4.decode(encoded.sign, encoded.exponent, encoded.mantissa)).toBe(0.5);
+    });
+
+    test('a nonzero digit past the limit still breaks an fp32 tie', () => {
+        // 1 + 2^-24 is the midpoint between 1 and 1 + 2^-23.
+        const mid = '1.000000059604644775390625';
+        const above = mid + '0'.repeat(LONG - mid.length) + '1';
+        const below = '1.000000059604644775390624' + '9'.repeat(LONG - mid.length + 1);
+        expect(fp32Bits(fp32.encodeString(above))).toBe(0x3f800001);
+        expect(fp32Bits(fp32.encodeString(below))).toBe(0x3f800000);
+        expect(fp32Bits(fp32.encodeString(mid + '0'.repeat(LONG)))).toBe(0x3f800000);
+    });
+
+    test('directed modes see the exact value, not Number()\'s rounding', () => {
+        // 0.1 lies between 0x3FB9999999999999 and 0x3FB999999999999A.
+        const tenth = '0.1' + '0'.repeat(LONG);
+        const mode = (roundingMode) => toBits(fp64.encodeString(tenth, { roundingMode }));
+        expect(mode(ROUNDING_MODES.towardZero)).toBe('3fb9999999999999');
+        expect(mode(ROUNDING_MODES.towardNegative)).toBe('3fb9999999999999');
+        expect(mode(ROUNDING_MODES.towardPositive)).toBe('3fb999999999999a');
+        expect(mode(ROUNDING_MODES.tiesToEven)).toBe('3fb999999999999a');
+    });
+
+    test('a tiny value written with many leading zeros is not flushed by Number()', () => {
+        const tiny = '0.' + '0'.repeat(LONG) + '1';
+        expect(toBits(fp64.encodeString(tiny, { roundingMode: ROUNDING_MODES.towardPositive })))
+            .toBe('0000000000000001');
+        expect(toBits(fp64.encodeString('-' + tiny, { roundingMode: ROUNDING_MODES.towardNegative })))
+            .toBe('8000000000000001');
+    });
+
+    test('exactness survives trailing zeros past the limit', () => {
+        expect(fp64.isExactlyRepresentable('1.' + '0'.repeat(LONG))).toBe(true);
+        expect(fp64.isExactlyRepresentable('1.' + '0'.repeat(LONG) + '1')).toBe(false);
     });
 });
 
